@@ -1,0 +1,6 @@
+awswrangler
+boto3
+pre-commit
+pytest
+pyyaml
+ruff
