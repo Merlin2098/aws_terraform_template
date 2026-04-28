@@ -1,5 +1,6 @@
 import hashlib
 import subprocess
+import sys
 from pathlib import Path
 
 REQ_FILE = Path("requirements.txt")
@@ -21,7 +22,8 @@ def main():
             return
 
     print("Installing dependencies...")
-    subprocess.run(["pip", "install", "-r", "requirements.txt"], check=True)
+    HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True)
 
     HASH_FILE.write_text(current_hash)
     print("Dependencies updated.")
