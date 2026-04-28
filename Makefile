@@ -7,13 +7,16 @@ endif
 TERRAFORM ?= terraform
 TF_DIR ?= infra
 
-.PHONY: init package lint fmt test deploy clean
+.PHONY: init package treemap lint fmt test deploy clean
 
 init:
 	$(PYTHON) -m pip install -r requirements.txt
 
 package:
 	$(PYTHON) scripts/package.py
+
+treemap:
+	$(PYTHON) scripts/generate_treemap.py
 
 lint:
 	$(PYTHON) -m ruff check src tests scripts
