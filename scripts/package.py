@@ -33,8 +33,12 @@ def clean_bundle() -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build or remove the deployment bundle.")
-    parser.add_argument("--clean", action="store_true", help="Remove the generated bundle.")
+    parser = argparse.ArgumentParser(
+        description="Build or remove the deployment bundle."
+    )
+    parser.add_argument(
+        "--clean", action="store_true", help="Remove the generated bundle."
+    )
     args = parser.parse_args()
 
     if args.clean:

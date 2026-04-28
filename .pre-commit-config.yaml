@@ -3,23 +3,23 @@ repos:
     hooks:
       - id: ruff-format
         name: ruff format
-        entry: python -m ruff format src tests scripts
+        entry: ./.venv/Scripts/python.exe -m ruff format src tests scripts
         language: system
         pass_filenames: false
       - id: ruff-lint
         name: ruff lint
-        entry: python -m ruff check src tests scripts
+        entry: ./.venv/Scripts/python.exe -m ruff check src tests scripts
         language: system
         pass_filenames: false
       - id: pytest
         name: pytest
-        entry: python -m pytest
+        entry: ./.venv/Scripts/python.exe -m pytest
         language: system
         pass_filenames: false
         stages: [manual]
       - id: sync-requirements
         name: Sync virtual environment dependencies
-        entry: python scripts/sync_requirements.py
+        entry: ./.venv/Scripts/python.exe scripts/sync_requirements.py
         language: system
         files: ^requirements\.txt$
         pass_filenames: false

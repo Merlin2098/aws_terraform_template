@@ -4,3 +4,8 @@ pre-commit
 pytest
 pyyaml
 ruff
+
+# data handling
+pandas
+polars
+duckdb 

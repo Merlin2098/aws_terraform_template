@@ -1,4 +1,9 @@
-PYTHON ?= python
+ifeq ($(OS),Windows_NT)
+PYTHON ?= ./.venv/Scripts/python.exe
+else
+PYTHON ?= ./.venv/bin/python
+endif
+
 TERRAFORM ?= terraform
 TF_DIR ?= infra
 
