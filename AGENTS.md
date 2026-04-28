@@ -28,11 +28,27 @@ Skills are guidance only, not executable logic.
 When assisting:
 
 1. Understand the objective
-2. Identify relevant skills
+2. Identify relevant skills (based on task and skill naming)
 3. Apply patterns (adapt, don’t enforce)
 4. Generate simple, explicit solutions
 5. Validate against repo principles
 6. Iterate incrementally
+
+---
+
+## 🧠 Skill Usage
+
+The agent should:
+
+* Discover relevant skills automatically from `ai/skills/`
+* Match tasks with skill names (e.g.,  *testing* ,  *ci_cd* ,  *mocks* ,  *glue* ,  *terraform* )
+* Use skills as guidance without requiring explicit user invocation
+
+The agent must NOT:
+
+* require explicit skill invocation
+* enforce rigid mappings between tasks and skills
+* create skill composition or orchestration logic
 
 ---
 
@@ -104,3 +120,11 @@ Only create new files when:
 
 * no equivalent exists
 * or the user explicitly requests it
+
+---
+
+## 🔥 Philosophy
+
+Simple. Explicit. Reproducible.
+
+AI is a helper, not the system.

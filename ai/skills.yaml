@@ -2,9 +2,29 @@ glue_jobs:
   path: ai/skills/aws/glue_jobs.md
   description: AWS Glue job design patterns
 
+lambda_functions:
+  path: ai/skills/aws/lambda_functions.md
+  description: Event-driven compute with AWS Lambda
+
 step_functions:
   path: ai/skills/aws/step_functions.md
-  description: Orchestration patterns using Step Functions
+  description: Workflow orchestration using Step Functions
+
+eventbridge:
+  path: ai/skills/aws/eventbridge.md
+  description: Event-driven architecture using EventBridge
+
+s3_data_lake:
+  path: ai/skills/aws/s3_data_lake.md
+  description: Data lake architecture using S3
+
+iam_policies:
+  path: ai/skills/aws/iam_policies.md
+  description: IAM roles and least privilege policies
+
+cloudwatch_logging:
+  path: ai/skills/aws/cloudwatch_logging.md
+  description: Logging and monitoring with CloudWatch
 
 terraform_modules:
   path: ai/skills/terraform/modules.md
@@ -21,3 +41,43 @@ etl_patterns:
 data_contracts:
   path: ai/skills/data/data_contracts.md
   description: Data validation and schema enforcement
+
+terraform_testing:
+  path: ai/skills/terraform/terraform_testing.md
+  description: Terraform testing patterns (unit, integration, assertions)
+
+terraform_mocks:
+  path: ai/skills/terraform/terraform_mocks.md
+  description: Mock providers for Terraform testing without AWS
+
+terraform_ci_cd:
+  path: ai/skills/terraform/terraform_ci_cd.md
+  description: CI/CD patterns for Terraform validation and testing
+
+terraform_refactoring:
+  path: ai/skills/terraform/terraform_refactoring.md
+  description: Refactor Terraform into reusable modules
+
+terraform_stacks:
+  path: ai/skills/terraform/terraform_stacks.md
+  description: Manage multi-environment infrastructure with Terraform Stacks
+
+terraform_orchestration:
+  path: ai/skills/terraform/terraform_orchestration.md
+  description: Orchestrate Terraform execution using CI/CD and external tools
+
+terraform_import_manual:
+  path: ai/skills/terraform/terraform_import_manual.md
+  description: Import existing resources manually into Terraform
+
+terraform_import_discovery:
+  path: ai/skills/terraform/terraform_import_discovery.md
+  description: Discover and bulk import resources using Terraform Search
+
+terraform_security:
+  path: ai/skills/terraform/terraform_security.md
+  description: Security best practices for Terraform infrastructure
+
+terraform_style:
+  path: ai/skills/terraform/terraform_style.md
+  description: Terraform code structure and style conventions
