@@ -8,4 +8,4 @@ ruff
 # data handling
 pandas
 polars
-duckdb 
+duckdb
