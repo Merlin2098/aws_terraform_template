@@ -1,9 +1,22 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
 
-from ai.installer import install_template, print_summary, select_target_folder
+from ai.installer import install_template, print_summary
+
+
+def _prompt_target() -> Path:
+    selected = input("Destination repository directory (absolute path): ").strip()
+    if not selected:
+        raise ValueError("No target folder selected.")
+    target = Path(selected).expanduser()
+    if not target.is_absolute():
+        raise ValueError(
+            "Target must be an absolute path, for example /home/user/project."
+        )
+    return target
 
 
 def main() -> None:
@@ -13,12 +26,7 @@ def main() -> None:
     parser.add_argument(
         "--target",
         type=Path,
-        help="Destination repository directory. If omitted, a folder picker opens.",
-    )
-    parser.add_argument(
-        "--select-target",
-        action="store_true",
-        help="Open a folder picker to select the destination repository directory.",
+        help="Absolute destination repository directory. If omitted, a CLI prompt is used.",
     )
     parser.add_argument(
         "--force",
@@ -33,11 +41,15 @@ def main() -> None:
     args = parser.parse_args()
 
     try:
-        target = (
-            select_target_folder()
-            if args.select_target or not args.target
-            else args.target
-        )
+        if args.target is not None:
+            target = args.target.expanduser()
+            if not target.is_absolute():
+                raise ValueError(
+                    "Target must be an absolute path, for example /home/user/project."
+                )
+        else:
+            target = _prompt_target()
+
         summary = install_template(
             target=target,
             force=args.force,
