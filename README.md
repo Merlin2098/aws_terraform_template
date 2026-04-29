@@ -27,6 +27,8 @@ make ai-refresh
 python scripts/ai_refresh.py --light
 python install_windows.py --target /path/to/repo --dry-run
 python install_linux.py --target /path/to/repo --dry-run
+python install_windows.py --target /path/to/repo --local
+python install_linux.py --target /path/to/repo --cloud
 terraform -chdir=infra init
 terraform -chdir=infra plan
 terraform -chdir=infra apply
@@ -39,5 +41,8 @@ terraform -chdir=infra apply
 - `ai/skills.yaml`, `ai/skills/`, and `ai/context.yaml` are the tracked AI source of truth
 - `install_windows.py` is the Windows-friendly installer entrypoint and `install_linux.py` is the CLI installer for Linux or non-GUI environments
 - Both installers ask whether to copy the optional `src/` and `infra/` trees into the host repository
+- Both installers also ask whether the host project is `local` or `cloud` unless `--local` or `--cloud` is passed explicitly
+- Local installs skip `awswrangler` and `boto3` when updating the host `requirements.txt`
+- Cloud installs skip `pyinstaller` and `pyside6` when updating the host `requirements.txt`
 - Run Terraform directly from `infra/` for infrastructure changes
 - Pre-commit is limited to lint, format, and manual test execution
