@@ -84,7 +84,7 @@ The agent must NOT:
 Use explicit commands only:
 
 * `make package`
-* `make deploy`
+* Terraform commands directly, when intentionally managing infrastructure
 
 Do not introduce hidden automation.
 

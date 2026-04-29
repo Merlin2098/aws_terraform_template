@@ -4,10 +4,7 @@ else
 PYTHON ?= ./.venv/bin/python
 endif
 
-TERRAFORM ?= terraform
-TF_DIR ?= infra
-
-.PHONY: init package treemap lint fmt test deploy clean
+.PHONY: init package treemap lint fmt test clean
 
 init:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -26,10 +23,6 @@ fmt:
 
 test:
 	$(PYTHON) -m pytest
-
-deploy: package
-	$(TERRAFORM) -chdir=$(TF_DIR) init
-	$(TERRAFORM) -chdir=$(TF_DIR) apply
 
 clean:
 	$(PYTHON) scripts/package.py --clean

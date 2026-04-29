@@ -26,7 +26,7 @@ Keep Terraform declarative, and handle orchestration externally (CI/CD, scripts)
 
 - Never auto-apply in CI
 - Use plan mode for validation
-- Keep execution explicit (make deploy)
+- Keep execution explicit with direct Terraform commands
 
 ## Advanced concepts
 

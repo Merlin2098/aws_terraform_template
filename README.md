@@ -23,11 +23,13 @@ tests/                 Lightweight validation
 ```bash
 make package
 make test
-make deploy
+terraform -chdir=infra init
+terraform -chdir=infra plan
+terraform -chdir=infra apply
 ```
 
 ## Notes
 
 - `make package` builds `artifacts/data_platform_bundle.zip`
-- `make deploy` runs Terraform from `infra/`
+- Run Terraform directly from `infra/` for infrastructure changes
 - Pre-commit is limited to lint, format, and manual test execution
