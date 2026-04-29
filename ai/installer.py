@@ -17,6 +17,7 @@ EXCLUDED_DIRS = {
     ".ai",
     ".git",
     ".venv",
+    ".vscode",
     "build",
     "dist",
     "docs",
