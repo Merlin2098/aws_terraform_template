@@ -1,24 +1,69 @@
-.venv/
-venv/
-.vscode/
+# =========================
+# 🐍 Python
+# =========================
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
+
+# Virtual environments
+.venv/
+venv/
+
+# Python tooling caches
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
-dist/
+
+# Build / packaging
 build/
+dist/
+
+# =========================
+# 🧪 Logs & runtime artifacts
+# =========================
 logs/
 *.log
 
+# Custom artifacts (zips, outputs)
 artifacts/*.zip
 
-infra/.terraform/
-infra/*.tfstate
-infra/*.tfstate.*
-infra/crash.log
+# =========================
+# 🏗️ Terraform
+# =========================
+# Terraform core
+.terraform/
+**/.terraform/
 
+# State files
+*.tfstate
+*.tfstate.*
+
+# Crash logs
+crash.log
+
+# =========================
+# 🔐 Terraform variables (SENSITIVE)
+# =========================
+*.tfvars
+*.auto.tfvars
+
+# Allow examples
+!*.example
+
+# =========================
+# 🔑 Environment variables
+# =========================
+.env
+.env.*
+
+# =========================
+# 🛠️ IDE / Editor
+# =========================
+.vscode/
+
+# =========================
+# 💻 OS files
+# =========================
 .DS_Store
 Thumbs.db
