@@ -67,3 +67,5 @@ crash.log
 # =========================
 .DS_Store
 Thumbs.db
+
+tinker_files/
