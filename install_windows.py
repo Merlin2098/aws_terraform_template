@@ -3,7 +3,12 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from ai.installer import install_template, print_summary, select_target_folder
+from ai.installer import (
+    install_template,
+    print_summary,
+    prompt_include_structure,
+    select_target_folder,
+)
 
 
 def main() -> None:
@@ -30,7 +35,20 @@ def main() -> None:
         action="store_true",
         help="Preview the files that would be copied without writing anything.",
     )
+    parser.add_argument(
+        "--with-structure",
+        action="store_true",
+        help="Copy the optional src/ and infra/ trees without prompting.",
+    )
+    parser.add_argument(
+        "--without-structure",
+        action="store_true",
+        help="Skip the optional src/ and infra/ trees without prompting.",
+    )
     args = parser.parse_args()
+
+    if args.with_structure and args.without_structure:
+        parser.error("--with-structure cannot be combined with --without-structure.")
 
     try:
         target = (
@@ -38,10 +56,18 @@ def main() -> None:
             if args.select_target or not args.target
             else args.target
         )
+        include_structure = (
+            True
+            if args.with_structure
+            else False
+            if args.without_structure
+            else prompt_include_structure()
+        )
         summary = install_template(
             target=target,
             force=args.force,
             dry_run=args.dry_run,
+            include_structure=include_structure,
         )
     except ValueError as exc:
         parser.error(str(exc))

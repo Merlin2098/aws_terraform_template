@@ -6,6 +6,7 @@ from pathlib import Path
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TARGET_GITIGNORE_ENTRIES = ("ai/", "AGENTS.md", "Makefile")
+OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src"}
 
 EXCLUDED_DIRS = {
     ".ai",
@@ -26,8 +27,8 @@ EXCLUDED_DIRS = {
 EXCLUDED_EXACT_FILES = {
     "ai/installer.py",
     "infra/crash.log",
-    "install_template_linux.py",
-    "main.py",
+    "install_linux.py",
+    "install_windows.py",
 }
 EXCLUDED_SUFFIXES = {
     ".log",
@@ -82,6 +83,20 @@ def is_excluded(path: Path) -> bool:
     return False
 
 
+def prompt_include_structure() -> bool:
+    while True:
+        selected = (
+            input("Copy optional project structure folders (src/ and infra/)? [y/N]: ")
+            .strip()
+            .lower()
+        )
+        if selected in {"", "n", "no"}:
+            return False
+        if selected in {"y", "yes"}:
+            return True
+        print("Please answer yes or no.")
+
+
 def validate_target(target: Path) -> Path:
     target = target.expanduser().resolve()
     template = TEMPLATE_ROOT.resolve()
@@ -94,12 +109,20 @@ def validate_target(target: Path) -> Path:
     return target
 
 
-def iter_template_files() -> tuple[list[Path], list[Path]]:
+def iter_template_files(*, include_structure: bool) -> tuple[list[Path], list[Path]]:
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
 
     def walk(directory: Path) -> None:
         for path in sorted(directory.iterdir(), key=lambda item: item.name.lower()):
+            relative = path.relative_to(TEMPLATE_ROOT)
+            if (
+                not include_structure
+                and relative.parts
+                and relative.parts[0] in OPTIONAL_TOP_LEVEL_DIRS
+            ):
+                ignored.append(path)
+                continue
             if is_excluded(path):
                 ignored.append(path)
                 continue
@@ -170,9 +193,11 @@ def _ensure_destination_parent(
             directory.mkdir(parents=True, exist_ok=True)
 
 
-def install_template(target: Path, force: bool, dry_run: bool) -> dict[str, list[str]]:
+def install_template(
+    target: Path, force: bool, dry_run: bool, *, include_structure: bool
+) -> dict[str, list[str]]:
     target = validate_target(target)
-    candidates, ignored_paths = iter_template_files()
+    candidates, ignored_paths = iter_template_files(include_structure=include_structure)
     copied: list[str] = []
     skipped: list[str] = []
     created_dirs: set[str] = set()
