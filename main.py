@@ -8,10 +8,12 @@ from tkinter import Tk, filedialog
 
 TEMPLATE_ROOT = Path(__file__).resolve().parent
 TARGET_GITIGNORE_ENTRIES = ("ai/", "AGENTS.md", "Makefile")
+REQUIRED_TARGET_DIRS = ("infra/env", "infra/modules")
 
 EXCLUDED_DIRS = {
     ".git",
     ".venv",
+    "docs",
     "venv",
     "__pycache__",
     ".mypy_cache",
@@ -22,6 +24,7 @@ EXCLUDED_DIRS = {
     "logs",
 }
 EXCLUDED_EXACT_FILES = {
+    "main.py",
     "infra/crash.log",
 }
 EXCLUDED_SUFFIXES = {
@@ -61,7 +64,7 @@ def is_excluded(path: Path) -> bool:
         return True
     if relative in EXCLUDED_EXACT_FILES:
         return True
-    if path.name == "Thumbs.db" or path.name == ".DS_Store":
+    if path.name in {"README.md", "Thumbs.db", ".DS_Store"}:
         return True
     if path.suffix in EXCLUDED_SUFFIXES:
         return True
@@ -151,9 +154,18 @@ def install_template(target: Path, force: bool, dry_run: bool) -> dict[str, list
     candidates, ignored_paths = iter_template_files()
     copied: list[str] = []
     skipped: list[str] = []
+    created_dirs: list[str] = []
 
     if not dry_run:
         target.mkdir(parents=True, exist_ok=True)
+
+    for relative_dir in REQUIRED_TARGET_DIRS:
+        destination_dir = target / relative_dir
+        if destination_dir.exists():
+            continue
+        created_dirs.append(relative_dir)
+        if not dry_run:
+            destination_dir.mkdir(parents=True, exist_ok=True)
 
     for source_path in candidates:
         relative = source_path.relative_to(TEMPLATE_ROOT)
@@ -177,6 +189,7 @@ def install_template(target: Path, force: bool, dry_run: bool) -> dict[str, list
         "copied": copied,
         "skipped": skipped,
         "ignored": [relative_path(path) for path in ignored_paths],
+        "created_dirs": created_dirs,
         "gitignore_updates": gitignore_updates,
     }
 
@@ -187,9 +200,10 @@ def print_summary(summary: dict[str, list[str]], dry_run: bool) -> None:
     print(f"- Copied: {len(summary['copied'])}")
     print(f"- Skipped existing: {len(summary['skipped'])}")
     print(f"- Ignored: {len(summary['ignored'])}")
+    print(f"- Directories created: {len(summary['created_dirs'])}")
     print(f"- .gitignore entries added: {len(summary['gitignore_updates'])}")
 
-    for key in ("copied", "skipped", "ignored", "gitignore_updates"):
+    for key in ("copied", "skipped", "ignored", "created_dirs", "gitignore_updates"):
         values = summary[key]
         if not values:
             continue

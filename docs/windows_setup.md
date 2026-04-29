@@ -109,3 +109,6 @@ Makefile
 
 The installer does not run Terraform, install dependencies, initialize Git, or
 execute pre-commit in the target repository.
+
+The installer also leaves the installer and template docs behind: `main.py`,
+files named `README.md`, and `docs/` are not copied to the target repository.
