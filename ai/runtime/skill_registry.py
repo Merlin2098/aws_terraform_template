@@ -30,7 +30,7 @@ def _short_description_from_markdown(path: Path) -> str:
     return ""
 
 
-def _registry_from_yaml(index_path: Path, project_root: Path) -> list[dict[str, str]]:
+def _registry_from_yaml(index_path: Path) -> list[dict[str, str]]:
     loaded = _load_yaml(index_path)
     skills: list[dict[str, str]] = []
 
@@ -77,7 +77,7 @@ def build_skills_registry(project_root: Path) -> dict[str, Any]:
     skills_root = project_root / "ai" / "skills"
 
     if index_path.exists():
-        skills = _registry_from_yaml(index_path, project_root)
+        skills = _registry_from_yaml(index_path)
     else:
         skills = _registry_from_scan(skills_root, project_root)
 
@@ -91,7 +91,9 @@ def write_skills_registry(registry: dict[str, Any], output_path: Path) -> None:
     )
 
 
-def build_and_persist_skills_registry(project_root: Path) -> dict[str, Any]:
+def build_and_persist_skills_registry(
+    project_root: Path, output_path: Path
+) -> dict[str, Any]:
     registry = build_skills_registry(project_root)
-    write_skills_registry(registry, project_root / ".tinker" / "skills_registry.json")
+    write_skills_registry(registry, output_path)
     return registry

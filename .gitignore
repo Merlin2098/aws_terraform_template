@@ -68,5 +68,6 @@ crash.log
 .DS_Store
 Thumbs.db
 
+.ai/
 .tinker/
 tinker_files/

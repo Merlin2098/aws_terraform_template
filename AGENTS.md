@@ -17,7 +17,8 @@ The agent should assist in building:
 Use:
 
 * `ai/skills/` → patterns and best practices
-* `skills.yaml` → index
+* `ai/skills.yaml` → authoritative skills index
+* `ai/context.yaml` → authoritative AI context-generation configuration
 
 Skills are guidance only, not executable logic.
 
@@ -41,6 +42,7 @@ When assisting:
 The agent should:
 
 * Discover relevant skills automatically from `ai/skills/`
+* Treat `ai/skills.yaml` and `ai/context.yaml` as the authoritative AI configuration inputs
 * Match tasks with skill names (e.g.,  *testing* ,  *ci_cd* ,  *mocks* ,  *glue* ,  *terraform* )
 * Use skills as guidance without requiring explicit user invocation
 
@@ -97,7 +99,7 @@ The agent must NOT:
 * create orchestration frameworks
 * define skill composition
 * introduce meta-systems
-* recreate Tinker-like behavior
+* recreate hidden framework-like behavior
 
 ---
 

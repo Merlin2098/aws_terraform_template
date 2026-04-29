@@ -2,21 +2,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-
-IGNORED_NAMES = {
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tinker",
-    ".venv",
-    "__pycache__",
-    "node_modules",
-    "venv",
-}
+from ai.runtime.config import load_context_config
 
 
-def _generate_tree(directory: Path, prefix: str = "") -> list[str]:
+def _generate_tree(
+    directory: Path, ignored_names: set[str], prefix: str = ""
+) -> list[str]:
     try:
         items = sorted(
             directory.iterdir(), key=lambda item: (not item.is_dir(), item.name.lower())
@@ -24,7 +15,7 @@ def _generate_tree(directory: Path, prefix: str = "") -> list[str]:
     except PermissionError:
         return []
 
-    visible = [item for item in items if item.name not in IGNORED_NAMES]
+    visible = [item for item in items if item.name not in ignored_names]
     lines: list[str] = []
 
     for index, path in enumerate(visible):
@@ -33,7 +24,7 @@ def _generate_tree(directory: Path, prefix: str = "") -> list[str]:
         if path.is_dir():
             lines.append(f"{prefix}{connector}{path.name}/")
             child_prefix = f"{prefix}{'    ' if is_last else '|   '}"
-            lines.extend(_generate_tree(path, child_prefix))
+            lines.extend(_generate_tree(path, ignored_names, child_prefix))
         else:
             lines.append(f"{prefix}{connector}{path.name}")
 
@@ -42,13 +33,16 @@ def _generate_tree(directory: Path, prefix: str = "") -> list[str]:
 
 def write_treemap(project_root: Path, output_file: Path) -> None:
     project_root = project_root.resolve()
+    config = load_context_config(project_root)
+    ignored_names = set(config.get("treemap_ignore_dirs", []))
+
     output_file.parent.mkdir(parents=True, exist_ok=True)
     lines = [
         "## Project Structure",
         "",
         "```text",
         f"{project_root.name}/",
-        *_generate_tree(project_root),
+        *_generate_tree(project_root, ignored_names),
         "```",
         "",
     ]

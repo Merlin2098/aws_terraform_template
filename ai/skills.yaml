@@ -42,6 +42,22 @@ data_contracts:
   path: ai/skills/data/data_contracts.md
   description: Data validation and schema enforcement
 
+data_quality_guidance:
+  path: ai/skills/data/data_quality_guidance.md
+  description: Deterministic data quality checks for Python, SQL, and AWS workflows
+
+python_project_guidance:
+  path: ai/skills/python/python_project_guidance.md
+  description: Simple, maintainable Python automation and pipeline code
+
+python_testing_quality:
+  path: ai/skills/python/python_testing_quality.md
+  description: Testing guidance for Python automation, data workflows, and AWS boundaries
+
+sql_workflow_guidance:
+  path: ai/skills/sql/sql_workflow_guidance.md
+  description: Maintainable SQL file organization and transformation workflow guidance
+
 terraform_testing:
   path: ai/skills/terraform/terraform_testing.md
   description: Terraform testing patterns (unit, integration, assertions)

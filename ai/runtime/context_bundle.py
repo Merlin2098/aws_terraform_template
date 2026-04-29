@@ -5,16 +5,9 @@ from typing import Any
 
 import yaml
 
-from tinker_core.runtime.skill_registry import build_skills_registry
-from tinker_core.tools.inspect_project import inspect_project
-
-
-RULES = [
-    ".tinker/ is optional generated context and is never required at runtime.",
-    "Keep execution explicit through existing scripts, Make targets, and direct Terraform commands.",
-    "Skill files under ai/skills/ are guidance only and are not executable runtime logic.",
-    "Infrastructure changes remain explicit and reviewed before terraform apply or destroy.",
-]
+from ai.runtime.config import load_context_config, rules_list, structure_map
+from ai.runtime.skill_registry import build_skills_registry
+from ai.tools.inspect_project import inspect_project
 
 
 def _project_purpose(project: dict[str, Any]) -> str:
@@ -34,10 +27,16 @@ def _project_purpose(project: dict[str, Any]) -> str:
     return purpose + "."
 
 
-def build_context_bundle(project_root: Path) -> dict[str, Any]:
+def build_context_bundle(
+    project_root: Path,
+    *,
+    project: dict[str, Any] | None = None,
+    skills_registry: dict[str, Any] | None = None,
+) -> dict[str, Any]:
     project_root = project_root.resolve()
-    project = inspect_project(project_root)
-    skills_registry = build_skills_registry(project_root)
+    config = load_context_config(project_root)
+    project = project or inspect_project(project_root)
+    skills_registry = skills_registry or build_skills_registry(project_root)
     skills = skills_registry.get("skills", [])
 
     domain_counts: dict[str, int] = {}
@@ -56,22 +55,14 @@ def build_context_bundle(project_root: Path) -> dict[str, Any]:
             "cloud": project["cloud"]["providers"],
             "infra_tools": project["cloud"]["infra_tools"],
         },
-        "structure": {
-            "python": ["main.py", "src/", "scripts/"],
-            "sql": ["src/transformations/"],
-            "config": ["src/config/"],
-            "contracts": ["src/contracts/"],
-            "infrastructure": ["infra/"],
-            "guidance": ["ai/skills.yaml", "ai/skills/"],
-            "optional_context": [".tinker/"],
-        },
+        "structure": structure_map(config),
         "entrypoints": project["entrypoints"],
         "core_modules": project["core_modules"],
         "skills_summary": {
             "count": len(skills),
             "domains": dict(sorted(domain_counts.items())),
         },
-        "rules": RULES,
+        "rules": rules_list(config),
     }
 
 
@@ -82,7 +73,15 @@ def write_context_bundle(bundle: dict[str, Any], output_path: Path) -> None:
     )
 
 
-def build_and_persist_context_bundle(project_root: Path) -> dict[str, Any]:
-    bundle = build_context_bundle(project_root)
-    write_context_bundle(bundle, project_root / ".tinker" / "context_bundle.yaml")
+def build_and_persist_context_bundle(
+    project_root: Path,
+    output_path: Path,
+    *,
+    project: dict[str, Any] | None = None,
+    skills_registry: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    bundle = build_context_bundle(
+        project_root, project=project, skills_registry=skills_registry
+    )
+    write_context_bundle(bundle, output_path)
     return bundle

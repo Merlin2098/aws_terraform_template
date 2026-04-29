@@ -8,29 +8,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from ai.runtime.config import (
+    entrypoint_roots,
+    ignore_dirs,
+    ignore_top_level_files,
+    load_context_config,
+    module_roots,
+)
 
-VERSION = "0.1.0"
+
+VERSION = "0.2.0"
 DATA_LIBRARIES = {"awswrangler", "duckdb", "pandas", "polars", "pyarrow"}
-IGNORED_DIRS = {
-    ".git",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".ruff_cache",
-    ".tinker",
-    ".venv",
-    "__pycache__",
-    "artifacts",
-    "build",
-    "dist",
-    "docs",
-    "node_modules",
-    "tinker_core",
-    "tinker_files",
-    "venv",
-}
-IGNORED_TOP_LEVEL_FILES = {
-    ".pre-commit-config.yaml",
-}
 IMPORT_RE = re.compile(r"^\s*(?:from|import)\s+([A-Za-z0-9_\.]+)", re.MULTILINE)
 
 
@@ -43,13 +31,17 @@ def _safe_read(path: Path) -> str:
     return ""
 
 
-def _is_ignored(path: Path, project_root: Path) -> bool:
+def is_ignored_path(
+    path: Path, project_root: Path, config: dict[str, Any] | None = None
+) -> bool:
+    config = config or load_context_config(project_root)
     relative = path.relative_to(project_root)
-    if any(part in IGNORED_DIRS for part in relative.parts):
+    ignored_directory_names = ignore_dirs(config)
+    ignored_top_level = ignore_top_level_files(config)
+
+    if any(part in ignored_directory_names for part in relative.parts):
         return True
-    if relative.parts and relative.parts[0] == "ai":
-        return True
-    if relative.name in IGNORED_TOP_LEVEL_FILES and len(relative.parts) == 1:
+    if relative.name in ignored_top_level and len(relative.parts) == 1:
         return True
     if any(part.startswith(".") and part not in {".github"} for part in relative.parts):
         return True
@@ -57,11 +49,12 @@ def _is_ignored(path: Path, project_root: Path) -> bool:
 
 
 def iter_project_files(project_root: Path) -> list[Path]:
+    config = load_context_config(project_root)
     files: list[Path] = []
     for path in project_root.rglob("*"):
         if not path.is_file():
             continue
-        if _is_ignored(path, project_root):
+        if is_ignored_path(path, project_root, config):
             continue
         files.append(path)
     return files
@@ -188,48 +181,76 @@ def _detect_cloud(project_root: Path, files: list[Path]) -> dict[str, Any]:
     }
 
 
+def _python_files_under(
+    project_root: Path, relative_dir: str, config: dict[str, Any]
+) -> list[Path]:
+    base = project_root / relative_dir
+    if not base.exists():
+        return []
+
+    paths: list[Path] = []
+    for path in sorted(base.rglob("*.py")):
+        if path.name == "__init__.py":
+            continue
+        if is_ignored_path(path, project_root, config):
+            continue
+        paths.append(path)
+    return paths
+
+
+def _files_from_roots(
+    project_root: Path,
+    files: list[str],
+    directories: list[str],
+    config: dict[str, Any],
+) -> list[Path]:
+    resolved: list[Path] = []
+
+    for relative_file in files:
+        path = project_root / relative_file
+        if (
+            path.exists()
+            and path.is_file()
+            and not is_ignored_path(path, project_root, config)
+        ):
+            resolved.append(path)
+
+    for relative_dir in directories:
+        resolved.extend(_python_files_under(project_root, relative_dir, config))
+
+    return resolved
+
+
 def _entrypoints(project_root: Path) -> list[dict[str, str]]:
+    config = load_context_config(project_root)
+    roots = entrypoint_roots(config)
     entrypoints: list[dict[str, str]] = []
 
-    main_path = project_root / "main.py"
-    if main_path.exists():
-        entrypoints.append({"type": "cli", "path": "main.py"})
-
-    scripts_dir = project_root / "scripts"
-    if scripts_dir.exists():
-        for path in sorted(scripts_dir.glob("*.py")):
-            if path.name == "__init__.py":
-                continue
-            entrypoints.append(
-                {"type": "script", "path": path.relative_to(project_root).as_posix()}
-            )
-
-    jobs_dir = project_root / "src" / "jobs"
-    if jobs_dir.exists():
-        for path in sorted(jobs_dir.rglob("*.py")):
-            if path.name == "__init__.py":
-                continue
-            entrypoints.append(
-                {"type": "job", "path": path.relative_to(project_root).as_posix()}
-            )
+    for path in _files_from_roots(
+        project_root, roots["files"], roots["directories"], config
+    ):
+        relative = path.relative_to(project_root).as_posix()
+        kind = (
+            "job"
+            if "jobs/" in relative
+            else "cli"
+            if relative == "main.py"
+            else "script"
+        )
+        entrypoints.append({"type": kind, "path": relative})
 
     return entrypoints
 
 
 def _core_modules(project_root: Path) -> list[dict[str, str]]:
-    modules: list[dict[str, str]] = []
-
-    main_path = project_root / "main.py"
-    if main_path.exists():
-        modules.append({"path": "main.py"})
-
-    src_dir = project_root / "src"
-    if src_dir.exists():
-        for path in sorted(src_dir.rglob("*.py")):
-            if path.name == "__init__.py":
-                continue
-            modules.append({"path": path.relative_to(project_root).as_posix()})
-
+    config = load_context_config(project_root)
+    roots = module_roots(config)
+    modules = [
+        {"path": path.relative_to(project_root).as_posix()}
+        for path in _files_from_roots(
+            project_root, roots["files"], roots["directories"], config
+        )
+    ]
     return modules[:15]
 
 
@@ -255,7 +276,7 @@ def inspect_project(project_root: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect a project for lightweight Tinker context signals."
+        description="Inspect a project for lightweight AI context signals."
     )
     parser.add_argument("--project-root", default=".", help="Project root to inspect.")
     parser.add_argument(

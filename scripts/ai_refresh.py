@@ -9,6 +9,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 if __name__ == "__main__":
-    from tinker_core.tools.refresh_context import main
+    from ai.tools.refresh_context import main
 
     raise SystemExit(main())

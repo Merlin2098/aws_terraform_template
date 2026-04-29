@@ -7,10 +7,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from tinker_core.tools.inspect_project import IGNORED_DIRS
+from ai.tools.inspect_project import is_ignored_path
 
 
-VERSION = "0.1.0"
+VERSION = "0.2.0"
 
 
 @dataclass
@@ -34,12 +34,7 @@ class Edge:
 def _iter_python_files(project_root: Path) -> list[Path]:
     files: list[Path] = []
     for path in project_root.rglob("*.py"):
-        rel = path.relative_to(project_root)
-        if any(part in IGNORED_DIRS for part in rel.parts):
-            continue
-        if rel.parts and rel.parts[0] == "ai":
-            continue
-        if any(part.startswith(".") and part not in {".github"} for part in rel.parts):
+        if is_ignored_path(path, project_root):
             continue
         files.append(path)
     return files
@@ -163,7 +158,9 @@ def write_dependency_graph(graph: dict[str, Any], output_path: Path) -> None:
     )
 
 
-def build_and_persist_dependency_graph(project_root: Path) -> dict[str, Any]:
+def build_and_persist_dependency_graph(
+    project_root: Path, output_path: Path
+) -> dict[str, Any]:
     graph = build_dependency_graph(project_root)
-    write_dependency_graph(graph, project_root / ".tinker" / "dependencies_graph.json")
+    write_dependency_graph(graph, output_path)
     return graph

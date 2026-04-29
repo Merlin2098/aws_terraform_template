@@ -4,7 +4,7 @@ else
 PYTHON ?= ./.venv/bin/python
 endif
 
-.PHONY: init package treemap lint fmt test clean tinker-refresh
+.PHONY: init package treemap lint fmt test clean ai-refresh
 
 init:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -16,10 +16,10 @@ treemap:
 	$(PYTHON) scripts/generate_treemap.py
 
 lint:
-	$(PYTHON) -m ruff check src tests scripts
+	$(PYTHON) -m ruff check ai src tests scripts
 
 fmt:
-	$(PYTHON) -m ruff format src tests scripts
+	$(PYTHON) -m ruff format ai src tests scripts
 
 test:
 	$(PYTHON) -m pytest
@@ -27,5 +27,5 @@ test:
 clean:
 	$(PYTHON) scripts/package.py --clean
 
-tinker-refresh:
-	$(PYTHON) scripts/tinker_refresh.py --full
+ai-refresh:
+	$(PYTHON) scripts/ai_refresh.py --full
