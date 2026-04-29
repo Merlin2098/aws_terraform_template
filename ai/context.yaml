@@ -14,7 +14,6 @@ ignore_dirs:
   - .mypy_cache
   - .pytest_cache
   - .ruff_cache
-  - .tinker
   - .venv
   - __pycache__
   - ai
@@ -23,8 +22,6 @@ ignore_dirs:
   - dist
   - docs
   - node_modules
-  - tinker_core
-  - tinker_files
   - venv
 
 treemap_ignore_dirs:
@@ -33,13 +30,11 @@ treemap_ignore_dirs:
   - .mypy_cache
   - .pytest_cache
   - .ruff_cache
-  - .tinker
   - .venv
   - __pycache__
   - build
   - dist
   - node_modules
-  - tinker_files
   - venv
 
 ignore_top_level_files:

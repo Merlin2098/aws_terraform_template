@@ -11,13 +11,11 @@ OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src"}
 EXCLUDED_DIRS = {
     ".ai",
     ".git",
-    ".tinker",
     ".venv",
     "build",
     "dist",
     "docs",
     "logs",
-    "tinker_files",
     "venv",
     "__pycache__",
     ".mypy_cache",
