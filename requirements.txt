@@ -1,12 +1,32 @@
+# AWS
 awswrangler
 boto3
-pre-commit
+
+# Testing and config
 pytest
 pyyaml
 ruff
 
-# data handling
+# Data handling
 pandas
 polars
 pyarrow
+
+# Excel I/O
+fastexcel
+openpyxl
+xlsxwriter
+
+# SQL engine
 duckdb
+
+# Frontend
+pyside6
+
+# Packaging and tooling
+pathspec
+pre-commit
+pyinstaller
+python-dateutil
+setuptools
+wheel
