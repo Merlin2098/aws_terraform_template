@@ -1,17 +1,9 @@
-# Repository Tree Map
-
-- Root: `C:\Users\ricuculm\OneDrive - Metso\Documents\VS Code\aws_terraform_template`
-- Included files: `22`
-- Excluded: `.gitignore`, `ai/`, `.git/`, and paths matched by `.gitignore`
-
 ```text
 aws_terraform_template/
 |-- artifacts/
 |   `-- README.md
 |-- docs/
 |-- infra/
-|   |-- env/
-|   |-- modules/
 |   |-- main.tf
 |   |-- outputs.tf
 |   |-- providers.tf

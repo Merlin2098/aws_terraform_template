@@ -7,9 +7,9 @@ from pathlib import Path
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_OUTPUT = REPO_ROOT / "treemap.md"
+DEFAULT_OUTPUT = REPO_ROOT / "docs" / "treemap.md"
 EXCLUDED_ROOTS = {".git", "ai"}
-EXCLUDED_FILES = {".gitignore"}
+EXCLUDED_FILES = {".gitignore", "treemap.md"}
 
 
 @dataclass(frozen=True)
@@ -91,30 +91,13 @@ def build_tree_lines(
     return lines
 
 
-def count_included_files(directory: Path, rules: list[IgnoreRule]) -> int:
-    total = 0
-    for child in iter_visible_children(directory, rules):
-        if child.is_dir():
-            total += count_included_files(child, rules)
-        else:
-            total += 1
-    return total
-
-
 def write_treemap(output_path: Path) -> Path:
     rules = load_ignore_rules(REPO_ROOT / ".gitignore")
     tree_lines = [REPO_ROOT.name + "/"]
     tree_lines.extend(build_tree_lines(REPO_ROOT, rules))
-    file_count = count_included_files(REPO_ROOT, rules)
 
     content = "\n".join(
         [
-            "# Repository Tree Map",
-            "",
-            f"- Root: `{REPO_ROOT}`",
-            f"- Included files: `{file_count}`",
-            "- Excluded: `.gitignore`, `ai/`, `.git/`, and paths matched by `.gitignore`",
-            "",
             "```text",
             *tree_lines,
             "```",
@@ -134,7 +117,7 @@ def main() -> None:
     parser.add_argument(
         "--output",
         default=str(DEFAULT_OUTPUT),
-        help="Path to the generated markdown file. Defaults to treemap.md at the repo root.",
+        help="Path to the generated markdown file. Defaults to docs/treemap.md.",
     )
     args = parser.parse_args()
 
