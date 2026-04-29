@@ -4,7 +4,7 @@ else
 PYTHON ?= ./.venv/bin/python
 endif
 
-.PHONY: init package treemap lint fmt test clean
+.PHONY: init package treemap lint fmt test clean tinker-refresh
 
 init:
 	$(PYTHON) -m pip install -r requirements.txt
@@ -26,3 +26,6 @@ test:
 
 clean:
 	$(PYTHON) scripts/package.py --clean
+
+tinker-refresh:
+	$(PYTHON) scripts/tinker_refresh.py --full

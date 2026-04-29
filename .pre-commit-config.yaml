@@ -1,6 +1,12 @@
 repos:
   - repo: local
     hooks:
+      - id: tinker-refresh-light
+        name: Tinker refresh (light)
+        entry: python scripts/tinker_refresh.py --light
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]
       - id: ruff-format
         name: ruff format
         entry: ./.venv/Scripts/python.exe -m ruff format src tests scripts
