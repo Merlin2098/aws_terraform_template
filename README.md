@@ -47,4 +47,4 @@ terraform -chdir=infra apply
 - Local installs skip `awswrangler` and `boto3` when updating the host `requirements.txt`
 - Cloud installs skip `pyinstaller` and `pyside6` when updating the host `requirements.txt`
 - Run Terraform directly from `infra/` for infrastructure changes
-- Pre-commit is limited to lint, format, and manual test execution
+- Automatic pre-commit is limited to AI refresh and dependency sync; Ruff lint, formatting, and pytest remain explicit or manual checks

@@ -7,6 +7,17 @@ REQ_FILE = Path("requirements.txt")
 HASH_FILE = Path(".venv/.req_hash")
 
 
+def venv_python() -> Path:
+    candidates = (
+        Path(".venv/Scripts/python.exe"),
+        Path(".venv/bin/python"),
+    )
+    for candidate in candidates:
+        if candidate.exists():
+            return candidate
+    return Path(sys.executable)
+
+
 def file_hash(path):
     return hashlib.md5(path.read_bytes()).hexdigest()
 
@@ -16,6 +27,7 @@ def main():
         return
 
     current_hash = file_hash(REQ_FILE)
+    python_executable = venv_python()
 
     if HASH_FILE.exists():
         stored_hash = HASH_FILE.read_text()
@@ -26,7 +38,8 @@ def main():
     print("Installing dependencies...")
     HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-r", "requirements.txt"], check=True
+        [str(python_executable), "-m", "pip", "install", "-r", "requirements.txt"],
+        check=True,
     )
 
     HASH_FILE.write_text(current_hash)
