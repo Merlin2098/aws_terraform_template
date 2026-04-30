@@ -132,7 +132,21 @@ def validate_environment_profile(environment_profile: str) -> str:
     return normalized
 
 
-def iter_template_files(*, include_structure: bool) -> tuple[list[Path], list[Path]]:
+def should_copy_requirements_file(
+    relative: Path, environment_profile: str
+) -> bool:
+    if relative == LOCAL_REQUIREMENTS_PATH:
+        return environment_profile in {"local", "cloud"}
+    if relative == CLOUD_REQUIREMENTS_PATH:
+        return environment_profile == "cloud"
+    if relative == DEV_REQUIREMENTS_PATH:
+        return True
+    return True
+
+
+def iter_template_files(
+    *, include_structure: bool, environment_profile: str
+) -> tuple[list[Path], list[Path]]:
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
 
@@ -143,6 +157,12 @@ def iter_template_files(*, include_structure: bool) -> tuple[list[Path], list[Pa
                 not include_structure
                 and relative.parts
                 and relative.parts[0] in OPTIONAL_TOP_LEVEL_DIRS
+            ):
+                ignored.append(path)
+                continue
+            if (
+                relative.name.startswith("requirements")
+                and not should_copy_requirements_file(relative, environment_profile)
             ):
                 ignored.append(path)
                 continue
@@ -173,7 +193,7 @@ def normalize_requirement_name(line: str) -> str | None:
 def requirements_paths_for_profile(environment_profile: str) -> list[Path]:
     if environment_profile == "local":
         return [LOCAL_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
-    return [CLOUD_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
+    return [LOCAL_REQUIREMENTS_PATH, CLOUD_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
 
 
 def filtered_template_requirements(environment_profile: str) -> list[str]:
@@ -324,7 +344,10 @@ def install_template(
 ) -> dict[str, list[str]]:
     target = validate_target(target)
     environment_profile = validate_environment_profile(environment_profile)
-    candidates, ignored_paths = iter_template_files(include_structure=include_structure)
+    candidates, ignored_paths = iter_template_files(
+        include_structure=include_structure,
+        environment_profile=environment_profile,
+    )
     copied: list[str] = []
     skipped: list[str] = []
     created_dirs: set[str] = set()

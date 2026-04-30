@@ -61,6 +61,11 @@ py -3 -m venv .venv
 `requirements.local.txt` installs the local developer environment. Deployment bundles use
 `requirements.cloud.txt` during packaging.
 
+When you install this template into another repository, the local profile copies
+`requirements.local.txt` plus `requirements.dev.txt`. The cloud profile copies
+`requirements.local.txt`, `requirements.cloud.txt`, and `requirements.dev.txt`
+so a local MVP can evolve into a cloud-ready project.
+
 Verify pre-commit:
 
 ```powershell

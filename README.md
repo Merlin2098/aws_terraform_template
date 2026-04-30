@@ -48,6 +48,9 @@ terraform -chdir=infra apply
 - Both installers ask whether to copy the optional `src/`, `infra/`, and `tests/` trees into the host repository
 - Both installers also ask whether the host project is `local` or `cloud` unless `--local` or `--cloud` is passed explicitly
 - Local installs merge `requirements.local.txt` and `requirements.dev.txt` into the host `requirements.txt`
-- Cloud installs merge `requirements.cloud.txt` and `requirements.dev.txt` into the host `requirements.txt`
+- Cloud installs merge `requirements.local.txt`, `requirements.cloud.txt`, and `requirements.dev.txt` into the host `requirements.txt`
+- Local installs copy `requirements.local.txt` and `requirements.dev.txt`, but skip `requirements.cloud.txt`
+- Cloud installs copy `requirements.local.txt`, `requirements.cloud.txt`, and `requirements.dev.txt`
+- The cloud profile is intentionally superset-style so teams can start with a local MVP and later add cloud runtime dependencies without reinstalling the template
 - Run Terraform directly from `infra/` for infrastructure changes
 - Automatic pre-commit is limited to AI refresh and dependency sync; Ruff lint, formatting, and pytest remain explicit or manual checks
