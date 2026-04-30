@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REQ_FILE = Path("requirements.txt")
+REQ_FILES = (Path("requirements.local.txt"), Path("requirements.dev.txt"))
 HASH_FILE = Path(".venv/.req_hash")
 
 
@@ -22,11 +22,22 @@ def file_hash(path):
     return hashlib.md5(path.read_bytes()).hexdigest()
 
 
+def requirements_hash(paths: tuple[Path, ...]) -> str:
+    digest = hashlib.md5()
+    for requirement_path in paths:
+        if not requirement_path.exists():
+            continue
+        digest.update(str(requirement_path.resolve()).encode("utf-8"))
+        digest.update(requirement_path.read_bytes())
+    return digest.hexdigest()
+
+
 def main():
-    if not REQ_FILE.exists():
+    existing_req_files = tuple(path for path in REQ_FILES if path.exists())
+    if not existing_req_files:
         return
 
-    current_hash = file_hash(REQ_FILE)
+    current_hash = requirements_hash(existing_req_files)
     python_executable = venv_python()
 
     if HASH_FILE.exists():
@@ -38,7 +49,16 @@ def main():
     print("Installing dependencies...")
     HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(
-        [str(python_executable), "-m", "pip", "install", "-r", "requirements.txt"],
+        [
+            str(python_executable),
+            "-m",
+            "pip",
+            "install",
+            "-r",
+            "requirements.local.txt",
+            "-r",
+            "requirements.dev.txt",
+        ],
         check=True,
     )
 

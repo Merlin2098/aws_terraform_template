@@ -1,0 +1,11 @@
+# Cloud runtime dependencies
+pyyaml
+jsonschema
+great-expectations
+pandas
+python-dateutil
+sqlalchemy
+psycopg2-binary
+awswrangler
+boto3
+pyarrow

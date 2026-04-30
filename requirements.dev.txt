@@ -1,0 +1,10 @@
+# Testing, QA, and infra tooling
+pytest
+pytest-cov
+ruff
+hypothesis
+moto
+faker
+tftest
+checkov
+pre-commit

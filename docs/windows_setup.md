@@ -54,9 +54,12 @@ From the repository root:
 
 ```powershell
 py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe -m pip install -r requirements.local.txt -r requirements.dev.txt
 .\.venv\Scripts\pre-commit.exe install
 ```
+
+`requirements.local.txt` installs the local developer environment. Deployment bundles use
+`requirements.cloud.txt` during packaging.
 
 Verify pre-commit:
 

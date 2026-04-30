@@ -1,0 +1,19 @@
+# Local app and desktop workflow
+pyyaml
+jsonschema
+great-expectations
+pandas
+python-dateutil
+sqlalchemy
+psycopg2-binary
+polars
+pyarrow
+fastexcel
+openpyxl
+xlsxwriter
+duckdb
+pyside6
+pyinstaller
+pathspec
+setuptools
+wheel

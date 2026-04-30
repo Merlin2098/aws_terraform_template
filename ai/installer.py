@@ -9,9 +9,10 @@ TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TARGET_GITIGNORE_ENTRIES = (".ai/", "AGENTS.md", "Makefile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
-LOCAL_EXCLUDED_PACKAGES = {"awswrangler", "boto3"}
-CLOUD_EXCLUDED_PACKAGES = {"pyinstaller", "pyside6"}
 REQUIREMENTS_PATH = Path("requirements.txt")
+LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
+CLOUD_REQUIREMENTS_PATH = Path("requirements.cloud.txt")
+DEV_REQUIREMENTS_PATH = Path("requirements.dev.txt")
 
 EXCLUDED_DIRS = {
     ".ai",
@@ -169,39 +170,19 @@ def normalize_requirement_name(line: str) -> str | None:
     return match.group(1).lower().replace("_", "-")
 
 
-def excluded_packages_for_profile(environment_profile: str) -> set[str]:
+def requirements_paths_for_profile(environment_profile: str) -> list[Path]:
     if environment_profile == "local":
-        return LOCAL_EXCLUDED_PACKAGES
-    return CLOUD_EXCLUDED_PACKAGES
+        return [LOCAL_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
+    return [CLOUD_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
 
 
 def filtered_template_requirements(environment_profile: str) -> list[str]:
-    excluded_packages = excluded_packages_for_profile(environment_profile)
-    requirements_path = TEMPLATE_ROOT / REQUIREMENTS_PATH
-    lines = requirements_path.read_text(encoding="utf-8").splitlines()
     filtered: list[str] = []
-    block: list[str] = []
-    block_has_package = False
-
-    def flush_block() -> None:
-        nonlocal block, block_has_package
-        if block_has_package:
-            filtered.extend(block)
-        block = []
-        block_has_package = False
-
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("#") and block:
-            flush_block()
-        package_name = normalize_requirement_name(line)
-        if package_name and package_name in excluded_packages:
-            continue
-        block.append(line)
-        if package_name:
-            block_has_package = True
-
-    flush_block()
+    for requirements_path in requirements_paths_for_profile(environment_profile):
+        lines = (TEMPLATE_ROOT / requirements_path).read_text(encoding="utf-8").splitlines()
+        if filtered and filtered[-1].strip():
+            filtered.append("")
+        filtered.extend(lines)
 
     while filtered and not filtered[0].strip():
         filtered.pop(0)

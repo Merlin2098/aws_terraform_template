@@ -8,6 +8,11 @@ from zipfile import ZIP_DEFLATED, ZipFile
 REPO_ROOT = Path(__file__).resolve().parents[1]
 ARTIFACT_PATH = REPO_ROOT / "artifacts" / "data_platform_bundle.zip"
 INCLUDE_DIRS = [REPO_ROOT / "src"]
+CLOUD_REQUIREMENTS = REPO_ROOT / "requirements.cloud.txt"
+
+
+def runtime_requirements_text() -> str:
+    return CLOUD_REQUIREMENTS.read_text(encoding="utf-8").strip() + "\n"
 
 
 def build_bundle() -> Path:
@@ -23,7 +28,8 @@ def build_bundle() -> Path:
                     continue
                 if file_path.is_file():
                     archive.write(file_path, file_path.relative_to(REPO_ROOT))
-        archive.write(REPO_ROOT / "requirements.txt", "requirements.txt")
+        # Ship a resolved cloud runtime requirements file in the bundle.
+        archive.writestr("requirements.txt", runtime_requirements_text())
     return ARTIFACT_PATH
 
 

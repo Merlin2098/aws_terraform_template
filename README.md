@@ -37,6 +37,9 @@ terraform -chdir=infra apply
 ## Notes
 
 - `make package` builds `artifacts/data_platform_bundle.zip`
+- `requirements.local.txt` installs the local developer environment
+- `requirements.cloud.txt` is the deployment/runtime dependency set bundled into artifacts
+- `requirements.dev.txt` contains test, lint, and Terraform-quality tooling
 - `.ai/` contains optional generated AI context artifacts
 - `python scripts/ai_refresh.py --light` generates `.ai/context_bundle.yaml`, `.ai/skills_registry.json`, and `.ai/treemap.md`
 - `python scripts/ai_refresh.py --full` also adds `.ai/dependencies_graph.json`
@@ -44,7 +47,7 @@ terraform -chdir=infra apply
 - `install_windows.py` is the Windows-friendly installer entrypoint and `install_linux.py` is the CLI installer for Linux or non-GUI environments
 - Both installers ask whether to copy the optional `src/`, `infra/`, and `tests/` trees into the host repository
 - Both installers also ask whether the host project is `local` or `cloud` unless `--local` or `--cloud` is passed explicitly
-- Local installs skip `awswrangler` and `boto3` when updating the host `requirements.txt`
-- Cloud installs skip `pyinstaller` and `pyside6` when updating the host `requirements.txt`
+- Local installs merge `requirements.local.txt` and `requirements.dev.txt` into the host `requirements.txt`
+- Cloud installs merge `requirements.cloud.txt` and `requirements.dev.txt` into the host `requirements.txt`
 - Run Terraform directly from `infra/` for infrastructure changes
 - Automatic pre-commit is limited to AI refresh and dependency sync; Ruff lint, formatting, and pytest remain explicit or manual checks

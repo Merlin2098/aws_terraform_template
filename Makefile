@@ -7,7 +7,7 @@ endif
 .PHONY: init package treemap lint fmt test clean ai-refresh
 
 init:
-	$(PYTHON) -m pip install -r requirements.txt
+	$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt
 
 package:
 	$(PYTHON) scripts/package.py
