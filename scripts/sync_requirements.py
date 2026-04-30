@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-REQ_FILES = (Path("requirements.local.txt"), Path("requirements.dev.txt"))
+REQUIREMENTS_GLOB = "requirements*.txt"
 HASH_FILE = Path(".venv/.req_hash")
 
 
@@ -22,6 +22,18 @@ def file_hash(path):
     return hashlib.md5(path.read_bytes()).hexdigest()
 
 
+def requirement_files() -> tuple[Path, ...]:
+    files = sorted(
+        (
+            path
+            for path in Path(".").glob(REQUIREMENTS_GLOB)
+            if path.is_file() and path.parent == Path(".")
+        ),
+        key=lambda path: path.name.lower(),
+    )
+    return tuple(files)
+
+
 def requirements_hash(paths: tuple[Path, ...]) -> str:
     digest = hashlib.md5()
     for requirement_path in paths:
@@ -33,7 +45,7 @@ def requirements_hash(paths: tuple[Path, ...]) -> str:
 
 
 def main():
-    existing_req_files = tuple(path for path in REQ_FILES if path.exists())
+    existing_req_files = requirement_files()
     if not existing_req_files:
         return
 
@@ -48,17 +60,12 @@ def main():
 
     print("Installing dependencies...")
     HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
+    install_command = [str(python_executable), "-m", "pip", "install"]
+    for requirement_file in existing_req_files:
+        install_command.extend(["-r", requirement_file.as_posix()])
+
     subprocess.run(
-        [
-            str(python_executable),
-            "-m",
-            "pip",
-            "install",
-            "-r",
-            "requirements.local.txt",
-            "-r",
-            "requirements.dev.txt",
-        ],
+        install_command,
         check=True,
     )
 
