@@ -1,10 +1,20 @@
-# Testing, QA, and infra tooling
+# Testing framework
 pytest
 pytest-cov
+
+# Static analysis and formatting
 ruff
+
+# Advanced test generation
 hypothesis
-moto
 faker
+
+# AWS mocking for local tests
+moto
+
+# Infrastructure validation
 tftest
 checkov
+
+# Developer workflow automation
 pre-commit

@@ -1,11 +1,19 @@
-# Cloud runtime dependencies
+# Config and serialization
 pyyaml
+
+# Validation and contracts
 jsonschema
 great-expectations
+
+# Core data runtime
 pandas
+pyarrow
 python-dateutil
+
+# Database and SQL connectivity
 sqlalchemy
 psycopg2-binary
+
+# Cloud SDK and AWS integration
 awswrangler
 boto3
-pyarrow
