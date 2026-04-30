@@ -46,12 +46,12 @@ def main() -> None:
     parser.add_argument(
         "--with-structure",
         action="store_true",
-        help="Copy the optional src/ and infra/ trees without prompting.",
+        help="Copy the optional src/, infra/, and tests/ trees without prompting.",
     )
     parser.add_argument(
         "--without-structure",
         action="store_true",
-        help="Skip the optional src/ and infra/ trees without prompting.",
+        help="Skip the optional src/, infra/, and tests/ trees without prompting.",
     )
     parser.add_argument(
         "--local",

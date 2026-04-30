@@ -6,8 +6,8 @@ from pathlib import Path
 
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
-TARGET_GITIGNORE_ENTRIES = ("ai/", "AGENTS.md", "Makefile")
-OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src"}
+TARGET_GITIGNORE_ENTRIES = (".ai/", "AGENTS.md", "Makefile")
+OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
 LOCAL_EXCLUDED_PACKAGES = {"awswrangler", "boto3"}
 CLOUD_EXCLUDED_PACKAGES = {"pyinstaller", "pyside6"}
@@ -90,7 +90,9 @@ def is_excluded(path: Path) -> bool:
 def prompt_include_structure() -> bool:
     while True:
         selected = (
-            input("Copy optional project structure folders (src/ and infra/)? [y/N]: ")
+            input(
+                "Copy optional project structure folders (src/, infra/, and tests/)? [y/N]: "
+            )
             .strip()
             .lower()
         )

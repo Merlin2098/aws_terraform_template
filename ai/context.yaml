@@ -2,6 +2,7 @@ artifacts:
   light:
     - .ai/context_bundle.yaml
     - .ai/skills_registry.json
+    - .ai/treemap.md
   full:
     - .ai/context_bundle.yaml
     - .ai/skills_registry.json

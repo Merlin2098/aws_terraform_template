@@ -7,11 +7,6 @@ repos:
         language: system
         pass_filenames: false
         stages: [pre-commit]
-      - id: ruff-format
-        name: ruff format
-        entry: ./.venv/Scripts/python.exe -m ruff format ai src tests scripts
-        language: system
-        pass_filenames: false
       - id: ruff-lint
         name: ruff lint
         entry: ./.venv/Scripts/python.exe -m ruff check ai src tests scripts
