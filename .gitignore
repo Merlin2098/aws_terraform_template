@@ -18,6 +18,7 @@ venv/
 # Build / packaging
 build/
 dist/
+spec/
 
 # =========================
 # 🧪 Logs & runtime artifacts
