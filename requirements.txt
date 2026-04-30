@@ -2,10 +2,14 @@
 awswrangler
 boto3
 
-# Testing and config
-pytest
+# Config
 pyyaml
+jsonschema
+
+# testing
+pytest
 ruff
+hypothesis
 
 # Data handling
 pandas
