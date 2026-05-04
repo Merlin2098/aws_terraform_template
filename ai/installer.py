@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
-TARGET_GITIGNORE_ENTRIES = (".ai/", "AGENTS.md", "Makefile")
+TARGET_GITIGNORE_ENTRIES = ("ai/", ".ai/", "data/", "AGENTS.md", "Makefile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")

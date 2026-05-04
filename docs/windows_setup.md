@@ -112,6 +112,8 @@ entries to the target `.gitignore` if they are missing:
 
 ```gitignore
 ai/
+.ai/
+data/
 AGENTS.md
 Makefile
 ```

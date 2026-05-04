@@ -23,6 +23,11 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert (target / "requirements.local.txt").exists()
     assert (target / "requirements.dev.txt").exists()
     assert not (target / "requirements.cloud.txt").exists()
+    assert {"ai/", "data/", "AGENTS.md", "Makefile"} <= set(summary["gitignore_updates"])
+    gitignore = (target / ".gitignore").read_text(encoding="utf-8")
+    assert "ai/" in gitignore
+    assert ".ai/" in gitignore
+    assert "data/" in gitignore
 
 
 def test_cloud_install_copies_cloud_requirements(tmp_path: Path) -> None:
