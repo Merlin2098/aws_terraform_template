@@ -1,13 +1,8 @@
 artifacts:
-  light:
-    - .ai/context_bundle.yaml
-    - .ai/skills_registry.json
-    - .ai/treemap.md
-  full:
-    - .ai/context_bundle.yaml
-    - .ai/skills_registry.json
-    - .ai/dependencies_graph.json
-    - .ai/treemap.md
+  - .ai/context_bundle.yaml
+  - .ai/skills_registry.json
+  - .ai/dependencies_graph.json
+  - .ai/treemap.md
 
 ignore_dirs:
   - .ai
@@ -43,7 +38,6 @@ ignore_top_level_files:
 
 structure:
   python:
-    - main.py
     - src/
     - scripts/
   sql:
@@ -68,14 +62,10 @@ rules:
   - Infrastructure changes remain explicit and reviewed before terraform apply or destroy.
 
 entrypoint_roots:
-  files:
-    - main.py
   directories:
     - scripts
     - src/jobs
 
 module_roots:
-  files:
-    - main.py
   directories:
     - src

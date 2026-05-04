@@ -16,16 +16,16 @@ treemap:
 	$(PYTHON) scripts/generate_treemap.py
 
 lint:
-	$(PYTHON) -m ruff check ai src tests scripts
+	$(PYTHON) scripts/testing/run_ruff_check.py
 
 fmt:
-	$(PYTHON) -m ruff format ai src tests scripts
+	$(PYTHON) scripts/testing/run_ruff_format.py
 
 test:
-	$(PYTHON) -m pytest
+	$(PYTHON) scripts/testing/run_pytest.py
 
 clean:
 	$(PYTHON) scripts/package.py --clean
 
 ai-refresh:
-	$(PYTHON) scripts/ai_refresh.py --full
+	$(PYTHON) scripts/hooks/ai_refresh.py

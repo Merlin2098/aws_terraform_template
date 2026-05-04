@@ -64,7 +64,8 @@ py -3 -m venv .venv
 When you install this template into another repository, the local profile copies
 `requirements.local.txt` plus `requirements.dev.txt`. The cloud profile copies
 `requirements.local.txt`, `requirements.cloud.txt`, and `requirements.dev.txt`
-so a local MVP can evolve into a cloud-ready project.
+so a local MVP can evolve into a cloud-ready project. The installer does not create
+or modify the host repository's `requirements.txt`.
 
 Verify pre-commit:
 
@@ -85,25 +86,25 @@ Reference: https://pre-commit.com/
 Preview the install without writing files:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py --dry-run --target C:\path\to\target-repo
+.\.venv\Scripts\python.exe install_windows.py --dry-run --target C:\path\to\target-repo
 ```
 
 Install the template by selecting the target repository folder in Explorer:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py
+.\.venv\Scripts\python.exe install_windows.py
 ```
 
 Install the template with an explicit target path:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py --target C:\path\to\target-repo
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo
 ```
 
 Overwrite existing target files only when intentional:
 
 ```powershell
-.\.venv\Scripts\python.exe main.py --target C:\path\to\target-repo --force
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --force
 ```
 
 The installer copies template files into the target repository and adds these
@@ -118,5 +119,6 @@ Makefile
 The installer does not run Terraform, install dependencies, initialize Git, or
 execute pre-commit in the target repository.
 
-The installer also leaves the installer and template docs behind: `main.py`,
-files named `README.md`, and `docs/` are not copied to the target repository.
+The installer also leaves the installer entrypoints and template docs behind:
+`install_windows.py`, `install_linux.py`, files named `README.md`, and `docs/`
+are not copied to the target repository.

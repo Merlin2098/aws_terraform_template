@@ -24,9 +24,8 @@ def load_context_config(project_root: Path) -> dict[str, Any]:
     return loaded
 
 
-def artifacts_for_mode(config: dict[str, Any], *, full: bool) -> list[str]:
-    artifacts = _mapping(config.get("artifacts"))
-    return _string_list(artifacts.get("full" if full else "light"))
+def artifact_paths(config: dict[str, Any]) -> list[str]:
+    return _string_list(config.get("artifacts"))
 
 
 def ignore_dirs(config: dict[str, Any]) -> set[str]:

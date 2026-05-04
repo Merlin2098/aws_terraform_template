@@ -1,9 +1,9 @@
 repos:
   - repo: local
     hooks:
-      - id: ai-refresh-light
-        name: AI refresh (light)
-        entry: python scripts/ai_refresh.py --light
+      - id: ai-refresh
+        name: AI refresh
+        entry: python scripts/hooks/ai_refresh.py
         language: python
         additional_dependencies:
           - pyyaml
@@ -11,7 +11,7 @@ repos:
         stages: [pre-commit]
       - id: ruff-lint
         name: ruff lint
-        entry: python scripts/run_ruff_check.py
+        entry: python scripts/testing/run_ruff_check.py
         language: python
         additional_dependencies:
           - ruff
@@ -19,13 +19,13 @@ repos:
         stages: [manual]
       - id: pytest
         name: pytest
-        entry: python -m pytest
+        entry: python scripts/testing/run_pytest.py
         language: system
         pass_filenames: false
         stages: [manual]
       - id: sync-requirements
         name: Sync virtual environment dependencies
-        entry: python scripts/sync_requirements.py
+        entry: python scripts/hooks/sync_requirements.py
         language: system
-        files: ^requirements\.txt$
+        files: ^requirements(?:\.[A-Za-z0-9_-]+)?\.txt$
         pass_filenames: false

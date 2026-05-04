@@ -18,10 +18,6 @@ def venv_python() -> Path:
     return Path(sys.executable)
 
 
-def file_hash(path):
-    return hashlib.md5(path.read_bytes()).hexdigest()
-
-
 def requirement_files() -> tuple[Path, ...]:
     files = sorted(
         (
@@ -44,7 +40,7 @@ def requirements_hash(paths: tuple[Path, ...]) -> str:
     return digest.hexdigest()
 
 
-def main():
+def main() -> None:
     existing_req_files = requirement_files()
     if not existing_req_files:
         return

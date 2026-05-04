@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 import shutil
 from pathlib import Path
 
@@ -9,7 +8,6 @@ TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TARGET_GITIGNORE_ENTRIES = (".ai/", "AGENTS.md", "Makefile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
-REQUIREMENTS_PATH = Path("requirements.txt")
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
 CLOUD_REQUIREMENTS_PATH = Path("requirements.cloud.txt")
 DEV_REQUIREMENTS_PATH = Path("requirements.dev.txt")
@@ -132,9 +130,7 @@ def validate_environment_profile(environment_profile: str) -> str:
     return normalized
 
 
-def should_copy_requirements_file(
-    relative: Path, environment_profile: str
-) -> bool:
+def should_copy_requirements_file(relative: Path, environment_profile: str) -> bool:
     if relative == LOCAL_REQUIREMENTS_PATH:
         return environment_profile in {"local", "cloud"}
     if relative == CLOUD_REQUIREMENTS_PATH:
@@ -160,10 +156,9 @@ def iter_template_files(
             ):
                 ignored.append(path)
                 continue
-            if (
-                relative.name.startswith("requirements")
-                and not should_copy_requirements_file(relative, environment_profile)
-            ):
+            if relative.name.startswith(
+                "requirements"
+            ) and not should_copy_requirements_file(relative, environment_profile):
                 ignored.append(path)
                 continue
             if is_excluded(path):
@@ -178,104 +173,6 @@ def iter_template_files(
     walk(TEMPLATE_ROOT)
 
     return copied_candidates, ignored
-
-
-def normalize_requirement_name(line: str) -> str | None:
-    requirement = line.split("#", 1)[0].strip()
-    if not requirement or requirement.startswith(("-", "--")):
-        return None
-    match = re.match(r"([A-Za-z0-9_.-]+)", requirement)
-    if not match:
-        return None
-    return match.group(1).lower().replace("_", "-")
-
-
-def requirements_paths_for_profile(environment_profile: str) -> list[Path]:
-    if environment_profile == "local":
-        return [LOCAL_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
-    return [LOCAL_REQUIREMENTS_PATH, CLOUD_REQUIREMENTS_PATH, DEV_REQUIREMENTS_PATH]
-
-
-def filtered_template_requirements(environment_profile: str) -> list[str]:
-    filtered: list[str] = []
-    for requirements_path in requirements_paths_for_profile(environment_profile):
-        lines = (TEMPLATE_ROOT / requirements_path).read_text(encoding="utf-8").splitlines()
-        if filtered and filtered[-1].strip():
-            filtered.append("")
-        filtered.extend(lines)
-
-    while filtered and not filtered[0].strip():
-        filtered.pop(0)
-    while filtered and not filtered[-1].strip():
-        filtered.pop()
-
-    return filtered
-
-
-def merge_requirements_content(
-    existing_lines: list[str], template_lines: list[str]
-) -> list[str]:
-    existing_packages = {
-        package_name
-        for line in existing_lines
-        if (package_name := normalize_requirement_name(line))
-    }
-    pending_lines: list[str] = []
-
-    for line in template_lines:
-        package_name = normalize_requirement_name(line)
-        if package_name:
-            if package_name in existing_packages:
-                continue
-            existing_packages.add(package_name)
-            pending_lines.append(line)
-            continue
-        pending_lines.append(line)
-
-    while pending_lines and not pending_lines[0].strip():
-        pending_lines.pop(0)
-    while pending_lines and not pending_lines[-1].strip():
-        pending_lines.pop()
-
-    merged = list(existing_lines)
-    if not pending_lines:
-        return merged
-
-    if merged and merged[-1].strip():
-        merged.append("")
-    merged.append("# Template dependencies")
-    merged.extend(pending_lines)
-    return merged
-
-
-def render_requirements_file(lines: list[str]) -> str:
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def write_requirements_file(
-    target: Path,
-    dry_run: bool,
-    environment_profile: str,
-) -> tuple[bool, bool]:
-    destination = target / REQUIREMENTS_PATH
-    template_lines = filtered_template_requirements(environment_profile)
-    target_exists = destination.exists()
-
-    if target_exists:
-        existing_lines = destination.read_text(encoding="utf-8").splitlines()
-        rendered = render_requirements_file(
-            merge_requirements_content(existing_lines, template_lines)
-        )
-    else:
-        rendered = render_requirements_file(template_lines)
-
-    current = destination.read_text(encoding="utf-8") if target_exists else None
-    changed = current != rendered
-
-    if changed and not dry_run:
-        destination.write_text(rendered, encoding="utf-8")
-
-    return changed, target_exists
 
 
 def existing_gitignore_entries(gitignore_path: Path) -> set[str]:
@@ -351,7 +248,6 @@ def install_template(
     copied: list[str] = []
     skipped: list[str] = []
     created_dirs: set[str] = set()
-    updated: list[str] = []
 
     if not dry_run:
         target.mkdir(parents=True, exist_ok=True)
@@ -360,9 +256,6 @@ def install_template(
         relative = source_path.relative_to(TEMPLATE_ROOT)
         destination = target / relative
         relative_text = relative.as_posix()
-
-        if relative == REQUIREMENTS_PATH:
-            continue
 
         if destination.exists() and not force:
             skipped.append(relative_text)
@@ -374,29 +267,10 @@ def install_template(
             continue
 
         shutil.copy2(source_path, destination)
-
-    requirements_changed, requirements_exists = write_requirements_file(
-        target=target,
-        dry_run=dry_run,
-        environment_profile=environment_profile,
-    )
-    if requirements_changed:
-        if requirements_exists:
-            updated.append(REQUIREMENTS_PATH.as_posix())
-        else:
-            copied.append(REQUIREMENTS_PATH.as_posix())
-            _ensure_destination_parent(
-                target,
-                target / REQUIREMENTS_PATH,
-                created_dirs,
-                dry_run,
-            )
-
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 
     return {
         "copied": copied,
-        "updated": updated,
         "skipped": skipped,
         "ignored": [relative_path(path) for path in ignored_paths],
         "created_dirs": sorted(created_dirs),
@@ -408,7 +282,6 @@ def print_summary(summary: dict[str, list[str]], dry_run: bool) -> None:
     mode = "Dry run" if dry_run else "Install"
     print(f"{mode} summary")
     print(f"- Copied: {len(summary['copied'])}")
-    print(f"- Updated: {len(summary['updated'])}")
     print(f"- Skipped existing: {len(summary['skipped'])}")
     print(f"- Ignored: {len(summary['ignored'])}")
     print(f"- Directories created: {len(summary['created_dirs'])}")
@@ -416,7 +289,6 @@ def print_summary(summary: dict[str, list[str]], dry_run: bool) -> None:
 
     for key in (
         "copied",
-        "updated",
         "skipped",
         "ignored",
         "created_dirs",

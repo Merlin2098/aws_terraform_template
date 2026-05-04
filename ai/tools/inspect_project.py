@@ -129,7 +129,8 @@ def _detect_data_stack(project_root: Path, files: list[Path]) -> dict[str, Any]:
             patterns.add("data_quality")
 
         if (
-            not path.name.startswith("requirements") and path.name != "pyproject.toml"
+            not path.name.startswith("requirements")
+            and path.name != "pyproject.toml"
             and path.suffix.lower() != ".py"
         ):
             continue
@@ -278,7 +279,7 @@ def inspect_project(project_root: Path) -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(
-        description="Inspect a project for lightweight AI context signals."
+        description="Inspect a project for AI context signals."
     )
     parser.add_argument("--project-root", default=".", help="Project root to inspect.")
     parser.add_argument(

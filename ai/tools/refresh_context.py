@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 
 from ai.hooks.treemap import write_treemap
-from ai.runtime.config import artifacts_for_mode, load_context_config
+from ai.runtime.config import artifact_paths, load_context_config
 from ai.runtime.context_bundle import build_and_persist_context_bundle
 from ai.runtime.dependency_graph import build_and_persist_dependency_graph
 from ai.runtime.skill_registry import build_and_persist_skills_registry
@@ -27,10 +27,10 @@ def _artifact_path(
     raise ValueError(f"Missing artifact path for {filename}")
 
 
-def refresh_context(project_root: Path, *, full: bool = False) -> dict[str, object]:
+def refresh_context(project_root: Path) -> dict[str, object]:
     project_root = project_root.resolve()
     config = load_context_config(project_root)
-    artifact_strings = artifacts_for_mode(config, full=full)
+    artifact_strings = artifact_paths(config)
     project = inspect_project(project_root)
 
     skills_registry = build_and_persist_skills_registry(
@@ -44,18 +44,17 @@ def refresh_context(project_root: Path, *, full: bool = False) -> dict[str, obje
         skills_registry=skills_registry,
     )
 
-    if full:
-        build_and_persist_dependency_graph(
-            project_root,
-            _artifact_path(project_root, artifact_strings, "dependencies_graph.json"),
-        )
-        write_treemap(
-            project_root, _artifact_path(project_root, artifact_strings, "treemap.md")
-        )
+    build_and_persist_dependency_graph(
+        project_root,
+        _artifact_path(project_root, artifact_strings, "dependencies_graph.json"),
+    )
+    write_treemap(
+        project_root, _artifact_path(project_root, artifact_strings, "treemap.md")
+    )
 
     return {
         "status": "ok",
-        "mode": "full" if full else "light",
+        "mode": "full",
         "artifacts": artifact_strings,
     }
 
@@ -68,24 +67,13 @@ def main() -> int:
     parser.add_argument(
         "--pretty", action="store_true", help="Pretty-print JSON output."
     )
-    mode = parser.add_mutually_exclusive_group()
-    mode.add_argument(
-        "--light", action="store_true", help="Generate the lightweight context set."
-    )
-    mode.add_argument(
-        "--full", action="store_true", help="Generate the full optional context set."
-    )
     args = parser.parse_args()
 
-    full_mode = args.full
     try:
-        payload = refresh_context(Path(args.project_root), full=full_mode)
+        payload = refresh_context(Path(args.project_root))
     except Exception as exc:
-        if full_mode:
-            _warn(str(exc))
-            return 1
         _warn(str(exc))
-        return 0
+        return 1
 
     print(json.dumps(payload, indent=2 if args.pretty else None, ensure_ascii=False))
     return 0
