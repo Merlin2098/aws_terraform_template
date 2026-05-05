@@ -68,7 +68,7 @@ def dependencies_hash(paths: tuple[Path, ...], manager: str, profile: str) -> st
 
 def install_command(manager: str, profile: str, paths: tuple[Path, ...]) -> list[str]:
     if manager == "uv":
-        command = ["uv", "sync", "--extra", "local"]
+        command = ["uv", "sync", "--extra", "local", "--group", "dev"]
         if profile == "cloud":
             command.extend(["--extra", "cloud"])
         return command

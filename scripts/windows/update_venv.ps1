@@ -1,5 +1,5 @@
 param(
-    [string]$PythonPath = "C:\Program Files\Python314\python.exe",
+    [string]$PythonPath,
     [ValidateSet("local", "cloud")]
     [string]$Profile = "local",
     [switch]$IncludeDev,
@@ -37,29 +37,95 @@ function Assert-PythonPath {
     }
 }
 
+function New-PythonCommand {
+    param(
+        [string]$Command,
+        [string[]]$BaseArguments,
+        [string]$Description
+    )
+
+    return [pscustomobject]@{
+        Command = $Command
+        BaseArguments = $BaseArguments
+        Description = $Description
+    }
+}
+
+function Test-PythonCommand {
+    param(
+        [pscustomobject]$PythonCommand
+    )
+
+    & $PythonCommand.Command @($PythonCommand.BaseArguments + @("--version")) *> $null
+    return $LASTEXITCODE -eq 0
+}
+
+function Resolve-PythonCommand {
+    param(
+        [string]$ExplicitPythonPath
+    )
+
+    $attemptedResolvers = @()
+    $venvPython = ".venv\Scripts\python.exe"
+
+    if (Test-Path -LiteralPath $venvPython) {
+        $venvCommand = New-PythonCommand -Command $venvPython -BaseArguments @() -Description "existing .venv interpreter"
+        $attemptedResolvers += $venvCommand.Description
+        if (Test-PythonCommand -PythonCommand $venvCommand) {
+            return $venvCommand
+        }
+    }
+
+    if ($ExplicitPythonPath) {
+        $attemptedResolvers += "explicit path '$ExplicitPythonPath'"
+        Assert-PythonPath -Path $ExplicitPythonPath
+        $pythonCommand = New-PythonCommand -Command $ExplicitPythonPath -BaseArguments @() -Description "explicit path '$ExplicitPythonPath'"
+        if (-not (Test-PythonCommand -PythonCommand $pythonCommand)) {
+            throw "Python at '$ExplicitPythonPath' did not respond correctly."
+        }
+        return $pythonCommand
+    }
+
+    $candidates = @(
+        (New-PythonCommand -Command "py" -BaseArguments @("-3") -Description "py -3"),
+        (New-PythonCommand -Command "python" -BaseArguments @() -Description "python from PATH")
+    )
+
+    foreach ($candidate in $candidates) {
+        $attemptedResolvers += $candidate.Description
+        if (Test-PythonCommand -PythonCommand $candidate) {
+            return $candidate
+        }
+    }
+
+    $attemptedText = $attemptedResolvers -join ", "
+    throw "Unable to resolve a working Python interpreter. Tried: $attemptedText. Install/configure Python or pass -PythonPath."
+}
+
 function Invoke-PythonCommand {
     param(
-        [string]$Python,
+        [pscustomobject]$PythonCommand,
         [string[]]$Arguments
     )
 
-    & $Python @Arguments
+    $allArguments = @($PythonCommand.BaseArguments + $Arguments)
+    & $PythonCommand.Command @allArguments
     if ($LASTEXITCODE -ne 0) {
-        $joinedArguments = $Arguments -join " "
-        throw "Command failed: $Python $joinedArguments"
+        $joinedArguments = $allArguments -join " "
+        throw "Command failed: $($PythonCommand.Command) $joinedArguments"
     }
 }
 
 function Assert-UvAvailable {
     param(
-        [string]$Python
+        [pscustomobject]$PythonCommand
     )
 
     try {
-        Invoke-PythonCommand -Python $Python -Arguments @("-m", "uv", "--version")
+        Invoke-PythonCommand -PythonCommand $PythonCommand -Arguments @("-m", "uv", "--version")
     }
     catch {
-        throw "uv is not available through '$Python'. Install uv for that interpreter and try again."
+        throw "uv is not available through '$($PythonCommand.Description)'. Install uv for that interpreter and try again."
     }
 }
 
@@ -95,13 +161,14 @@ function Get-UvSyncArguments {
 }
 
 Write-Step "🔄 Updating virtual environment from uv project files..." ([ConsoleColor]::Cyan)
-Assert-PythonPath -Path $PythonPath
+$pythonCommand = Resolve-PythonCommand -ExplicitPythonPath $PythonPath
+Write-Step "🐍 Using Python via $($pythonCommand.Description)" ([ConsoleColor]::DarkCyan)
 
 Write-Step "🐍 Validating Python interpreter..." ([ConsoleColor]::Yellow)
-Invoke-PythonCommand -Python $PythonPath -Arguments @("--version")
+Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments @("--version")
 
 Write-Step "🧰 Checking uv availability..." ([ConsoleColor]::Yellow)
-Assert-UvAvailable -Python $PythonPath
+Assert-UvAvailable -PythonCommand $pythonCommand
 
 Write-Step "📄 Checking project state..." ([ConsoleColor]::Yellow)
 Assert-ProjectState
@@ -110,7 +177,7 @@ $syncArguments = Get-UvSyncArguments -SelectedProfile $Profile -UseDevDependenci
 $dependencyMode = if ($useDevDependencies) { "including dev dependencies" } else { "without dev dependencies" }
 
 Write-Step "📦 Syncing .venv for profile '$Profile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
-Invoke-PythonCommand -Python $PythonPath -Arguments $syncArguments
+Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments $syncArguments
 
 $venvPython = Join-Path (Get-Location) ".venv\Scripts\python.exe"
 

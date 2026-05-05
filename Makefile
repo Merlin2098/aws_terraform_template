@@ -10,11 +10,11 @@ init:
 	$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt
 
 uv-init:
-	uv sync --extra local
+	uv sync --extra local --group dev
 
 uv-update:
 	uv lock --upgrade
-	uv sync --extra local
+	uv sync --extra local --group dev
 
 package:
 	$(PYTHON) scripts/package.py

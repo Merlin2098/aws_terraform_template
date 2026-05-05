@@ -217,17 +217,15 @@ def render_target_file(
     environment_profile: str,
 ) -> str:
     if relative == Path(".pre-commit-config.yaml"):
+        rendered_profile = "local" if package_manager == "uv" else environment_profile
         return source_text.replace(
-            "args: [--manager pip, --profile local]",
-            f"args: [--manager {package_manager}, --profile {environment_profile}]",
+            "args: [--manager uv, --profile local]",
+            f"args: [--manager {package_manager}, --profile {rendered_profile}]",
         )
     if relative == Path("Makefile"):
         if package_manager == "uv":
-            sync_command = "uv sync --extra local"
-            update_command = "uv lock --upgrade\n\tuv sync --extra local"
-            if environment_profile == "cloud":
-                sync_command += " --extra cloud"
-                update_command += " --extra cloud"
+            sync_command = "uv sync --extra local --group dev"
+            update_command = "uv lock --upgrade\n\tuv sync --extra local --group dev"
             package_command = "uv run python scripts/package.py --package-manager uv"
         else:
             reqs = "requirements.local.txt -r requirements.dev.txt"
@@ -244,7 +242,7 @@ def render_target_file(
             "$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt",
             sync_command,
         ).replace(
-            "uv lock --upgrade\n\tuv sync --extra local",
+            "uv lock --upgrade\n\tuv sync --extra local --group dev",
             update_command,
         ).replace("$(PYTHON) scripts/package.py", package_command)
     return source_text

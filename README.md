@@ -24,6 +24,8 @@ tests/                 Lightweight validation
 make package
 make test
 make ai-refresh
+./scripts/windows/setup_env.ps1
+./scripts/windows/update_venv.ps1
 python scripts/hooks/ai_refresh.py
 python install_windows.py --target /path/to/repo --dry-run
 python install_linux.py --target /path/to/repo --dry-run
@@ -53,6 +55,9 @@ terraform -chdir=infra apply
 - The installer does not create or modify the host project's `requirements.txt`
 - The cloud profile stays superset-style so teams can start with a local MVP and later add cloud runtime dependencies without reinstalling the template
 - Hook helpers live under `scripts/hooks/` and quality wrappers live under `scripts/testing/` so they stay distinct from host-project operational scripts
-- The dependency sync hook is rendered for the selected package manager and profile; pip and uv remain separate host paths
+- In uv hosts, the dependency sync hook stays on a stable local development environment and syncs `local` plus `dev`
+- In uv hosts, Windows users can bootstrap with `.\scripts\windows\setup_env.ps1` and switch the local environment to cloud explicitly with `.\scripts\windows\update_venv.ps1 -Profile cloud`
+- In uv hosts, packaging for cloud remains separate from the local environment profile: `scripts/package.py` exports cloud runtime dependencies from `pyproject.toml` and `uv.lock`
+- The dependency sync hook is rendered for the selected package manager; pip and uv remain separate host paths
 - Run Terraform directly from `infra/` for infrastructure changes
 - Automatic pre-commit is limited to AI refresh and dependency sync; Ruff lint, formatting, and pytest remain explicit or manual checks

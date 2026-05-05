@@ -27,6 +27,6 @@ repos:
         name: Sync virtual environment dependencies
         entry: python scripts/hooks/sync_dependencies.py
         language: system
-        args: [--manager pip, --profile local]
+        args: [--manager uv, --profile local]
         files: ^(requirements(?:\.[A-Za-z0-9_-]+)?\.txt|pyproject\.toml|uv\.lock)$
         pass_filenames: false
