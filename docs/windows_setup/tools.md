@@ -124,6 +124,11 @@ C:\approved-tools\uv\uv.exe --version
 
 Reference: https://docs.astral.sh/uv/getting-started/installation/
 
+For restricted corporate environments where Python is installed but `PATH` and
+standalone installers are unreliable, see
+[uv_corporate_install.md](uv_corporate_install.md) for an explicit
+Python-path-based installation and execution flow.
+
 ## Use uv With requirements.txt
 
 For a requirements-based project, keep `requirements.txt` as the dependency input
