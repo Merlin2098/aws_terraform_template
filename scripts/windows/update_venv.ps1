@@ -27,6 +27,15 @@ function Write-Step {
     Write-Host $Message -ForegroundColor $Color
 }
 
+function Write-Phase {
+    param(
+        [string]$Title
+    )
+
+    Write-Host ""
+    Write-Host "=== $Title ===" -ForegroundColor Cyan
+}
+
 function Assert-PythonPath {
     param(
         [string]$Path
@@ -160,29 +169,34 @@ function Get-UvSyncArguments {
     return $arguments
 }
 
-Write-Step "🔄 Updating virtual environment from uv project files..." ([ConsoleColor]::Cyan)
-$pythonCommand = Resolve-PythonCommand -ExplicitPythonPath $PythonPath
-Write-Step "🐍 Using Python via $($pythonCommand.Description)" ([ConsoleColor]::DarkCyan)
+Write-Step "Starting virtual environment update from uv project files." ([ConsoleColor]::Cyan)
 
-Write-Step "🐍 Validating Python interpreter..." ([ConsoleColor]::Yellow)
+Write-Phase "Phase 1: Resolve Python"
+$pythonCommand = Resolve-PythonCommand -ExplicitPythonPath $PythonPath
+Write-Step "[Python] Using interpreter resolved via $($pythonCommand.Description)." ([ConsoleColor]::DarkCyan)
+
+Write-Step "[Python] Validating the selected Python interpreter..." ([ConsoleColor]::Yellow)
 Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments @("--version")
 
-Write-Step "🧰 Checking uv availability..." ([ConsoleColor]::Yellow)
+Write-Phase "Phase 2: Validate Tooling"
+Write-Step "[uv] Checking whether uv is available for the selected interpreter..." ([ConsoleColor]::Yellow)
 Assert-UvAvailable -PythonCommand $pythonCommand
 
-Write-Step "📄 Checking project state..." ([ConsoleColor]::Yellow)
+Write-Step "[Project] Verifying project state and existing virtual environment..." ([ConsoleColor]::Yellow)
 Assert-ProjectState
 
 $syncArguments = Get-UvSyncArguments -SelectedProfile $Profile -UseDevDependencies:$useDevDependencies
 $dependencyMode = if ($useDevDependencies) { "including dev dependencies" } else { "without dev dependencies" }
 
-Write-Step "📦 Syncing .venv for profile '$Profile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
+Write-Phase "Phase 3: Sync Dependencies"
+Write-Step "[Dependencies] Syncing .venv for profile '$Profile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
 Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments $syncArguments
 
 $venvPython = Join-Path (Get-Location) ".venv\Scripts\python.exe"
 
-Write-Step "✅ Virtual environment updated successfully!" ([ConsoleColor]::Green)
+Write-Phase "Phase 4: Summary"
+Write-Step "Virtual environment updated successfully." ([ConsoleColor]::Green)
 Write-Host "Profile synced: $Profile"
-Write-Host "Dev dependencies: $useDevDependencies"
-Write-Host "Virtual environment: .venv"
+Write-Host "Dev dependencies enabled: $useDevDependencies"
+Write-Host "Virtual environment path: .venv"
 Write-Host "Suggested interpreter path: $venvPython"

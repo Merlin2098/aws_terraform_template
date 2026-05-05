@@ -27,6 +27,15 @@ function Write-Step {
     Write-Host $Message -ForegroundColor $Color
 }
 
+function Write-Phase {
+    param(
+        [string]$Title
+    )
+
+    Write-Host ""
+    Write-Host "=== $Title ===" -ForegroundColor Cyan
+}
+
 function Assert-PythonPath {
     param(
         [string]$Path
@@ -132,11 +141,11 @@ function Ensure-Venv {
     )
 
     if (Test-Path -LiteralPath ".venv") {
-        Write-Step "📦 Reusing existing virtual environment at .venv" ([ConsoleColor]::DarkYellow)
+        Write-Step "[Environment] Reusing existing virtual environment at .venv" ([ConsoleColor]::DarkYellow)
         return
     }
 
-    Write-Step "📦 Creating virtual environment with uv..." ([ConsoleColor]::Yellow)
+    Write-Step "[Environment] Creating virtual environment with uv..." ([ConsoleColor]::Yellow)
     Invoke-PythonCommand -PythonCommand $PythonCommand -Arguments @("-m", "uv", "venv", ".venv")
 }
 
@@ -161,32 +170,38 @@ function Get-UvSyncArguments {
     return $arguments
 }
 
-Write-Step "🚀 Starting uv environment setup..." ([ConsoleColor]::Cyan)
-$pythonCommand = Resolve-PythonCommand -ExplicitPythonPath $PythonPath
-Write-Step "🐍 Using Python via $($pythonCommand.Description)" ([ConsoleColor]::DarkCyan)
+Write-Step "Starting uv environment setup for this repository." ([ConsoleColor]::Cyan)
 
-Write-Step "🐍 Validating Python interpreter..." ([ConsoleColor]::Yellow)
+Write-Phase "Phase 1: Resolve Python"
+$pythonCommand = Resolve-PythonCommand -ExplicitPythonPath $PythonPath
+Write-Step "[Python] Using interpreter resolved via $($pythonCommand.Description)." ([ConsoleColor]::DarkCyan)
+
+Write-Step "[Python] Validating the selected Python interpreter..." ([ConsoleColor]::Yellow)
 Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments @("--version")
 
-Write-Step "🧰 Checking uv availability..." ([ConsoleColor]::Yellow)
+Write-Phase "Phase 2: Validate Tooling"
+Write-Step "[uv] Checking whether uv is available for the selected interpreter..." ([ConsoleColor]::Yellow)
 Assert-UvAvailable -PythonCommand $pythonCommand
 
-Write-Step "📄 Checking uv project files..." ([ConsoleColor]::Yellow)
+Write-Step "[Project] Verifying that pyproject.toml is available..." ([ConsoleColor]::Yellow)
 Assert-PyProjectExists
 
+Write-Phase "Phase 3: Prepare Environment"
 Ensure-Venv -PythonCommand $pythonCommand
 
 $syncArguments = Get-UvSyncArguments -SelectedProfile $Profile -UseDevDependencies:$useDevDependencies
 $dependencyMode = if ($useDevDependencies) { "including dev dependencies" } else { "without dev dependencies" }
 
-Write-Step "🔁 Syncing dependencies for profile '$Profile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
+Write-Phase "Phase 4: Sync Dependencies"
+Write-Step "[Dependencies] Syncing the environment for profile '$Profile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
 Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments $syncArguments
 
 $venvPython = Join-Path (Get-Location) ".venv\Scripts\python.exe"
 
-Write-Step "✅ Environment setup completed successfully!" ([ConsoleColor]::Green)
+Write-Phase "Phase 5: Summary"
+Write-Step "Environment setup completed successfully." ([ConsoleColor]::Green)
 Write-Host "Profile synced: $Profile"
-Write-Host "Dev dependencies: $useDevDependencies"
-Write-Host "Virtual environment: .venv"
-Write-Host "Interpreter selection in VS Code remains manual."
+Write-Host "Dev dependencies enabled: $useDevDependencies"
+Write-Host "Virtual environment path: .venv"
+Write-Host "VS Code interpreter selection remains a manual step."
 Write-Host "Suggested interpreter path: $venvPython"

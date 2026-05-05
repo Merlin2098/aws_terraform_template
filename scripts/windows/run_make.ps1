@@ -17,6 +17,15 @@ function Write-Step {
     Write-Host $Message -ForegroundColor $Color
 }
 
+function Write-Phase {
+    param(
+        [string]$Title
+    )
+
+    Write-Host ""
+    Write-Host "=== $Title ===" -ForegroundColor Cyan
+}
+
 function New-MakeCommand {
     param(
         [string]$Command,
@@ -140,17 +149,26 @@ function Resolve-MakeCommand {
     throw "Unable to resolve a working make executable. Tried: $attemptedText. Install/configure make or pass -MakePath."
 }
 
-Write-Step "🛠️ Starting make wrapper..." ([ConsoleColor]::Cyan)
+Write-Step "Starting Windows make wrapper." ([ConsoleColor]::Cyan)
+
+Write-Phase "Phase 1: Resolve make"
 $makeCommand = Resolve-MakeCommand -ExplicitMakePath $MakePath
-Write-Step "🧭 Using make via $($makeCommand.Description)" ([ConsoleColor]::DarkCyan)
+Write-Step "[make] Using executable resolved via $($makeCommand.Description)." ([ConsoleColor]::DarkCyan)
 
 if (-not $MakeArguments) {
+    Write-Phase "Phase 2: Summary"
     Write-Host "Resolved make executable: $($makeCommand.Command)"
+    Write-Host "No make target was provided. Pass any make arguments to execute a target."
     exit 0
 }
 
+Write-Phase "Phase 2: Execute"
+Write-Step "[make] Running target or arguments: $($MakeArguments -join ' ')" ([ConsoleColor]::Yellow)
 & $makeCommand.Command @MakeArguments
 if ($LASTEXITCODE -ne 0) {
     $joinedArguments = $MakeArguments -join " "
     throw "Command failed: $($makeCommand.Command) $joinedArguments"
 }
+
+Write-Phase "Phase 3: Summary"
+Write-Step "make command completed successfully." ([ConsoleColor]::Green)
