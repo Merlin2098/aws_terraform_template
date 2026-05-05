@@ -6,9 +6,7 @@ from pathlib import Path
 from scripts.hooks import sync_dependencies
 
 
-def test_pip_main_installs_profile_requirements(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_pip_main_installs_profile_requirements(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "requirements.local.txt").write_text("pyyaml\n", encoding="utf-8")
     (tmp_path / "requirements.dev.txt").write_text("pytest\n", encoding="utf-8")
@@ -81,7 +79,11 @@ def test_uv_cloud_main_syncs_local_and_cloud_extras(
 
 
 def test_uv_command_prefix_uses_py_launcher_on_windows(monkeypatch) -> None:
-    monkeypatch.setattr(sync_dependencies.shutil, "which", lambda name: None if name == "uv" else "C:/Windows/py.exe")
+    monkeypatch.setattr(
+        sync_dependencies.shutil,
+        "which",
+        lambda name: None if name == "uv" else "C:/Windows/py.exe",
+    )
     monkeypatch.setattr(sync_dependencies.sys, "platform", "win32")
 
     assert sync_dependencies.uv_command_prefix() == ["py", "-3", "-m", "uv"]

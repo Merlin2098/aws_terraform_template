@@ -93,7 +93,9 @@ def parse_args() -> argparse.Namespace:
         description="Synchronize host project dependencies."
     )
     parser.add_argument("--manager", choices=sorted(PACKAGE_MANAGERS), default="pip")
-    parser.add_argument("--profile", choices=sorted(ENVIRONMENT_PROFILES), default="local")
+    parser.add_argument(
+        "--profile", choices=sorted(ENVIRONMENT_PROFILES), default="local"
+    )
     return parser.parse_args()
 
 

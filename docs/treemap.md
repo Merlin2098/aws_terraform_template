@@ -4,8 +4,8 @@ aws_terraform_template/
 |   `-- README.md
 |-- docs/
 |   |-- windows_setup/
-|   |   |-- README.md
 |   |   |-- make_install.md
+|   |   |-- README.md
 |   |   `-- uv_install.md
 |   `-- terraform_cheatsheet.md
 |-- infra/
@@ -24,6 +24,10 @@ aws_terraform_template/
 |   |   |-- run_pytest.py
 |   |   |-- run_ruff_check.py
 |   |   `-- run_ruff_format.py
+|   |-- windows/
+|   |   |-- run_make.ps1
+|   |   |-- setup_env.ps1
+|   |   `-- update_venv.ps1
 |   |-- generate_treemap.py
 |   `-- package.py
 |-- src/
@@ -43,6 +47,7 @@ aws_terraform_template/
 |   |-- test_refresh_context.py
 |   |-- test_script_wrappers.py
 |   `-- test_sync_dependencies.py
+|-- .gitattributes
 |-- .pre-commit-config.yaml
 |-- AGENTS.md
 |-- install_linux.py
