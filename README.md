@@ -43,8 +43,12 @@ terraform -chdir=infra apply
 ## Notes
 
 - `make package` builds `artifacts/data_platform_bundle.zip`
+- Windows setup documentation is organized under `docs/windows_setup/`:
+  - `README.md` for the general operational flow
+  - `make_install.md` for GNU Make installation
+  - `uv_install.md` for uv installation
 - `requirements.local.txt` installs the local developer environment
-- `requirements.cloud.txt` is the deployment/runtime dependency set bundled into artifacts
+- `requirements.cloud.txt` is the deployment/runtime dependency set bundled into artifacts for pip-based hosts
 - `requirements.dev.txt` contains test, lint, and Terraform-quality tooling
 - `pyproject.toml` and `uv.lock` provide the uv project dependency model
 - `.ai/` contains optional generated AI context artifacts
@@ -62,8 +66,9 @@ terraform -chdir=infra apply
 - In uv hosts, the dependency sync hook stays on a stable local development environment and syncs `local` plus `dev`
 - In uv hosts, Windows users can bootstrap with `.\scripts\windows\setup_env.ps1` and switch the local environment to cloud explicitly with `.\scripts\windows\update_venv.ps1 -Profile cloud`
 - In Windows corporate environments, `.\scripts\windows\run_make.ps1` can execute `make` targets even when `make.exe` is not available in `PATH`
-- The Windows make wrapper tries `C:\Users\ricuculm\tools\make\bin\make.exe` first, then falls back to `make` from `PATH`, and also accepts `-MakePath`
-- In uv hosts, packaging for cloud remains separate from the local environment profile: `scripts/package.py` exports cloud runtime dependencies from `pyproject.toml` and `uv.lock`
+- The Windows make wrapper accepts `-MakePath`, then tries `make` from `PATH`, `where.exe make.exe`, and finally filesystem discovery
+- In uv hosts, `pyproject.toml` keeps shared runtime packages in the base set, local-only packages under `local`, and AWS runtime packages under `cloud`
+- In uv hosts, packaging for cloud remains separate from the local environment profile: `scripts/package.py` exports `base + cloud` dependencies from `pyproject.toml` and `uv.lock`
 - The dependency sync hook is rendered for the selected package manager; pip and uv remain separate host paths
 - Run Terraform directly from `infra/` for infrastructure changes
 - Automatic pre-commit is limited to AI refresh and dependency sync; Ruff lint, formatting, and pytest remain explicit or manual checks

@@ -3,23 +3,33 @@
 This guide prepares a Windows machine to use this template and to install it into
 another repository.
 
-Start with [tools.md](tools.md) to install GNU Make, uv, and the supporting
-command-line tools. It includes both admin and no-admin paths for restricted
-corporate machines.
+Use this Windows documentation set in this order:
 
-## Prepare Python and Pre-commit
+1. `README.md` for the general operational flow
+2. [make_install.md](make_install.md) for GNU Make installation and corporate/manual usage
+3. [uv_install.md](uv_install.md) for uv installation and corporate/manual usage
+
+## Prepare the Template Repository
 
 From the repository root:
 
 ```powershell
-py -3 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.local.txt -r requirements.dev.txt
-.\.venv\Scripts\pre-commit.exe install
+.\scripts\windows\setup_env.ps1
 ```
 
-`requirements.local.txt` installs the local developer environment. Deployment
-bundles use `requirements.cloud.txt` during packaging for pip-based hosts.
-Uv-based hosts use `pyproject.toml` and `uv.lock` instead.
+This Windows wrapper resolves Python automatically, validates `uv`, creates
+`.venv` if needed, and syncs the local environment using the project's current
+`pyproject.toml` and `uv.lock`.
+
+By default, the local uv workflow installs:
+
+- the shared base dependencies from `pyproject.toml`
+- the `local` optional dependency set
+- the `dev` dependency group
+
+`requirements.local.txt` and `requirements.cloud.txt` remain relevant for
+pip-based hosts copied from this template. Uv-based hosts use `pyproject.toml`
+and `uv.lock` instead.
 
 When you install this template into another repository, the local profile copies
 `requirements.local.txt` plus `requirements.dev.txt`. The cloud profile copies
@@ -29,9 +39,10 @@ used only when the host chooses pip. When the host chooses uv, the installer
 copies `pyproject.toml` and `uv.lock` and skips all `requirements*.txt` files.
 The installer does not create or modify the host repository's `requirements.txt`.
 
-Verify pre-commit:
+Install pre-commit into the current repository environment:
 
 ```powershell
+.\.venv\Scripts\pre-commit.exe install
 .\.venv\Scripts\pre-commit.exe --version
 ```
 
@@ -43,41 +54,46 @@ To run all configured hooks manually:
 
 Reference: https://pre-commit.com/
 
-## Uv Host Package Refresh Warning
+## Refresh or Change the Environment
 
-Some Windows hosts or VS Code extensions inspect the active environment with
-`python -m pip list` or similar `pip`-based commands when they refresh the
-package view.
-
-For uv-based hosts, that refresh can show a warning such as
-`error refreshing packages` even when the project environment is healthy and
-`uv sync` completed successfully.
-
-Treat this as a host-tooling limitation first, not as proof that dependency
-installation failed.
-
-When validating a uv-based host, prefer these checks:
+To refresh the local uv environment after editing dependencies:
 
 ```powershell
-uv sync --extra local
-uv tree
-uv pip list --python .\.venv\Scripts\python.exe
+.\scripts\windows\update_venv.ps1
 ```
 
-If those commands work and the project dependencies import correctly, the
-environment is generally usable even if the host package view still shows a
-refresh warning.
-
-If the host must refresh packages through `pip`, enable `pip` inside the
-project virtual environment as an optional compatibility workaround:
+To prepare the local environment with cloud dependencies explicitly:
 
 ```powershell
-.\.venv\Scripts\python.exe -m ensurepip --upgrade
-.\.venv\Scripts\python.exe -m pip list
+.\scripts\windows\update_venv.ps1 -Profile cloud
 ```
 
-Do not treat this step as part of the default uv workflow. Use it only when the
-host tooling requires `pip` for package inspection.
+Cloud is an explicit step for uv-based Windows hosts. The normal local
+development path remains `base + local + dev`.
+
+## Use Make On Windows
+
+If `make.exe` is not available in `PATH`, use the Windows wrapper:
+
+```powershell
+.\scripts\windows\run_make.ps1 test
+.\scripts\windows\run_make.ps1 uv-init
+.\scripts\windows\run_make.ps1 uv-update
+```
+
+To point at a specific `make.exe` explicitly:
+
+```powershell
+.\scripts\windows\run_make.ps1 -MakePath 'C:\custom\make.exe' test
+```
+
+For installation details and corporate/manual make resolution, see
+[make_install.md](make_install.md).
+
+## uv Installation and Validation
+
+For uv installation paths, corporate/manual workflows, and the package refresh
+warning for uv-based hosts, see [uv_install.md](uv_install.md).
 
 ## Install This Template Into Another Repo
 
@@ -129,3 +145,22 @@ execute pre-commit in the target repository.
 The installer also leaves the installer entrypoints and template docs behind:
 `install_windows.py`, `install_linux.py`, files named `README.md`, and `docs/`
 are not copied to the target repository.
+
+## How the Host Setup Works
+
+When the target host chooses `pip`:
+
+- the installer copies `requirements.local.txt` and `requirements.dev.txt`
+- for cloud pip hosts, it also copies `requirements.cloud.txt`
+- the host hook and `Makefile` are rendered for pip-based dependency sync
+
+When the target host chooses `uv`:
+
+- the installer copies `pyproject.toml` and `uv.lock`
+- it skips all `requirements*.txt` files
+- the host hook and `Makefile` are rendered for a stable local uv workflow
+- cloud remains an explicit environment update step, not the default sync mode
+
+For uv-based hosts, packaging for deployment still uses the cloud dependency set
+from `pyproject.toml` and `uv.lock`, even if the local development environment
+remains on the default local profile.

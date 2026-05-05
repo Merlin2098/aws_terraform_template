@@ -5,7 +5,8 @@ aws_terraform_template/
 |-- docs/
 |   |-- windows_setup/
 |   |   |-- README.md
-|   |   `-- tools.md
+|   |   |-- make_install.md
+|   |   `-- uv_install.md
 |   `-- terraform_cheatsheet.md
 |-- infra/
 |   |-- env/
