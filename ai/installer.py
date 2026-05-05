@@ -6,6 +6,7 @@ from pathlib import Path
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_GITIGNORE_PATH = TEMPLATE_ROOT / ".gitignore"
+TEMPLATE_PROFILE_PATH = Path(".template-profile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
@@ -166,6 +167,8 @@ def should_copy_requirements_file(relative: Path, environment_profile: str) -> b
 def should_copy_package_file(
     relative: Path, environment_profile: str, package_manager: str
 ) -> bool:
+    if relative == TEMPLATE_PROFILE_PATH:
+        return package_manager == "uv"
     if relative.name.startswith("requirements"):
         return package_manager == "pip" and should_copy_requirements_file(
             relative, environment_profile
@@ -229,10 +232,11 @@ def render_target_file(
     environment_profile: str,
 ) -> str:
     if relative == Path(".pre-commit-config.yaml"):
-        rendered_profile = "local" if package_manager == "uv" else environment_profile
+        if package_manager == "uv":
+            return source_text
         return source_text.replace(
-            "args: [--manager, uv, --profile, local]",
-            f"args: [--manager, {package_manager}, --profile, {rendered_profile}]",
+            "args: [--manager, uv]",
+            f"args: [--manager, {package_manager}, --profile, {environment_profile}]",
         )
     if relative == Path("Makefile"):
         if package_manager == "uv":
@@ -250,6 +254,11 @@ def render_target_file(
             )
             .replace("$(PYTHON) scripts/package.py", package_command)
         )
+    if relative == TEMPLATE_PROFILE_PATH:
+        return (
+            f"package_manager={package_manager}\n"
+            f"environment_profile={environment_profile}\n"
+        )
     return source_text
 
 
@@ -261,7 +270,7 @@ def copy_template_file(
     package_manager: str,
     environment_profile: str,
 ) -> None:
-    if relative in {Path(".pre-commit-config.yaml"), Path("Makefile")}:
+    if relative in {Path(".pre-commit-config.yaml"), Path("Makefile"), TEMPLATE_PROFILE_PATH}:
         source_text = source_path.read_text(encoding="utf-8")
         destination.write_text(
             render_target_file(

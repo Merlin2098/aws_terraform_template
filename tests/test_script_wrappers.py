@@ -147,4 +147,26 @@ def test_uv_sync_wrapper_dry_run_init() -> None:
     )
 
     assert result.returncode == 0, result.stderr
-    assert "sync --extra local --group dev" in result.stdout
+    assert "sync --extra local --group dev-local" in result.stdout
+
+
+def test_uv_sync_wrapper_reads_persisted_cloud_profile(tmp_path: Path) -> None:
+    profile_path = REPO_ROOT / ".template-profile"
+    original = profile_path.read_text(encoding="utf-8")
+    try:
+        profile_path.write_text(
+            "package_manager=uv\nenvironment_profile=cloud\n",
+            encoding="utf-8",
+        )
+        result = subprocess.run(
+            [sys.executable, "scripts/run_uv_sync.py", "init", "--dry-run"],
+            cwd=REPO_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    finally:
+        profile_path.write_text(original, encoding="utf-8")
+
+    assert result.returncode == 0, result.stderr
+    assert "sync --extra local --group dev-local --extra cloud --group dev-cloud" in result.stdout

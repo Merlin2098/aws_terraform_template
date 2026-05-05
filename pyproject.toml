@@ -35,15 +35,18 @@ cloud = [
 ]
 
 [dependency-groups]
-dev = [
-    "checkov",
+dev-local = [
     "faker",
     "hypothesis",
-    "moto",
     "pre-commit",
     "pytest",
     "pytest-cov",
     "ruff",
+]
+
+dev-cloud = [
+    "checkov",
+    "moto",
     "tftest",
 ]
 

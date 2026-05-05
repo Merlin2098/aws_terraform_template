@@ -26,7 +26,13 @@ By default, the local uv workflow installs:
 
 - the shared base dependencies from `pyproject.toml`
 - the `local` optional dependency set
-- the `dev` dependency group
+- the `dev-local` dependency group
+
+The cloud uv workflow installs:
+
+- the shared base dependencies from `pyproject.toml`
+- the `local` and `cloud` optional dependency sets
+- the `dev-local` and `dev-cloud` dependency groups
 
 `requirements.local.txt` and `requirements.cloud.txt` remain relevant for
 pip-based hosts copied from this template. Uv-based hosts use `pyproject.toml`
@@ -38,7 +44,9 @@ When you install this template into another repository, the local profile copies
 so a local MVP can evolve into a cloud-ready project. That requirements flow is
 used only when the host chooses pip. When the host chooses uv, the installer
 copies `pyproject.toml` and `uv.lock` and skips all `requirements*.txt` files.
-The installer does not create or modify the host repository's `requirements.txt`.
+The installer also writes `.template-profile` so the host keeps its selected uv
+profile as the default for wrappers and sync commands. The installer does not
+create or modify the host repository's `requirements.txt`.
 
 Install pre-commit into the current repository environment:
 
@@ -69,8 +77,9 @@ To prepare the local environment with cloud dependencies explicitly:
 .\scripts\windows\update_venv.ps1 -Profile cloud
 ```
 
-Cloud is an explicit step for uv-based Windows hosts. The normal local
-development path remains `base + local + dev`.
+For uv-based hosts, the default profile comes from `.template-profile`. A local
+host stays on `base + local + dev-local` unless you override it explicitly, and
+a cloud host defaults to `base + local + cloud + dev-local + dev-cloud`.
 
 ## Use Make On Windows
 
@@ -153,9 +162,11 @@ When the target host chooses `pip`:
 When the target host chooses `uv`:
 
 - the installer copies `pyproject.toml` and `uv.lock`
+- it writes `.template-profile` with the selected host profile
 - it skips all `requirements*.txt` files
-- the host hook and `Makefile` are rendered for a stable local uv workflow
-- cloud remains an explicit environment update step, not the default sync mode
+- the host hook and `Makefile` use that persisted profile by default
+- local hosts default to `base + local + dev-local`
+- cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
 
 For uv-based hosts, packaging for deployment still uses the cloud dependency set
 from `pyproject.toml` and `uv.lock`, even if the local development environment

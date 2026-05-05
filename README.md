@@ -112,8 +112,10 @@ For `pip` hosts:
 For `uv` hosts:
 
 * the installer copies `pyproject.toml` and `uv.lock`
-* the local development environment stays on the local profile by default
-* cloud dependencies remain an explicit step for the environment, while packaging still targets cloud runtime needs
+* the installer also persists the selected host profile in `.template-profile`
+* local hosts sync `base + local + dev-local` by default
+* cloud hosts sync `base + local + cloud + dev-local + dev-cloud` by default
+* packaging still targets cloud runtime needs
 
 ## Windows Workflow
 

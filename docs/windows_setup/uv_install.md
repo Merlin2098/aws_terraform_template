@@ -24,7 +24,7 @@ Get-Command uv
 Typical usage:
 
 ```powershell
-uv sync --extra local --group dev
+uv sync --extra local --group dev-local
 uv lock
 uv tree
 ```
@@ -65,7 +65,7 @@ py -3 -m uv --version
 If that works, you can operate uv through Python:
 
 ```powershell
-py -3 -m uv sync --extra local --group dev
+py -3 -m uv sync --extra local --group dev-local
 py -3 -m uv tree
 ```
 
@@ -76,7 +76,7 @@ explicit and consistent:
 
 ```powershell
 & 'C:\Program Files\Python314\python.exe' -m uv --version
-& 'C:\Program Files\Python314\python.exe' -m uv sync --extra local --group dev
+& 'C:\Program Files\Python314\python.exe' -m uv sync --extra local --group dev-local
 & 'C:\Program Files\Python314\python.exe' -m uv tree
 ```
 
@@ -108,7 +108,7 @@ binary:
 After that, continue to run uv through the same Python:
 
 ```powershell
-& 'C:\Program Files\Python314\python.exe' -m uv sync --extra local --group dev
+& 'C:\Program Files\Python314\python.exe' -m uv sync --extra local --group dev-local
 ```
 
 This keeps the execution path explicit and avoids depending on `PATH` changes or
@@ -131,8 +131,10 @@ Behavior:
 - `setup_env.ps1` resolves Python automatically, validates uv, creates `.venv`
   if needed, and syncs the local environment
 - `update_venv.ps1` refreshes the environment after dependency changes
-- the normal uv workflow is `base + local + dev`
-- cloud remains an explicit step:
+- the normal local uv workflow is `base + local + dev-local`
+- cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
+- the default host profile is read from `.template-profile`
+- cloud can still be forced explicitly:
 
 ```powershell
 .\scripts\windows\update_venv.ps1 -Profile cloud
@@ -154,7 +156,7 @@ installation failed.
 When validating a uv-based host, prefer these checks:
 
 ```powershell
-py -3 -m uv sync --extra local --group dev
+py -3 -m uv sync --extra local --group dev-local
 py -3 -m uv tree
 py -3 -m uv pip list --python .\.venv\Scripts\python.exe
 ```

@@ -1,7 +1,6 @@
 param(
     [string]$PythonPath,
-    [ValidateSet("local", "cloud")]
-    [string]$Profile = "local",
+    [string]$Profile,
     [switch]$IncludeDev,
     [switch]$NoDev
 )
@@ -135,6 +134,55 @@ function Assert-PyProjectExists {
     }
 }
 
+function Get-TemplateProfilePath {
+    return ".template-profile"
+}
+
+function Get-PersistedEnvironmentProfile {
+    $profilePath = Get-TemplateProfilePath
+    if (-not (Test-Path -LiteralPath $profilePath)) {
+        return $null
+    }
+
+    foreach ($line in Get-Content -LiteralPath $profilePath) {
+        $trimmed = $line.Trim()
+        if (-not $trimmed -or $trimmed.StartsWith("#")) {
+            continue
+        }
+
+        $parts = $trimmed -split "=", 2
+        if ($parts.Count -eq 2 -and $parts[0].Trim() -eq "environment_profile") {
+            $value = $parts[1].Trim().ToLowerInvariant()
+            if ($value -in @("local", "cloud")) {
+                return $value
+            }
+        }
+    }
+
+    return $null
+}
+
+function Resolve-EnvironmentProfile {
+    param(
+        [string]$SelectedProfile
+    )
+
+    if ($SelectedProfile) {
+        $normalized = $SelectedProfile.Trim().ToLowerInvariant()
+        if ($normalized -notin @("local", "cloud")) {
+            throw "Profile must be 'local' or 'cloud'."
+        }
+        return $normalized
+    }
+
+    $persisted = Get-PersistedEnvironmentProfile
+    if ($persisted) {
+        return $persisted
+    }
+
+    return "local"
+}
+
 function Ensure-Venv {
     param(
         [pscustomobject]$PythonCommand
@@ -162,7 +210,10 @@ function Get-UvSyncArguments {
     }
 
     if ($UseDevDependencies) {
-        $arguments += @("--group", "dev")
+        $arguments += @("--group", "dev-local")
+        if ($SelectedProfile -eq "cloud") {
+            $arguments += @("--group", "dev-cloud")
+        }
     } else {
         $arguments += "--no-dev"
     }
@@ -189,18 +240,19 @@ Assert-PyProjectExists
 Write-Phase "Phase 3: Prepare Environment"
 Ensure-Venv -PythonCommand $pythonCommand
 
-$syncArguments = Get-UvSyncArguments -SelectedProfile $Profile -UseDevDependencies:$useDevDependencies
+$resolvedProfile = Resolve-EnvironmentProfile -SelectedProfile $Profile
+$syncArguments = Get-UvSyncArguments -SelectedProfile $resolvedProfile -UseDevDependencies:$useDevDependencies
 $dependencyMode = if ($useDevDependencies) { "including dev dependencies" } else { "without dev dependencies" }
 
 Write-Phase "Phase 4: Sync Dependencies"
-Write-Step "[Dependencies] Syncing the environment for profile '$Profile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
+Write-Step "[Dependencies] Syncing the environment for profile '$resolvedProfile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
 Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments $syncArguments
 
 $venvPython = Join-Path (Get-Location) ".venv\Scripts\python.exe"
 
 Write-Phase "Phase 5: Summary"
 Write-Step "Environment setup completed successfully." ([ConsoleColor]::Green)
-Write-Host "Profile synced: $Profile"
+Write-Host "Profile synced: $resolvedProfile"
 Write-Host "Dev dependencies enabled: $useDevDependencies"
 Write-Host "Virtual environment path: .venv"
 Write-Host "VS Code interpreter selection remains a manual step."

@@ -33,6 +33,7 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert not (target / "requirements.cloud.txt").exists()
     assert not (target / "pyproject.toml").exists()
     assert not (target / "uv.lock").exists()
+    assert not (target / ".template-profile").exists()
     assert summary["gitignore_updates"] == []
     gitignore = (target / ".gitignore").read_text(encoding="utf-8")
     assert ".ai/" in gitignore
@@ -128,17 +129,21 @@ def test_uv_local_install_copies_only_uv_project_files(tmp_path: Path) -> None:
 
     assert "pyproject.toml" in summary["copied"]
     assert "uv.lock" in summary["copied"]
+    assert ".template-profile" in summary["copied"]
     assert "requirements.local.txt" not in summary["copied"]
     assert "requirements.dev.txt" not in summary["copied"]
     assert "requirements.cloud.txt" not in summary["copied"]
     assert (target / "pyproject.toml").exists()
     assert (target / "uv.lock").exists()
+    assert (target / ".template-profile").read_text(encoding="utf-8") == (
+        "package_manager=uv\nenvironment_profile=local\n"
+    )
     assert not (target / "requirements.local.txt").exists()
     assert not (target / "requirements.dev.txt").exists()
     assert not (target / "requirements.cloud.txt").exists()
 
 
-def test_uv_cloud_install_renders_local_hook_and_makefile(tmp_path: Path) -> None:
+def test_uv_cloud_install_renders_cloud_profile_defaults(tmp_path: Path) -> None:
     target = tmp_path / "host-uv-cloud"
 
     install_template(
@@ -152,11 +157,13 @@ def test_uv_cloud_install_renders_local_hook_and_makefile(tmp_path: Path) -> Non
 
     pre_commit = (target / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     makefile = (target / "Makefile").read_text(encoding="utf-8")
+    template_profile = (target / ".template-profile").read_text(encoding="utf-8")
 
-    assert "args: [--manager, uv, --profile, local]" in pre_commit
+    assert "args: [--manager, uv]" in pre_commit
     assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init" in makefile
     assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py update" in makefile
     assert "uv run python scripts/package.py --package-manager uv" in makefile
+    assert template_profile == "package_manager=uv\nenvironment_profile=cloud\n"
 
 
 def test_include_structure_creates_empty_tests_dir_without_template_tests(

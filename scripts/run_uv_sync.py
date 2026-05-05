@@ -10,6 +10,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VENV_DIR = REPO_ROOT / ".venv"
+PROFILE_FILE = REPO_ROOT / ".template-profile"
+ENVIRONMENT_PROFILES = {"local", "cloud"}
 
 
 def uv_command_prefix() -> list[str]:
@@ -21,8 +23,34 @@ def uv_command_prefix() -> list[str]:
     return [sys.executable, "-m", "uv"]
 
 
-def sync_command() -> list[str]:
-    return uv_command_prefix() + ["sync", "--extra", "local", "--group", "dev"]
+def profile_from_template_file() -> str | None:
+    if not PROFILE_FILE.exists():
+        return None
+    for line in PROFILE_FILE.read_text(encoding="utf-8").splitlines():
+        if not line.strip() or line.lstrip().startswith("#"):
+            continue
+        key, separator, value = line.partition("=")
+        if separator and key.strip() == "environment_profile":
+            normalized = value.strip().lower()
+            if normalized in ENVIRONMENT_PROFILES:
+                return normalized
+    return None
+
+
+def resolve_profile(selected: str | None) -> str:
+    if selected:
+        return selected
+    persisted = profile_from_template_file()
+    if persisted:
+        return persisted
+    return "local"
+
+
+def sync_command(profile: str) -> list[str]:
+    command = uv_command_prefix() + ["sync", "--extra", "local", "--group", "dev-local"]
+    if profile == "cloud":
+        command.extend(["--extra", "cloud", "--group", "dev-cloud"])
+    return command
 
 
 def lock_command() -> list[str]:
@@ -76,8 +104,8 @@ def run(command: list[str], *, dry_run: bool) -> None:
         )
 
 
-def run_init(*, dry_run: bool) -> None:
-    command = sync_command()
+def run_init(*, dry_run: bool, profile: str) -> None:
+    command = sync_command(profile)
     try:
         run(command, dry_run=dry_run)
     except subprocess.CalledProcessError as error:
@@ -93,10 +121,10 @@ def run_init(*, dry_run: bool) -> None:
         run(command, dry_run=False)
 
 
-def run_update(*, dry_run: bool) -> None:
+def run_update(*, dry_run: bool, profile: str) -> None:
     try:
         run(lock_command(), dry_run=dry_run)
-        run(sync_command(), dry_run=dry_run)
+        run(sync_command(profile), dry_run=dry_run)
     except subprocess.CalledProcessError as error:
         if not dry_run and is_permission_sync_error(error):
             raise SystemExit(
@@ -105,7 +133,7 @@ def run_update(*, dry_run: bool) -> None:
         raise
 
 
-def run_reset(*, dry_run: bool) -> None:
+def run_reset(*, dry_run: bool, profile: str) -> None:
     print(f"Resetting {VENV_DIR}")
     if not dry_run:
         try:
@@ -114,7 +142,7 @@ def run_reset(*, dry_run: bool) -> None:
             raise SystemExit(
                 "Could not remove .venv because some files are still in use. Close editors, terminals, or background tools using the environment and retry `make uv-reset`."
             ) from error
-    run(sync_command(), dry_run=dry_run)
+    run(sync_command(profile), dry_run=dry_run)
 
 
 def parse_args() -> argparse.Namespace:
@@ -122,19 +150,21 @@ def parse_args() -> argparse.Namespace:
         description="Run uv environment sync commands with Windows-friendly recovery behavior."
     )
     parser.add_argument("mode", choices=("init", "update", "reset"))
+    parser.add_argument("--profile", choices=sorted(ENVIRONMENT_PROFILES))
     parser.add_argument("--dry-run", action="store_true", help="Print the uv commands without executing them.")
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    profile = resolve_profile(args.profile)
     if args.mode == "init":
-        run_init(dry_run=args.dry_run)
+        run_init(dry_run=args.dry_run, profile=profile)
         return
     if args.mode == "update":
-        run_update(dry_run=args.dry_run)
+        run_update(dry_run=args.dry_run, profile=profile)
         return
-    run_reset(dry_run=args.dry_run)
+    run_reset(dry_run=args.dry_run, profile=profile)
 
 
 if __name__ == "__main__":
