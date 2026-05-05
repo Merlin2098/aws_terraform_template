@@ -29,7 +29,9 @@ aws_terraform_template/
 |   |   |-- setup_env.ps1
 |   |   `-- update_venv.ps1
 |   |-- generate_treemap.py
-|   `-- package.py
+|   |-- package.py
+|   |-- run_pip_init.py
+|   `-- run_uv_sync.py
 |-- src/
 |   |-- config/
 |   |   `-- job_config.yaml
