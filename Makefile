@@ -1,20 +1,26 @@
 ifeq ($(OS),Windows_NT)
 PYTHON ?= ./.venv/Scripts/python.exe
+UV ?= py -3 -m uv
+BOOTSTRAP_PYTHON ?= py -3
 else
 PYTHON ?= ./.venv/bin/python
+UV ?= uv
+BOOTSTRAP_PYTHON ?= python3
 endif
 
-.PHONY: init uv-init uv-update package treemap lint fmt test clean ai-refresh
+.PHONY: init uv-init uv-update uv-reset package treemap lint fmt test clean ai-refresh
 
 init:
-	$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt
+	$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py
 
 uv-init:
-	uv sync --extra local --group dev
+	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init
 
 uv-update:
-	uv lock --upgrade
-	uv sync --extra local --group dev
+	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py update
+
+uv-reset:
+	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py reset
 
 package:
 	$(PYTHON) scripts/package.py

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import subprocess
+import sys
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -67,7 +68,13 @@ def build_bundle(package_manager: str) -> Path:
 
 def clean_bundle() -> None:
     if ARTIFACT_PATH.exists():
-        ARTIFACT_PATH.unlink()
+        try:
+            ARTIFACT_PATH.unlink()
+        except PermissionError:
+            print(
+                f"Could not remove {ARTIFACT_PATH} because it is currently in use. Close any process using the bundle and retry.",
+                file=sys.stderr,
+            )
 
 
 def main() -> None:

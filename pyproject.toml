@@ -15,7 +15,7 @@ dependencies = [
 
 [project.optional-dependencies]
 local = [
-    "great-expectations",
+    "great-expectations; python_version < '3.14'",
     "duckdb",
     "fastexcel",
     "openpyxl",

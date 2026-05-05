@@ -33,7 +33,9 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert not (target / "requirements.cloud.txt").exists()
     assert not (target / "pyproject.toml").exists()
     assert not (target / "uv.lock").exists()
-    assert {"ai/", "data/", "AGENTS.md", "Makefile"} <= set(summary["gitignore_updates"])
+    assert {"ai/", "data/", "AGENTS.md", "Makefile"} <= set(
+        summary["gitignore_updates"]
+    )
     gitignore = (target / ".gitignore").read_text(encoding="utf-8")
     assert "ai/" in gitignore
     assert ".ai/" in gitignore
@@ -59,6 +61,11 @@ def test_cloud_install_copies_cloud_requirements(tmp_path: Path) -> None:
     assert "uv.lock" not in summary["copied"]
     assert not (target / "requirements.txt").exists()
     assert (target / "requirements.cloud.txt").exists()
+
+    pre_commit = (target / ".pre-commit-config.yaml").read_text(encoding="utf-8")
+    makefile = (target / "Makefile").read_text(encoding="utf-8")
+    assert "args: [--manager, pip, --profile, cloud]" in pre_commit
+    assert "$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py --profile cloud" in makefile
 
 
 def test_existing_host_requirements_txt_is_left_untouched(tmp_path: Path) -> None:
@@ -120,9 +127,46 @@ def test_uv_cloud_install_renders_local_hook_and_makefile(tmp_path: Path) -> Non
     makefile = (target / "Makefile").read_text(encoding="utf-8")
 
     assert "args: [--manager, uv, --profile, local]" in pre_commit
-    assert "uv sync --extra local --group dev" in makefile
-    assert "uv lock --upgrade\n\tuv sync --extra local --group dev" in makefile
+    assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init" in makefile
+    assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py update" in makefile
     assert "uv run python scripts/package.py --package-manager uv" in makefile
+
+
+def test_include_structure_creates_empty_tests_dir_without_template_tests(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "host-with-structure"
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=True,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    tests_dir = target / "tests"
+    assert tests_dir.exists()
+    assert tests_dir.is_dir()
+    assert list(tests_dir.iterdir()) == []
+    assert "tests" in summary["created_dirs"]
+    assert "tests/test_installer.py" in summary["ignored"]
+
+
+def test_without_structure_does_not_create_tests_dir(tmp_path: Path) -> None:
+    target = tmp_path / "host-without-structure"
+
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    assert not (target / "tests").exists()
 
 
 def test_installer_rejects_conflicting_package_manager_flags(tmp_path: Path) -> None:

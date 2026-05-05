@@ -6,13 +6,13 @@ resolution-markers = [
     "python_full_version >= '3.14' and sys_platform == 'emscripten'",
     "python_full_version >= '3.14' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.13.*' and sys_platform == 'win32'",
-    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version == '3.12.*' and sys_platform == 'win32'",
-    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
-    "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform == 'win32'",
+    "python_full_version == '3.13.*' and sys_platform == 'emscripten'",
+    "python_full_version == '3.12.*' and sys_platform == 'emscripten'",
     "python_full_version < '3.12' and sys_platform == 'emscripten'",
+    "python_full_version == '3.13.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
+    "python_full_version == '3.12.*' and sys_platform != 'emscripten' and sys_platform != 'win32'",
     "python_full_version < '3.12' and sys_platform != 'emscripten' and sys_platform != 'win32'",
 ]
 
@@ -244,7 +244,7 @@ cloud = [
 local = [
     { name = "duckdb" },
     { name = "fastexcel" },
-    { name = "great-expectations" },
+    { name = "great-expectations", marker = "python_full_version < '3.14'" },
     { name = "openpyxl" },
     { name = "pathspec" },
     { name = "polars" },
@@ -275,7 +275,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'cloud'" },
     { name = "duckdb", marker = "extra == 'local'" },
     { name = "fastexcel", marker = "extra == 'local'" },
-    { name = "great-expectations", marker = "extra == 'local'" },
+    { name = "great-expectations", marker = "python_full_version < '3.14' and extra == 'local'" },
     { name = "jsonschema" },
     { name = "numpy" },
     { name = "openpyxl", marker = "extra == 'local'" },
@@ -1203,7 +1203,7 @@ wheels = [
 
 [[package]]
 name = "great-expectations"
-version = "1.17.0"
+version = "1.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "altair" },
@@ -1225,9 +1225,9 @@ dependencies = [
     { name = "typing-extensions" },
     { name = "tzlocal" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/fe/55/2fe5dcb002c775ae1eb9343c0bf4a550dd8dbdd41cfc6577740317e84e15/great_expectations-1.17.0.tar.gz", hash = "sha256:ed7df514a1cc400172483a50a9f8a23e0c7179423eb36abaaaf868e9000c515e", size = 36335490, upload-time = "2026-04-22T17:09:05.981Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/43/5f/e2b3130b3cfcda3794a3f60be334d47c8d3c9296eade135db2397297e423/great_expectations-1.17.1.tar.gz", hash = "sha256:ee5dd510d8897bff6bbee83d049c1334b90b126b80e6e5a96b519a1afcccb0f9", size = 36340875, upload-time = "2026-05-05T09:09:42.48Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/28/5d/9cb9519b1130d143234dc02784aff3efd34127be977fca2572840ed9c93b/great_expectations-1.17.0-py3-none-any.whl", hash = "sha256:515707c9d0fc01784d8f58e208754a4cef3f99666800fa76474e837fb22f0b2a", size = 4951063, upload-time = "2026-04-22T17:09:03.476Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/60/6fa149384f910eb478967b37303a1011c39b2d72eb9285e411262b4befda/great_expectations-1.17.1-py3-none-any.whl", hash = "sha256:c69baa45e4260c858487467a9a0a2b18252ee305a8c8880baaff4ea9e2b78c25", size = 4951917, upload-time = "2026-05-05T09:09:38.061Z" },
 ]
 
 [[package]]
@@ -2622,15 +2622,15 @@ wheels = [
 
 [[package]]
 name = "python-discovery"
-version = "1.2.2"
+version = "1.3.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "filelock" },
     { name = "platformdirs" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/de/ef/3bae0e537cfe91e8431efcba4434463d2c5a65f5a89edd47c6cf2f03c55f/python_discovery-1.2.2.tar.gz", hash = "sha256:876e9c57139eb757cb5878cbdd9ae5379e5d96266c99ef731119e04fffe533bb", size = 58872, upload-time = "2026-04-07T17:28:49.249Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ae/e0/cc5a8653e9a24f6cf84768f05064aa8ed5a83dcefd5e2a043db14a1c5f44/python_discovery-1.3.0.tar.gz", hash = "sha256:d098f1e86be5d45fe4d14bf1029294aabbd332f4321179dec85e76cddce834b0", size = 63925, upload-time = "2026-05-05T14:38:39.769Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d8/db/795879cc3ddfe338599bddea6388cc5100b088db0a4caf6e6c1af1c27e04/python_discovery-1.2.2-py3-none-any.whl", hash = "sha256:e1ae95d9af875e78f15e19aed0c6137ab1bb49c200f21f5061786490c9585c7a", size = 31894, upload-time = "2026-04-07T17:28:48.09Z" },
+    { url = "https://files.pythonhosted.org/packages/30/d4/24d543ab8b8158b7f5a97113c831205f5c900c92c8762b1e7f44b7ea0405/python_discovery-1.3.0-py3-none-any.whl", hash = "sha256:441d9ced3dfce36e113beb35ca302c71c7ef06f3c0f9c227a0b9bb3bd49b9e9f", size = 33124, upload-time = "2026-05-05T14:38:38.539Z" },
 ]
 
 [[package]]

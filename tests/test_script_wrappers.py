@@ -122,3 +122,29 @@ def test_pytest_wrapper_smoke() -> None:
 
     assert result.returncode == 0, result.stderr
     assert "pytest" in result.stdout.lower()
+
+
+def test_pip_init_wrapper_dry_run() -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/run_pip_init.py", "--dry-run"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "pip install -r requirements.local.txt -r requirements.dev.txt" in result.stdout
+
+
+def test_uv_sync_wrapper_dry_run_init() -> None:
+    result = subprocess.run(
+        [sys.executable, "scripts/run_uv_sync.py", "init", "--dry-run"],
+        cwd=REPO_ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "sync --extra local --group dev" in result.stdout

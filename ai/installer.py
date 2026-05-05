@@ -7,6 +7,7 @@ from pathlib import Path
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TARGET_GITIGNORE_ENTRIES = ("ai/", ".ai/", "data/", "AGENTS.md", "Makefile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
+OPTIONAL_EMPTY_DIRS = {"tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
 PACKAGE_MANAGERS = {"pip", "uv"}
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
@@ -174,6 +175,21 @@ def should_copy_package_file(
     return True
 
 
+def should_copy_structure_path(relative: Path, include_structure: bool) -> bool:
+    if not relative.parts:
+        return True
+    top_level = relative.parts[0]
+    if not include_structure and top_level in OPTIONAL_TOP_LEVEL_DIRS:
+        return False
+    if (
+        include_structure
+        and top_level in OPTIONAL_EMPTY_DIRS
+        and len(relative.parts) > 1
+    ):
+        return False
+    return True
+
+
 def iter_template_files(
     *, include_structure: bool, environment_profile: str, package_manager: str
 ) -> tuple[list[Path], list[Path]]:
@@ -183,11 +199,7 @@ def iter_template_files(
     def walk(directory: Path) -> None:
         for path in sorted(directory.iterdir(), key=lambda item: item.name.lower()):
             relative = path.relative_to(TEMPLATE_ROOT)
-            if (
-                not include_structure
-                and relative.parts
-                and relative.parts[0] in OPTIONAL_TOP_LEVEL_DIRS
-            ):
+            if not should_copy_structure_path(relative, include_structure):
                 ignored.append(path)
                 continue
             if not should_copy_package_file(
@@ -219,32 +231,25 @@ def render_target_file(
     if relative == Path(".pre-commit-config.yaml"):
         rendered_profile = "local" if package_manager == "uv" else environment_profile
         return source_text.replace(
-            "args: [--manager uv, --profile local]",
-            f"args: [--manager {package_manager}, --profile {rendered_profile}]",
+            "args: [--manager, uv, --profile, local]",
+            f"args: [--manager, {package_manager}, --profile, {rendered_profile}]",
         )
     if relative == Path("Makefile"):
         if package_manager == "uv":
-            sync_command = "uv sync --extra local --group dev"
-            update_command = "uv lock --upgrade\n\tuv sync --extra local --group dev"
+            init_command = "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init"
             package_command = "uv run python scripts/package.py --package-manager uv"
         else:
-            reqs = "requirements.local.txt -r requirements.dev.txt"
-            if environment_profile == "cloud":
-                reqs = (
-                    "requirements.local.txt "
-                    "-r requirements.cloud.txt "
-                    "-r requirements.dev.txt"
-                )
-            sync_command = f"$(PYTHON) -m pip install -r {reqs}"
-            update_command = "uv lock --upgrade\n\tuv sync --extra local"
+            init_command = (
+                f"$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py --profile {environment_profile}"
+            )
             package_command = "$(PYTHON) scripts/package.py"
-        return source_text.replace(
-            "$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt",
-            sync_command,
-        ).replace(
-            "uv lock --upgrade\n\tuv sync --extra local --group dev",
-            update_command,
-        ).replace("$(PYTHON) scripts/package.py", package_command)
+        return (
+            source_text.replace(
+                "$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py",
+                init_command,
+            )
+            .replace("$(PYTHON) scripts/package.py", package_command)
+        )
     return source_text
 
 
@@ -328,6 +333,21 @@ def _ensure_destination_parent(
             directory.mkdir(parents=True, exist_ok=True)
 
 
+def create_optional_empty_dirs(
+    target: Path, *, include_structure: bool, dry_run: bool
+) -> list[str]:
+    if not include_structure:
+        return []
+
+    created: list[str] = []
+    for dirname in sorted(OPTIONAL_EMPTY_DIRS):
+        destination = target / dirname
+        created.append(dirname)
+        if not dry_run:
+            destination.mkdir(parents=True, exist_ok=True)
+    return created
+
+
 def install_template(
     target: Path,
     force: bool,
@@ -351,6 +371,11 @@ def install_template(
 
     if not dry_run:
         target.mkdir(parents=True, exist_ok=True)
+
+    for dirname in create_optional_empty_dirs(
+        target, include_structure=include_structure, dry_run=dry_run
+    ):
+        created_dirs.add(dirname)
 
     for source_path in candidates:
         relative = source_path.relative_to(TEMPLATE_ROOT)

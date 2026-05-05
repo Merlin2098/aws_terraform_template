@@ -1,5 +1,5 @@
 # Validation and contracts
-great-expectations
+great-expectations; python_version < "3.14"
 jsonschema
 
 # Core data runtime
