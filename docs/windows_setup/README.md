@@ -43,6 +43,42 @@ To run all configured hooks manually:
 
 Reference: https://pre-commit.com/
 
+## Uv Host Package Refresh Warning
+
+Some Windows hosts or VS Code extensions inspect the active environment with
+`python -m pip list` or similar `pip`-based commands when they refresh the
+package view.
+
+For uv-based hosts, that refresh can show a warning such as
+`error refreshing packages` even when the project environment is healthy and
+`uv sync` completed successfully.
+
+Treat this as a host-tooling limitation first, not as proof that dependency
+installation failed.
+
+When validating a uv-based host, prefer these checks:
+
+```powershell
+uv sync --extra local
+uv tree
+uv pip list --python .\.venv\Scripts\python.exe
+```
+
+If those commands work and the project dependencies import correctly, the
+environment is generally usable even if the host package view still shows a
+refresh warning.
+
+If the host must refresh packages through `pip`, enable `pip` inside the
+project virtual environment as an optional compatibility workaround:
+
+```powershell
+.\.venv\Scripts\python.exe -m ensurepip --upgrade
+.\.venv\Scripts\python.exe -m pip list
+```
+
+Do not treat this step as part of the default uv workflow. Use it only when the
+host tooling requires `pip` for package inspection.
+
 ## Install This Template Into Another Repo
 
 Preview the install without writing files:
