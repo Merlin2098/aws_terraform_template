@@ -26,6 +26,10 @@ make test
 make ai-refresh
 ./scripts/windows/setup_env.ps1
 ./scripts/windows/update_venv.ps1
+./scripts/windows/run_make.ps1 test
+./scripts/windows/run_make.ps1 uv-init
+./scripts/windows/run_make.ps1 uv-update
+./scripts/windows/run_make.ps1 -MakePath 'C:\custom\make.exe' test
 python scripts/hooks/ai_refresh.py
 python install_windows.py --target /path/to/repo --dry-run
 python install_linux.py --target /path/to/repo --dry-run
@@ -57,6 +61,8 @@ terraform -chdir=infra apply
 - Hook helpers live under `scripts/hooks/` and quality wrappers live under `scripts/testing/` so they stay distinct from host-project operational scripts
 - In uv hosts, the dependency sync hook stays on a stable local development environment and syncs `local` plus `dev`
 - In uv hosts, Windows users can bootstrap with `.\scripts\windows\setup_env.ps1` and switch the local environment to cloud explicitly with `.\scripts\windows\update_venv.ps1 -Profile cloud`
+- In Windows corporate environments, `.\scripts\windows\run_make.ps1` can execute `make` targets even when `make.exe` is not available in `PATH`
+- The Windows make wrapper tries `C:\Users\ricuculm\tools\make\bin\make.exe` first, then falls back to `make` from `PATH`, and also accepts `-MakePath`
 - In uv hosts, packaging for cloud remains separate from the local environment profile: `scripts/package.py` exports cloud runtime dependencies from `pyproject.toml` and `uv.lock`
 - The dependency sync hook is rendered for the selected package manager; pip and uv remain separate host paths
 - Run Terraform directly from `infra/` for infrastructure changes
