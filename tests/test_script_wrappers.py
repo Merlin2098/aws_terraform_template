@@ -124,6 +124,24 @@ def test_pytest_wrapper_smoke() -> None:
     assert "pytest" in result.stdout.lower()
 
 
+def test_pytest_wrapper_treats_no_tests_as_success(tmp_path: Path) -> None:
+    _write(
+        tmp_path / "pyproject.toml",
+        "[project]\nname = 'empty-tests'\nversion = '0.0.0'\n",
+    )
+
+    result = subprocess.run(
+        [sys.executable, str(REPO_ROOT / "scripts/testing/run_pytest.py")],
+        cwd=tmp_path,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert "No tests were collected" in result.stdout
+
+
 def test_pip_init_wrapper_dry_run() -> None:
     result = subprocess.run(
         [sys.executable, "scripts/run_pip_init.py", "--dry-run"],
