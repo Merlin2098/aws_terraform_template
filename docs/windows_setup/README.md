@@ -3,52 +3,11 @@
 This guide prepares a Windows machine to use this template and to install it into
 another repository.
 
-## 1. Install Chocolatey
+Start with [tools.md](tools.md) to install GNU Make, uv, and the supporting
+command-line tools. It includes both admin and no-admin paths for restricted
+corporate machines.
 
-Open PowerShell as Administrator and verify the execution policy:
-
-```powershell
-Get-ExecutionPolicy
-```
-
-If it returns `Restricted`, use a process-scoped policy for the install session:
-
-```powershell
-Set-ExecutionPolicy Bypass -Scope Process -Force
-```
-
-Install Chocolatey:
-
-```powershell
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-```
-
-Close and reopen PowerShell, then verify:
-
-```powershell
-choco --version
-```
-
-Reference: https://docs.chocolatey.org/en-us/choco/setup/
-
-## 2. Install GNU Make
-
-Open PowerShell as Administrator:
-
-```powershell
-choco install make -y
-```
-
-Close and reopen PowerShell, then verify:
-
-```powershell
-make --version
-```
-
-Reference: https://community.chocolatey.org/packages/make
-
-## 3. Prepare Python and Pre-commit
+## Prepare Python and Pre-commit
 
 From the repository root:
 
@@ -58,14 +17,17 @@ py -3 -m venv .venv
 .\.venv\Scripts\pre-commit.exe install
 ```
 
-`requirements.local.txt` installs the local developer environment. Deployment bundles use
-`requirements.cloud.txt` during packaging.
+`requirements.local.txt` installs the local developer environment. Deployment
+bundles use `requirements.cloud.txt` during packaging for pip-based hosts.
+Uv-based hosts use `pyproject.toml` and `uv.lock` instead.
 
 When you install this template into another repository, the local profile copies
 `requirements.local.txt` plus `requirements.dev.txt`. The cloud profile copies
 `requirements.local.txt`, `requirements.cloud.txt`, and `requirements.dev.txt`
-so a local MVP can evolve into a cloud-ready project. The installer does not create
-or modify the host repository's `requirements.txt`.
+so a local MVP can evolve into a cloud-ready project. That requirements flow is
+used only when the host chooses pip. When the host chooses uv, the installer
+copies `pyproject.toml` and `uv.lock` and skips all `requirements*.txt` files.
+The installer does not create or modify the host repository's `requirements.txt`.
 
 Verify pre-commit:
 
@@ -81,7 +43,7 @@ To run all configured hooks manually:
 
 Reference: https://pre-commit.com/
 
-## 4. Install This Template Into Another Repo
+## Install This Template Into Another Repo
 
 Preview the install without writing files:
 
@@ -99,6 +61,13 @@ Install the template with an explicit target path:
 
 ```powershell
 .\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo
+```
+
+Install and choose the package manager non-interactively:
+
+```powershell
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --local --pip
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --cloud --uv
 ```
 
 Overwrite existing target files only when intentional:

@@ -3,8 +3,10 @@ aws_terraform_template/
 |-- artifacts/
 |   `-- README.md
 |-- docs/
-|   |-- terraform_cheatsheet.md
-|   `-- windows_setup.md
+|   |-- windows_setup/
+|   |   |-- README.md
+|   |   `-- tools.md
+|   `-- terraform_cheatsheet.md
 |-- infra/
 |   |-- env/
 |   |-- modules/
@@ -16,7 +18,7 @@ aws_terraform_template/
 |-- scripts/
 |   |-- hooks/
 |   |   |-- ai_refresh.py
-|   |   `-- sync_requirements.py
+|   |   `-- sync_dependencies.py
 |   |-- testing/
 |   |   |-- run_pytest.py
 |   |   |-- run_ruff_check.py
@@ -38,14 +40,17 @@ aws_terraform_template/
 |   |-- test_example_job.py
 |   |-- test_installer.py
 |   |-- test_refresh_context.py
-|   `-- test_script_wrappers.py
+|   |-- test_script_wrappers.py
+|   `-- test_sync_dependencies.py
 |-- .pre-commit-config.yaml
 |-- AGENTS.md
 |-- install_linux.py
 |-- install_windows.py
 |-- Makefile
+|-- pyproject.toml
 |-- README.md
 |-- requirements.cloud.txt
 |-- requirements.dev.txt
-`-- requirements.local.txt
+|-- requirements.local.txt
+`-- uv.lock
 ```

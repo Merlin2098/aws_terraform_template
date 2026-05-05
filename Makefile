@@ -4,10 +4,17 @@ else
 PYTHON ?= ./.venv/bin/python
 endif
 
-.PHONY: init package treemap lint fmt test clean ai-refresh
+.PHONY: init uv-init uv-update package treemap lint fmt test clean ai-refresh
 
 init:
 	$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt
+
+uv-init:
+	uv sync --extra local
+
+uv-update:
+	uv lock --upgrade
+	uv sync --extra local
 
 package:
 	$(PYTHON) scripts/package.py

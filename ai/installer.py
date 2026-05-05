@@ -8,9 +8,12 @@ TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TARGET_GITIGNORE_ENTRIES = ("ai/", ".ai/", "data/", "AGENTS.md", "Makefile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
+PACKAGE_MANAGERS = {"pip", "uv"}
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
 CLOUD_REQUIREMENTS_PATH = Path("requirements.cloud.txt")
 DEV_REQUIREMENTS_PATH = Path("requirements.dev.txt")
+PYPROJECT_PATH = Path("pyproject.toml")
+UV_LOCK_PATH = Path("uv.lock")
 
 EXCLUDED_DIRS = {
     ".ai",
@@ -25,6 +28,7 @@ EXCLUDED_DIRS = {
     "__pycache__",
     ".mypy_cache",
     ".pytest_cache",
+    ".pytest-tmp",
     ".ruff_cache",
 }
 EXCLUDED_EXACT_FILES = {
@@ -70,6 +74,8 @@ def is_excluded(path: Path) -> bool:
 
     if any(part in EXCLUDED_DIRS for part in parts):
         return True
+    if path.name.startswith("pytest-cache-files-"):
+        return True
     if relative in EXCLUDED_EXACT_FILES:
         return True
     if path.name in {"README.md", "Thumbs.db", ".DS_Store"}:
@@ -111,6 +117,15 @@ def prompt_environment_profile() -> str:
         print("Please answer local or cloud.")
 
 
+def prompt_package_manager() -> str:
+    while True:
+        selected = input("Use pip or uv for host dependencies? [pip/uv]: ").strip()
+        normalized = selected.lower()
+        if normalized in PACKAGE_MANAGERS:
+            return normalized
+        print("Please answer pip or uv.")
+
+
 def validate_target(target: Path) -> Path:
     target = target.expanduser().resolve()
     template = TEMPLATE_ROOT.resolve()
@@ -130,6 +145,13 @@ def validate_environment_profile(environment_profile: str) -> str:
     return normalized
 
 
+def validate_package_manager(package_manager: str) -> str:
+    normalized = package_manager.strip().lower()
+    if normalized not in PACKAGE_MANAGERS:
+        raise ValueError("Package manager must be 'pip' or 'uv'.")
+    return normalized
+
+
 def should_copy_requirements_file(relative: Path, environment_profile: str) -> bool:
     if relative == LOCAL_REQUIREMENTS_PATH:
         return environment_profile in {"local", "cloud"}
@@ -140,8 +162,20 @@ def should_copy_requirements_file(relative: Path, environment_profile: str) -> b
     return True
 
 
+def should_copy_package_file(
+    relative: Path, environment_profile: str, package_manager: str
+) -> bool:
+    if relative.name.startswith("requirements"):
+        return package_manager == "pip" and should_copy_requirements_file(
+            relative, environment_profile
+        )
+    if relative in {PYPROJECT_PATH, UV_LOCK_PATH}:
+        return package_manager == "uv"
+    return True
+
+
 def iter_template_files(
-    *, include_structure: bool, environment_profile: str
+    *, include_structure: bool, environment_profile: str, package_manager: str
 ) -> tuple[list[Path], list[Path]]:
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
@@ -156,9 +190,9 @@ def iter_template_files(
             ):
                 ignored.append(path)
                 continue
-            if relative.name.startswith(
-                "requirements"
-            ) and not should_copy_requirements_file(relative, environment_profile):
+            if not should_copy_package_file(
+                relative, environment_profile, package_manager
+            ):
                 ignored.append(path)
                 continue
             if is_excluded(path):
@@ -173,6 +207,71 @@ def iter_template_files(
     walk(TEMPLATE_ROOT)
 
     return copied_candidates, ignored
+
+
+def render_target_file(
+    source_text: str,
+    *,
+    relative: Path,
+    package_manager: str,
+    environment_profile: str,
+) -> str:
+    if relative == Path(".pre-commit-config.yaml"):
+        return source_text.replace(
+            "args: [--manager pip, --profile local]",
+            f"args: [--manager {package_manager}, --profile {environment_profile}]",
+        )
+    if relative == Path("Makefile"):
+        if package_manager == "uv":
+            sync_command = "uv sync --extra local"
+            update_command = "uv lock --upgrade\n\tuv sync --extra local"
+            if environment_profile == "cloud":
+                sync_command += " --extra cloud"
+                update_command += " --extra cloud"
+            package_command = "uv run python scripts/package.py --package-manager uv"
+        else:
+            reqs = "requirements.local.txt -r requirements.dev.txt"
+            if environment_profile == "cloud":
+                reqs = (
+                    "requirements.local.txt "
+                    "-r requirements.cloud.txt "
+                    "-r requirements.dev.txt"
+                )
+            sync_command = f"$(PYTHON) -m pip install -r {reqs}"
+            update_command = "uv lock --upgrade\n\tuv sync --extra local"
+            package_command = "$(PYTHON) scripts/package.py"
+        return source_text.replace(
+            "$(PYTHON) -m pip install -r requirements.local.txt -r requirements.dev.txt",
+            sync_command,
+        ).replace(
+            "uv lock --upgrade\n\tuv sync --extra local",
+            update_command,
+        ).replace("$(PYTHON) scripts/package.py", package_command)
+    return source_text
+
+
+def copy_template_file(
+    source_path: Path,
+    destination: Path,
+    *,
+    relative: Path,
+    package_manager: str,
+    environment_profile: str,
+) -> None:
+    if relative in {Path(".pre-commit-config.yaml"), Path("Makefile")}:
+        source_text = source_path.read_text(encoding="utf-8")
+        destination.write_text(
+            render_target_file(
+                source_text,
+                relative=relative,
+                package_manager=package_manager,
+                environment_profile=environment_profile,
+            ),
+            encoding="utf-8",
+        )
+        shutil.copystat(source_path, destination)
+        return
+    shutil.copy2(source_path, destination)
 
 
 def existing_gitignore_entries(gitignore_path: Path) -> set[str]:
@@ -238,12 +337,15 @@ def install_template(
     *,
     include_structure: bool,
     environment_profile: str,
+    package_manager: str = "pip",
 ) -> dict[str, list[str]]:
     target = validate_target(target)
     environment_profile = validate_environment_profile(environment_profile)
+    package_manager = validate_package_manager(package_manager)
     candidates, ignored_paths = iter_template_files(
         include_structure=include_structure,
         environment_profile=environment_profile,
+        package_manager=package_manager,
     )
     copied: list[str] = []
     skipped: list[str] = []
@@ -266,7 +368,13 @@ def install_template(
         if dry_run:
             continue
 
-        shutil.copy2(source_path, destination)
+        copy_template_file(
+            source_path,
+            destination,
+            relative=relative,
+            package_manager=package_manager,
+            environment_profile=environment_profile,
+        )
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 
     return {

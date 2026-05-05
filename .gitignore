@@ -13,6 +13,8 @@ venv/
 # Python tooling caches
 .mypy_cache/
 .pytest_cache/
+pytest-cache-files-*/
+.pytest-tmp/
 .ruff_cache/
 
 # Build / packaging

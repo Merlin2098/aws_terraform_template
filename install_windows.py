@@ -8,6 +8,7 @@ from ai.installer import (
     print_summary,
     prompt_environment_profile,
     prompt_include_structure,
+    prompt_package_manager,
     select_target_folder,
 )
 
@@ -56,12 +57,34 @@ def main() -> None:
         action="store_true",
         help="Install template dependencies for a cloud host project.",
     )
+    parser.add_argument(
+        "--package-manager",
+        choices=("pip", "uv"),
+        help="Package manager to configure in the host project.",
+    )
+    parser.add_argument(
+        "--pip",
+        action="store_true",
+        help="Configure the host project to manage packages with pip.",
+    )
+    parser.add_argument(
+        "--uv",
+        action="store_true",
+        help="Configure the host project to manage packages with uv.",
+    )
     args = parser.parse_args()
 
     if args.with_structure and args.without_structure:
         parser.error("--with-structure cannot be combined with --without-structure.")
     if args.local and args.cloud:
         parser.error("--local cannot be combined with --cloud.")
+    selected_managers = [
+        bool(args.package_manager),
+        args.pip,
+        args.uv,
+    ]
+    if sum(selected_managers) > 1:
+        parser.error("--package-manager, --pip, and --uv are mutually exclusive.")
 
     try:
         target = (
@@ -83,12 +106,22 @@ def main() -> None:
             if args.cloud
             else prompt_environment_profile()
         )
+        package_manager = (
+            args.package_manager
+            if args.package_manager
+            else "pip"
+            if args.pip
+            else "uv"
+            if args.uv
+            else prompt_package_manager()
+        )
         summary = install_template(
             target=target,
             force=args.force,
             dry_run=args.dry_run,
             include_structure=include_structure,
             environment_profile=environment_profile,
+            package_manager=package_manager,
         )
     except ValueError as exc:
         parser.error(str(exc))

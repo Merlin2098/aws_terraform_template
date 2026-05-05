@@ -23,9 +23,10 @@ repos:
         language: system
         pass_filenames: false
         stages: [manual]
-      - id: sync-requirements
+      - id: sync-dependencies
         name: Sync virtual environment dependencies
-        entry: python scripts/hooks/sync_requirements.py
+        entry: python scripts/hooks/sync_dependencies.py
         language: system
-        files: ^requirements(?:\.[A-Za-z0-9_-]+)?\.txt$
+        args: [--manager pip, --profile local]
+        files: ^(requirements(?:\.[A-Za-z0-9_-]+)?\.txt|pyproject\.toml|uv\.lock)$
         pass_filenames: false
