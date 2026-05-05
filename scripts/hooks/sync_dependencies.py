@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -66,9 +67,17 @@ def dependencies_hash(paths: tuple[Path, ...], manager: str, profile: str) -> st
     return digest.hexdigest()
 
 
+def uv_command_prefix() -> list[str]:
+    if shutil.which("uv"):
+        return ["uv"]
+    if sys.platform.startswith("win") and shutil.which("py"):
+        return ["py", "-3", "-m", "uv"]
+    return [str(sys.executable), "-m", "uv"]
+
+
 def install_command(manager: str, profile: str, paths: tuple[Path, ...]) -> list[str]:
     if manager == "uv":
-        command = ["uv", "sync", "--extra", "local", "--group", "dev"]
+        command = uv_command_prefix() + ["sync", "--extra", "local", "--group", "dev"]
         if profile == "cloud":
             command.extend(["--extra", "cloud"])
         return command

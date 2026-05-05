@@ -47,13 +47,14 @@ def test_uv_local_main_syncs_local_extra(tmp_path: Path, monkeypatch) -> None:
         calls.append(command)
 
     monkeypatch.setattr(sync_dependencies.subprocess, "run", fake_run)
+    monkeypatch.setattr(sync_dependencies, "uv_command_prefix", lambda: ["uv"])
     monkeypatch.setattr(
         sys, "argv", ["sync_dependencies.py", "--manager", "uv", "--profile", "local"]
     )
 
     sync_dependencies.main()
 
-    assert calls == [["uv", "sync", "--extra", "local"]]
+    assert calls == [["uv", "sync", "--extra", "local", "--group", "dev"]]
 
 
 def test_uv_cloud_main_syncs_local_and_cloud_extras(
@@ -67,13 +68,23 @@ def test_uv_cloud_main_syncs_local_and_cloud_extras(
         calls.append(command)
 
     monkeypatch.setattr(sync_dependencies.subprocess, "run", fake_run)
+    monkeypatch.setattr(sync_dependencies, "uv_command_prefix", lambda: ["uv"])
     monkeypatch.setattr(
         sys, "argv", ["sync_dependencies.py", "--manager", "uv", "--profile", "cloud"]
     )
 
     sync_dependencies.main()
 
-    assert calls == [["uv", "sync", "--extra", "local", "--extra", "cloud"]]
+    assert calls == [
+        ["uv", "sync", "--extra", "local", "--group", "dev", "--extra", "cloud"]
+    ]
+
+
+def test_uv_command_prefix_uses_py_launcher_on_windows(monkeypatch) -> None:
+    monkeypatch.setattr(sync_dependencies.shutil, "which", lambda name: None if name == "uv" else "C:/Windows/py.exe")
+    monkeypatch.setattr(sync_dependencies.sys, "platform", "win32")
+
+    assert sync_dependencies.uv_command_prefix() == ["py", "-3", "-m", "uv"]
 
 
 def test_main_skips_install_when_dependency_hash_is_unchanged(

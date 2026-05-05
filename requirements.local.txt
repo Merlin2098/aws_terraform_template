@@ -1,35 +1,32 @@
-# Config and serialization
-pyyaml
-
 # Validation and contracts
-jsonschema
 great-expectations
+jsonschema
 
 # Core data runtime
+numpy
 pandas
 pyarrow
 python-dateutil
 
-# Database and SQL connectivity
-sqlalchemy
-psycopg2-binary
-duckdb
+# Config and serialization
+pyyaml
 
-# Local data processing
+# SQL and shared connectivity
+sqlalchemy
+
+# Local databases and processing
+duckdb
 polars
+psycopg2-binary
 
 # Excel and analyst I/O
 fastexcel
 openpyxl
-xlsxwriter
 
 # Desktop app and packaging
+pathspec
 pyside6
 pyinstaller
-
-# Python packaging helpers
 setuptools
 wheel
-
-# Path and file matching utilities
-pathspec
+xlsxwriter

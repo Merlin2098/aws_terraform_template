@@ -4,10 +4,9 @@ version = "0.1.0"
 description = "AWS and Terraform data engineering template"
 requires-python = ">=3.11"
 dependencies = [
-    "great-expectations",
     "jsonschema",
+    "numpy",
     "pandas",
-    "psycopg2-binary",
     "pyarrow",
     "python-dateutil",
     "pyyaml",
@@ -16,17 +15,20 @@ dependencies = [
 
 [project.optional-dependencies]
 local = [
+    "great-expectations",
     "duckdb",
     "fastexcel",
     "openpyxl",
     "pathspec",
     "polars",
+    "psycopg2-binary",
     "pyside6",
     "pyinstaller",
     "setuptools",
     "wheel",
     "xlsxwriter",
 ]
+
 cloud = [
     "awswrangler",
     "boto3",

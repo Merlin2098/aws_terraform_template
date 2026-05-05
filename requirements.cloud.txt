@@ -1,18 +1,17 @@
-# Config and serialization
-pyyaml
-
-# Validation and contracts
+# Config and contracts
 jsonschema
-great-expectations
 
 # Core data runtime
+numpy
 pandas
 pyarrow
 python-dateutil
 
-# Database and SQL connectivity
+# Config and serialization
+pyyaml
+
+# SQL and shared connectivity
 sqlalchemy
-psycopg2-binary
 
 # Cloud SDK and AWS integration
 awswrangler

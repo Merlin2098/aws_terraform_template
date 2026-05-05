@@ -104,7 +104,7 @@ def test_uv_local_install_copies_only_uv_project_files(tmp_path: Path) -> None:
     assert not (target / "requirements.cloud.txt").exists()
 
 
-def test_uv_cloud_install_renders_hook_and_makefile_for_cloud(tmp_path: Path) -> None:
+def test_uv_cloud_install_renders_local_hook_and_makefile(tmp_path: Path) -> None:
     target = tmp_path / "host-uv-cloud"
 
     install_template(
@@ -119,9 +119,9 @@ def test_uv_cloud_install_renders_hook_and_makefile_for_cloud(tmp_path: Path) ->
     pre_commit = (target / ".pre-commit-config.yaml").read_text(encoding="utf-8")
     makefile = (target / "Makefile").read_text(encoding="utf-8")
 
-    assert "args: [--manager uv, --profile cloud]" in pre_commit
-    assert "uv sync --extra local --extra cloud" in makefile
-    assert "uv lock --upgrade\n\tuv sync --extra local --extra cloud" in makefile
+    assert "args: [--manager, uv, --profile, local]" in pre_commit
+    assert "uv sync --extra local --group dev" in makefile
+    assert "uv lock --upgrade\n\tuv sync --extra local --group dev" in makefile
     assert "uv run python scripts/package.py --package-manager uv" in makefile
 
 
