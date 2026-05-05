@@ -33,13 +33,11 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert not (target / "requirements.cloud.txt").exists()
     assert not (target / "pyproject.toml").exists()
     assert not (target / "uv.lock").exists()
-    assert {"ai/", "data/", "AGENTS.md", "Makefile"} <= set(
-        summary["gitignore_updates"]
-    )
+    assert summary["gitignore_updates"] == []
     gitignore = (target / ".gitignore").read_text(encoding="utf-8")
-    assert "ai/" in gitignore
     assert ".ai/" in gitignore
-    assert "data/" in gitignore
+    assert ".venv/" in gitignore
+    assert "Makefile" not in gitignore
 
 
 def test_cloud_install_copies_cloud_requirements(tmp_path: Path) -> None:
@@ -85,6 +83,35 @@ def test_existing_host_requirements_txt_is_left_untouched(tmp_path: Path) -> Non
     )
 
     assert requirements_txt.read_text(encoding="utf-8") == original
+
+
+def test_existing_host_gitignore_gets_only_missing_template_entries(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "host-existing-gitignore"
+    target.mkdir(parents=True)
+    host_gitignore = target / ".gitignore"
+    host_gitignore.write_text("logs/\ncustom.tmp\n.ai/\n", encoding="utf-8")
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    assert ".gitignore" in summary["skipped"]
+    assert ".venv/" in summary["gitignore_updates"]
+    assert ".ai/" not in summary["gitignore_updates"]
+    assert "Makefile" not in summary["gitignore_updates"]
+
+    gitignore = host_gitignore.read_text(encoding="utf-8")
+    assert "custom.tmp" in gitignore
+    assert gitignore.count(".ai/") == 1
+    assert ".venv/" in gitignore
+    assert "Makefile" not in gitignore
 
 
 def test_uv_local_install_copies_only_uv_project_files(tmp_path: Path) -> None:

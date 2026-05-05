@@ -130,16 +130,10 @@ Overwrite existing target files only when intentional:
 .\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --force
 ```
 
-The installer copies template files into the target repository and adds these
-entries to the target `.gitignore` if they are missing:
-
-```gitignore
-ai/
-.ai/
-data/
-AGENTS.md
-Makefile
-```
+If the target repository already has a `.gitignore`, the installer keeps that
+file and appends only the ignore rules that are present in the template
+`.gitignore` but missing in the host. If the target repository does not have a
+`.gitignore`, the template `.gitignore` is copied as-is.
 
 The installer does not run Terraform, install dependencies, initialize Git, or
 execute pre-commit in the target repository.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
-TARGET_GITIGNORE_ENTRIES = ("ai/", ".ai/", "data/", "AGENTS.md", "Makefile")
+TEMPLATE_GITIGNORE_PATH = TEMPLATE_ROOT / ".gitignore"
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
@@ -287,29 +287,36 @@ def existing_gitignore_entries(gitignore_path: Path) -> set[str]:
     }
 
 
+def template_gitignore_entries() -> list[str]:
+    return [
+        line.strip()
+        for line in TEMPLATE_GITIGNORE_PATH.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    ]
+
+
 def append_target_gitignore(target: Path, dry_run: bool) -> list[str]:
     gitignore_path = target / ".gitignore"
+    if not gitignore_path.exists():
+        return []
+
     existing = existing_gitignore_entries(gitignore_path)
-    missing = [entry for entry in TARGET_GITIGNORE_ENTRIES if entry not in existing]
+    missing = [
+        entry for entry in template_gitignore_entries() if entry not in existing
+    ]
 
     if not missing or dry_run:
         return missing
 
-    if gitignore_path.exists():
-        current = gitignore_path.read_text(encoding="utf-8")
-        needs_leading_newline = bool(current) and not current.endswith("\n")
-        prefix = "\n" if needs_leading_newline else ""
-        block_prefix = "\n" if current.strip() else ""
-        addition = (
-            f"{prefix}{block_prefix}"
-            "# Local template helper files\n" + "\n".join(missing) + "\n"
-        )
-        gitignore_path.write_text(current + addition, encoding="utf-8")
-    else:
-        gitignore_path.write_text(
-            "# Local template helper files\n" + "\n".join(missing) + "\n",
-            encoding="utf-8",
-        )
+    current = gitignore_path.read_text(encoding="utf-8")
+    needs_leading_newline = bool(current) and not current.endswith("\n")
+    prefix = "\n" if needs_leading_newline else ""
+    block_prefix = "\n" if current.strip() else ""
+    addition = (
+        f"{prefix}{block_prefix}"
+        "# Missing entries from template .gitignore\n" + "\n".join(missing) + "\n"
+    )
+    gitignore_path.write_text(current + addition, encoding="utf-8")
 
     return missing
 
