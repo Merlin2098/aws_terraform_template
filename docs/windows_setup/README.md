@@ -8,6 +8,7 @@ Use this Windows documentation set in this order:
 1. `README.md` for the general operational flow
 2. [make_install.md](make_install.md) for GNU Make installation and corporate/manual usage
 3. [uv_install.md](uv_install.md) for uv installation and corporate/manual usage
+4. [make_cheatlist.md](make_cheatlist.md) for day-to-day `make` command examples
 
 ## Prepare the Template Repository
 
@@ -88,7 +89,8 @@ To point at a specific `make.exe` explicitly:
 ```
 
 For installation details and corporate/manual make resolution, see
-[make_install.md](make_install.md).
+[make_install.md](make_install.md). For ready-to-copy command examples, see
+[make_cheatlist.md](make_cheatlist.md).
 
 ## uv Installation and Validation
 

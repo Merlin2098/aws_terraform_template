@@ -135,4 +135,6 @@ make --version
 .\scripts\windows\run_make.ps1 -n test
 ```
 
+For ready-to-copy `make` command examples, see [make_cheatlist.md](make_cheatlist.md).
+
 For uv installation and validation, see [uv_install.md](uv_install.md).

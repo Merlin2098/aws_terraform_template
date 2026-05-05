@@ -1,122 +1,140 @@
 # AGENTS.md
 
-## 🎯 Purpose
+## Purpose
 
-This repository is an AWS + Terraform data engineering template.
+This repository is an AWS + Terraform data engineering template used to
+bootstrap host repositories.
 
-The agent should assist in building:
+Agents should support work that stays valid both in this template repository and
+in host projects installed from it:
 
-* Data pipelines (Python, SQL)
-* Infrastructure (Terraform)
-* Config-driven systems
+* Python data jobs and helpers
+* SQL transformations
+* Terraform infrastructure
+* Config-driven workflows
+* Lightweight testing and packaging workflows
 
 ---
 
-## 🧠 Knowledge
+## Knowledge Sources
 
 Use:
 
-* `ai/skills/` → patterns and best practices
-* `ai/skills.yaml` → authoritative skills index
-* `ai/context.yaml` → authoritative AI context-generation configuration
+* `ai/skills/` for patterns and best practices
+* `ai/skills.yaml` as the authoritative skills index
+* `ai/context.yaml` as the authoritative AI context-generation configuration
 
-Skills are guidance only, not executable logic.
-
----
-
-## 🔄 Usage Pattern
-
-When assisting:
-
-1. Understand the objective
-2. Identify relevant skills (based on task and skill naming)
-3. Apply patterns (adapt, don’t enforce)
-4. Generate simple, explicit solutions
-5. Validate against repo principles
-6. Iterate incrementally
+These files are guidance and configuration inputs copied into host repositories.
+They are not executable orchestration logic.
 
 ---
 
-## 🧠 Skill Usage
+## Working Style
+
+When assisting in this repository or a host repository created from it:
+
+1. Understand the objective and current repository shape
+2. Search for existing implementations before proposing new files
+3. Identify relevant skills from `ai/skills/`
+4. Apply patterns as guidance, not as rigid rules
+5. Prefer simple, explicit changes over frameworks or abstractions
+6. Validate the result against repository principles and documented workflows
+
+---
+
+## Skill Usage
 
 The agent should:
 
-* Discover relevant skills automatically from `ai/skills/`
-* Treat `ai/skills.yaml` and `ai/context.yaml` as the authoritative AI configuration inputs
-* Match tasks with skill names (e.g.,  *testing* ,  *ci_cd* ,  *mocks* ,  *glue* ,  *terraform* )
-* Use skills as guidance without requiring explicit user invocation
+* discover relevant skills automatically from `ai/skills/`
+* treat `ai/skills.yaml` and `ai/context.yaml` as the source of truth for AI guidance inputs
+* match tasks with skill names such as `testing`, `ci_cd`, `mocks`, `glue`, or `terraform`
+* use skills to guide implementation without requiring explicit invocation by the user
 
-The agent must NOT:
+The agent must not:
 
 * require explicit skill invocation
-* enforce rigid mappings between tasks and skills
+* enforce rigid one-to-one mappings between tasks and skills
 * create skill composition or orchestration logic
 
 ---
 
-## ⚙️ Rules
+## Execution Rules
 
-### ❌ Never (without approval)
+Use explicit project commands only.
 
-* `terraform apply`
-* `terraform destroy`
-* Modify infrastructure state
-* Overwrite data or artifacts
+Preferred workflow:
 
-### ⚠️ Ask before
-
-* IAM changes
-* Terraform module changes
-* Data contract updates
-
----
-
-## 🧱 Principles
-
-* Separation of concerns (infra / code / config)
-* SQL separate from Python
-* Config-driven pipelines
-* Contracts-first validation
-* Prefer simple over complex
-
----
-
-## 🚀 Execution
-
-Use explicit commands only:
-
-* `make package`
-* Terraform commands directly, when intentionally managing infrastructure
+* use `make <target>` when `make` is available
+* in restricted Windows environments, use `scripts/windows/run_make.ps1` or the documented wrapper flow under `docs/windows_setup/`
+* run Terraform commands directly and intentionally from `infra/`
 
 Do not introduce hidden automation.
 
 ---
 
-## 🔒 Constraints
+## Package Manager Awareness
 
-The agent must NOT:
+Host repositories created from this template may use either `pip` or `uv`.
+
+The agent should:
+
+* inspect the files present in the repository before choosing a dependency workflow
+* follow `requirements*.txt` workflows when the host is configured for `pip`
+* follow `pyproject.toml` and `uv.lock` workflows when the host is configured for `uv`
+* keep packaging, testing, and environment guidance aligned with the package-manager choice already installed in the host
+
+---
+
+## Approval Boundaries
+
+### Never without approval
+
+* `terraform apply`
+* `terraform destroy`
+* modify infrastructure state
+* overwrite data or generated artifacts intentionally owned by users
+
+### Ask before
+
+* IAM changes
+* Terraform module changes
+* data contract updates
+
+---
+
+## Principles
+
+* separation of concerns across infra, code, and config
+* SQL separate from Python
+* config-driven pipelines
+* contracts-first validation
+* prefer simple over complex
+* keep workflows explicit and reproducible
+
+---
+
+## Constraints
+
+The agent must not:
 
 * create orchestration frameworks
-* define skill composition
+* define skill composition systems
 * introduce meta-systems
 * recreate hidden framework-like behavior
 
 ---
 
-## 📁 Existing Code Awareness
+## Existing Code Awareness
 
 Before generating any new file or artifact, the agent must:
 
-1. Search the repository for existing implementations
-2. Prefer modifying or extending existing files over creating new ones
-3. Avoid duplicating:
-   * Terraform modules
-   * ETL jobs
-   * SQL transformations
-   * Config files
+1. search the repository for existing implementations
+2. prefer modifying or extending existing files over creating new ones
+3. avoid duplicating Terraform modules, ETL jobs, SQL transformations, or config files
 
-If similar functionality exists:
-→ reuse or refactor instead of creating new files
+If similar functionality already exists, reuse or refactor it instead of
+creating parallel structures.
 
 Only create new files when:
 
@@ -125,8 +143,8 @@ Only create new files when:
 
 ---
 
-## 🔥 Philosophy
+## Philosophy
 
 Simple. Explicit. Reproducible.
 
-AI is a helper, not the system.
+AI is a helper for the host project, not the system itself.

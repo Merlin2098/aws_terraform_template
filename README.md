@@ -1,8 +1,50 @@
 # AWS + Terraform Data Engineering Template
 
-This repository is a minimal template for packaging Python data jobs and deploying AWS infrastructure with Terraform.
+This repository is a starter template for AWS-oriented data engineering
+projects. It helps teams bootstrap a host repository with explicit Python, SQL,
+Terraform, config, testing, and AI-guidance scaffolding instead of rebuilding
+the same project conventions from scratch each time.
 
-There is no runtime dependency on generated AI context, no skill orchestration, and no AI logic in execution.
+It is designed for teams that want a reproducible starting point for local or
+cloud-oriented data-platform work without introducing hidden orchestration or
+runtime AI dependencies.
+
+## What Problem It Solves
+
+Starting a new data engineering repository often means re-deciding the same
+basics:
+
+* how Python packaging and deployment bundles should work
+* how SQL, config, infrastructure, and tests should be organized
+* how local and cloud dependency profiles should be separated
+* how AI guidance files should live in the repo without becoming runtime logic
+* how to support Windows-restricted environments alongside standard shell flows
+
+This template solves that by giving you a consistent installation path and a
+simple operational model that can be copied into a host repository.
+
+## Current Status
+
+The template currently supports:
+
+* installation into another repository through Windows and Linux installer entrypoints
+* host setup for either `pip` or `uv`
+* `local` and `cloud` dependency profiles
+* optional copying of `src/`, `infra/`, and `tests/`
+* explicit project commands for packaging, tests, and AI refresh
+* Windows corporate workflows where `make.exe` may not be available in `PATH`
+
+There is no runtime dependency on generated AI context, no skill orchestration,
+and no AI logic in execution.
+
+## How It Works
+
+At a high level, teams use this template in four steps:
+
+1. Install the template into a host repository.
+2. Choose whether the host project is `local` or `cloud`.
+3. Choose whether the host manages dependencies with `pip` or `uv`.
+4. Use explicit commands for packaging, tests, AI refresh, and Terraform work.
 
 ## Structure
 
@@ -18,7 +60,7 @@ ai/                    AI guidance and AI context-generation source of truth
 tests/                 Lightweight validation
 ```
 
-## Commands
+## Common Commands
 
 ```bash
 make package
@@ -27,48 +69,74 @@ make ai-refresh
 ./scripts/windows/setup_env.ps1
 ./scripts/windows/update_venv.ps1
 ./scripts/windows/run_make.ps1 test
-./scripts/windows/run_make.ps1 uv-init
-./scripts/windows/run_make.ps1 uv-update
-./scripts/windows/run_make.ps1 -MakePath 'C:\custom\make.exe' test
 python scripts/hooks/ai_refresh.py
 python install_windows.py --target /path/to/repo --dry-run
 python install_linux.py --target /path/to/repo --dry-run
-python install_windows.py --target /path/to/repo --local --pip
-python install_linux.py --target /path/to/repo --cloud --uv
 terraform -chdir=infra init
 terraform -chdir=infra plan
-terraform -chdir=infra apply
 ```
 
-## Notes
+For Windows-specific `make` usage, including corporate environments where
+`make.exe` is not in `PATH`, see `docs/windows_setup/`.
 
-- `make package` builds `artifacts/data_platform_bundle.zip`
-- Windows setup documentation is organized under `docs/windows_setup/`:
-  - `README.md` for the general operational flow
-  - `make_install.md` for GNU Make installation
-  - `uv_install.md` for uv installation
-- `requirements.local.txt` installs the local developer environment
-- `requirements.cloud.txt` is the deployment/runtime dependency set bundled into artifacts for pip-based hosts
-- `requirements.dev.txt` contains test, lint, and Terraform-quality tooling
-- `pyproject.toml` and `uv.lock` provide the uv project dependency model
-- `.ai/` contains optional generated AI context artifacts
-- `python scripts/hooks/ai_refresh.py` generates `.ai/context_bundle.yaml`, `.ai/skills_registry.json`, `.ai/dependencies_graph.json`, and `.ai/treemap.md`
-- `ai/skills.yaml`, `ai/skills/`, and `ai/context.yaml` are the tracked AI source of truth
-- `install_windows.py` is the Windows-friendly installer entrypoint and `install_linux.py` is the CLI installer for Linux or non-GUI environments
-- Both installers ask whether to copy the optional `src/`, `infra/`, and `tests/` trees into the host repository
-- Both installers also ask whether the host project is `local` or `cloud` unless `--local` or `--cloud` is passed explicitly
-- Both installers ask whether the host project uses `pip` or `uv` unless `--pip`, `--uv`, or `--package-manager` is passed explicitly
-- Pip installs copy `requirements.local.txt` and `requirements.dev.txt` for local hosts; cloud pip installs also copy `requirements.cloud.txt`
-- Uv installs copy `pyproject.toml` and `uv.lock`, but skip all `requirements*.txt` files
-- The installer does not create or modify the host project's `requirements.txt`
-- The cloud profile stays superset-style so teams can start with a local MVP and later add cloud runtime dependencies without reinstalling the template
-- Hook helpers live under `scripts/hooks/` and quality wrappers live under `scripts/testing/` so they stay distinct from host-project operational scripts
-- In uv hosts, the dependency sync hook stays on a stable local development environment and syncs `local` plus `dev`
-- In uv hosts, Windows users can bootstrap with `.\scripts\windows\setup_env.ps1` and switch the local environment to cloud explicitly with `.\scripts\windows\update_venv.ps1 -Profile cloud`
-- In Windows corporate environments, `.\scripts\windows\run_make.ps1` can execute `make` targets even when `make.exe` is not available in `PATH`
-- The Windows make wrapper accepts `-MakePath`, then tries `make` from `PATH`, `where.exe make.exe`, and finally filesystem discovery
-- In uv hosts, `pyproject.toml` keeps shared runtime packages in the base set, local-only packages under `local`, and AWS runtime packages under `cloud`
-- In uv hosts, packaging for cloud remains separate from the local environment profile: `scripts/package.py` exports `base + cloud` dependencies from `pyproject.toml` and `uv.lock`
-- The dependency sync hook is rendered for the selected package manager; pip and uv remain separate host paths
-- Run Terraform directly from `infra/` for infrastructure changes
-- Automatic pre-commit is limited to AI refresh and dependency sync; Ruff lint, formatting, and pytest remain explicit or manual checks
+## Installation Model
+
+The template is installed into a host repository with:
+
+* `install_windows.py` for Windows-friendly setup
+* `install_linux.py` for Linux and non-GUI environments
+
+Both installers can:
+
+* preview changes with `--dry-run`
+* choose `local` or `cloud`
+* choose `pip` or `uv`
+* optionally include the starter `src/`, `infra/`, and `tests/` trees
+
+The installer copies template files into the host repository, but it does not:
+
+* run Terraform
+* install dependencies in the host
+* initialize Git
+* execute pre-commit in the host
+
+## Dependency Model
+
+The template supports two host dependency workflows.
+
+For `pip` hosts:
+
+* local installs use `requirements.local.txt` and `requirements.dev.txt`
+* cloud installs also include `requirements.cloud.txt`
+
+For `uv` hosts:
+
+* the installer copies `pyproject.toml` and `uv.lock`
+* the local development environment stays on the local profile by default
+* cloud dependencies remain an explicit step for the environment, while packaging still targets cloud runtime needs
+
+## Windows Workflow
+
+Windows support includes setup and maintenance helpers under `scripts/windows/`.
+
+In standard environments, teams can use normal `make` commands when `make` is
+available in `PATH`. In restricted corporate environments, the repository also
+supports a PowerShell wrapper flow through `scripts/windows/run_make.ps1`.
+
+Detailed setup and day-to-day command references live in:
+
+* `docs/windows_setup/README.md`
+* `docs/windows_setup/make_install.md`
+* `docs/windows_setup/uv_install.md`
+* `docs/windows_setup/make_cheatlist.md`
+
+## AI Guidance Files
+
+The `ai/` directory is the tracked source of truth for repository guidance:
+
+* `ai/skills.yaml` is the authoritative skills index
+* `ai/skills/` contains patterns and best practices
+* `ai/context.yaml` defines AI context-generation inputs
+
+The generated `.ai/` outputs are optional artifacts. They support AI-assisted
+workflows, but they are not part of runtime execution.
