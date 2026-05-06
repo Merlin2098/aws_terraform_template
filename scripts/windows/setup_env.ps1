@@ -45,7 +45,7 @@ function Assert-PythonPath {
     }
 }
 
-function New-PythonCommand {
+function New-CommandSpec {
     param(
         [string]$Command,
         [string[]]$BaseArguments,
@@ -59,13 +59,29 @@ function New-PythonCommand {
     }
 }
 
-function Test-PythonCommand {
+function Test-CommandSpec {
     param(
-        [pscustomobject]$PythonCommand
+        [pscustomobject]$CommandSpec
     )
 
-    & $PythonCommand.Command @($PythonCommand.BaseArguments + @("--version")) *> $null
-    return $LASTEXITCODE -eq 0
+    $hasNativePreference = Test-Path Variable:\PSNativeCommandUseErrorActionPreference
+    if ($hasNativePreference) {
+        $previousNativePreference = $PSNativeCommandUseErrorActionPreference
+        $PSNativeCommandUseErrorActionPreference = $false
+    }
+
+    try {
+        & $CommandSpec.Command @($CommandSpec.BaseArguments + @("--version")) *> $null
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        return $false
+    }
+    finally {
+        if ($hasNativePreference) {
+            $PSNativeCommandUseErrorActionPreference = $previousNativePreference
+        }
+    }
 }
 
 function Resolve-PythonCommand {
@@ -78,21 +94,21 @@ function Resolve-PythonCommand {
     if ($ExplicitPythonPath) {
         $attemptedResolvers += "explicit path '$ExplicitPythonPath'"
         Assert-PythonPath -Path $ExplicitPythonPath
-        $pythonCommand = New-PythonCommand -Command $ExplicitPythonPath -BaseArguments @() -Description "explicit path '$ExplicitPythonPath'"
-        if (-not (Test-PythonCommand -PythonCommand $pythonCommand)) {
+        $pythonCommand = New-CommandSpec -Command $ExplicitPythonPath -BaseArguments @() -Description "explicit path '$ExplicitPythonPath'"
+        if (-not (Test-CommandSpec -CommandSpec $pythonCommand)) {
             throw "Python at '$ExplicitPythonPath' did not respond correctly."
         }
         return $pythonCommand
     }
 
     $candidates = @(
-        (New-PythonCommand -Command "py" -BaseArguments @("-3") -Description "py -3"),
-        (New-PythonCommand -Command "python" -BaseArguments @() -Description "python from PATH")
+        (New-CommandSpec -Command "py" -BaseArguments @("-3") -Description "py -3"),
+        (New-CommandSpec -Command "python" -BaseArguments @() -Description "python from PATH")
     )
 
     foreach ($candidate in $candidates) {
         $attemptedResolvers += $candidate.Description
-        if (Test-PythonCommand -PythonCommand $candidate) {
+        if (Test-CommandSpec -CommandSpec $candidate) {
             return $candidate
         }
     }
@@ -101,31 +117,40 @@ function Resolve-PythonCommand {
     throw "Unable to resolve a working Python interpreter. Tried: $attemptedText. Install/configure Python or pass -PythonPath."
 }
 
-function Invoke-PythonCommand {
+function Invoke-CommandSpec {
     param(
-        [pscustomobject]$PythonCommand,
+        [pscustomobject]$CommandSpec,
         [string[]]$Arguments
     )
 
-    $allArguments = @($PythonCommand.BaseArguments + $Arguments)
-    & $PythonCommand.Command @allArguments
+    $allArguments = @($CommandSpec.BaseArguments + $Arguments)
+    & $CommandSpec.Command @allArguments
     if ($LASTEXITCODE -ne 0) {
         $joinedArguments = $allArguments -join " "
-        throw "Command failed: $($PythonCommand.Command) $joinedArguments"
+        throw "Command failed: $($CommandSpec.Command) $joinedArguments"
     }
 }
 
-function Assert-UvAvailable {
+function Resolve-UvCommand {
     param(
         [pscustomobject]$PythonCommand
     )
 
-    try {
-        Invoke-PythonCommand -PythonCommand $PythonCommand -Arguments @("-m", "uv", "--version")
+    $attemptedResolvers = @()
+    $candidates = @(
+        (New-CommandSpec -Command $PythonCommand.Command -BaseArguments @($PythonCommand.BaseArguments + @("-m", "uv")) -Description "uv module via $($PythonCommand.Description)"),
+        (New-CommandSpec -Command "uv" -BaseArguments @() -Description "uv from PATH")
+    )
+
+    foreach ($candidate in $candidates) {
+        $attemptedResolvers += $candidate.Description
+        if (Test-CommandSpec -CommandSpec $candidate) {
+            return $candidate
+        }
     }
-    catch {
-        throw "uv is not available through '$($PythonCommand.Description)'. Install uv for that interpreter and try again."
-    }
+
+    $attemptedText = $attemptedResolvers -join ", "
+    throw "Unable to resolve uv. Tried: $attemptedText. Install uv for the selected Python interpreter or expose uv.exe in PATH."
 }
 
 function Assert-PyProjectExists {
@@ -185,7 +210,7 @@ function Resolve-EnvironmentProfile {
 
 function Ensure-Venv {
     param(
-        [pscustomobject]$PythonCommand
+        [pscustomobject]$UvCommand
     )
 
     if (Test-Path -LiteralPath ".venv") {
@@ -194,7 +219,7 @@ function Ensure-Venv {
     }
 
     Write-Step "[Environment] Creating virtual environment with uv..." ([ConsoleColor]::Yellow)
-    Invoke-PythonCommand -PythonCommand $PythonCommand -Arguments @("-m", "uv", "venv", ".venv")
+    Invoke-CommandSpec -CommandSpec $UvCommand -Arguments @("venv", ".venv")
 }
 
 function Get-UvSyncArguments {
@@ -203,7 +228,7 @@ function Get-UvSyncArguments {
         [bool]$UseDevDependencies
     )
 
-    $arguments = @("-m", "uv", "sync", "--extra", "local")
+    $arguments = @("sync", "--extra", "local")
 
     if ($SelectedProfile -eq "cloud") {
         $arguments += @("--extra", "cloud")
@@ -228,17 +253,18 @@ $pythonCommand = Resolve-PythonCommand -ExplicitPythonPath $PythonPath
 Write-Step "[Python] Using interpreter resolved via $($pythonCommand.Description)." ([ConsoleColor]::DarkCyan)
 
 Write-Step "[Python] Validating the selected Python interpreter..." ([ConsoleColor]::Yellow)
-Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments @("--version")
+Invoke-CommandSpec -CommandSpec $pythonCommand -Arguments @("--version")
 
 Write-Phase "Phase 2: Validate Tooling"
 Write-Step "[uv] Checking whether uv is available for the selected interpreter..." ([ConsoleColor]::Yellow)
-Assert-UvAvailable -PythonCommand $pythonCommand
+$uvCommand = Resolve-UvCommand -PythonCommand $pythonCommand
+Write-Step "[uv] Using $($uvCommand.Description)." ([ConsoleColor]::DarkCyan)
 
 Write-Step "[Project] Verifying that pyproject.toml is available..." ([ConsoleColor]::Yellow)
 Assert-PyProjectExists
 
 Write-Phase "Phase 3: Prepare Environment"
-Ensure-Venv -PythonCommand $pythonCommand
+Ensure-Venv -UvCommand $uvCommand
 
 $resolvedProfile = Resolve-EnvironmentProfile -SelectedProfile $Profile
 $syncArguments = Get-UvSyncArguments -SelectedProfile $resolvedProfile -UseDevDependencies:$useDevDependencies
@@ -246,7 +272,7 @@ $dependencyMode = if ($useDevDependencies) { "including dev dependencies" } else
 
 Write-Phase "Phase 4: Sync Dependencies"
 Write-Step "[Dependencies] Syncing the environment for profile '$resolvedProfile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
-Invoke-PythonCommand -PythonCommand $pythonCommand -Arguments $syncArguments
+Invoke-CommandSpec -CommandSpec $uvCommand -Arguments $syncArguments
 
 $venvPython = Join-Path (Get-Location) ".venv\Scripts\python.exe"
 

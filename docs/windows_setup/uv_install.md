@@ -131,6 +131,8 @@ Behavior:
 - `setup_env.ps1` resolves Python automatically, validates uv, creates `.venv`
   if needed, and syncs the local environment
 - `update_venv.ps1` refreshes the environment after dependency changes
+- both wrappers prefer `python -m uv` for the selected interpreter and fall
+  back to `uv.exe` from `PATH` when that is the only valid local installation
 - the normal local uv workflow is `base + local + dev-local`
 - cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
 - the default host profile is read from `.template-profile`
