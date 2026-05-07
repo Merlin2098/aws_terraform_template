@@ -53,9 +53,9 @@ function New-CommandSpec {
     )
 
     return [pscustomobject]@{
-        Command = $Command
+        Command       = $Command
         BaseArguments = $BaseArguments
-        Description = $Description
+        Description   = $Description
     }
 }
 
@@ -129,14 +129,42 @@ function Resolve-PythonCommand {
 function Invoke-CommandSpec {
     param(
         [pscustomobject]$CommandSpec,
-        [string[]]$Arguments
+        [string[]]$Arguments,
+        [hashtable]$Environment = @{}
     )
 
     $allArguments = @($CommandSpec.BaseArguments + $Arguments)
-    & $CommandSpec.Command @allArguments
-    if ($LASTEXITCODE -ne 0) {
-        $joinedArguments = $allArguments -join " "
-        throw "Command failed: $($CommandSpec.Command) $joinedArguments"
+    $previousValues = @{}
+
+    try {
+        foreach ($entry in $Environment.GetEnumerator()) {
+            $name = [string]$entry.Key
+            if (Test-Path "Env:$name") {
+                $previousValues[$name] = (Get-Item "Env:$name").Value
+            }
+            else {
+                $previousValues[$name] = $null
+            }
+            Set-Item -Path "Env:$name" -Value ([string]$entry.Value)
+        }
+
+        & $CommandSpec.Command @allArguments
+        if ($LASTEXITCODE -ne 0) {
+            $joinedArguments = $allArguments -join " "
+            throw "Command failed: $($CommandSpec.Command) $joinedArguments"
+        }
+    }
+    finally {
+        foreach ($entry in $Environment.GetEnumerator()) {
+            $name = [string]$entry.Key
+            $previousValue = $previousValues[$name]
+            if ($null -eq $previousValue) {
+                Remove-Item "Env:$name" -ErrorAction SilentlyContinue
+            }
+            else {
+                Set-Item -Path "Env:$name" -Value $previousValue
+            }
+        }
     }
 }
 
@@ -238,11 +266,28 @@ function Get-UvSyncArguments {
         if ($SelectedProfile -eq "cloud") {
             $arguments += @("--group", "dev-cloud")
         }
-    } else {
+    }
+    else {
         $arguments += "--no-dev"
     }
 
     return $arguments
+}
+
+function Get-UvSyncEnvironment {
+    $repoRoot = (Get-Location).Path
+    $existingLinkMode = $env:UV_LINK_MODE
+
+    if ($existingLinkMode) {
+        return @{}
+    }
+
+    if ($repoRoot -like "*OneDrive*") {
+        Write-Step "[uv] OneDrive path detected. Forcing UV_LINK_MODE=copy to avoid Windows hardlink errors." ([ConsoleColor]::DarkYellow)
+        return @{ UV_LINK_MODE = "copy" }
+    }
+
+    return @{}
 }
 
 Write-Step "Starting virtual environment update from uv project files." ([ConsoleColor]::Cyan)
@@ -264,11 +309,12 @@ Assert-ProjectState
 
 $resolvedProfile = Resolve-EnvironmentProfile -SelectedProfile $Profile
 $syncArguments = Get-UvSyncArguments -SelectedProfile $resolvedProfile -UseDevDependencies:$useDevDependencies
+$syncEnvironment = Get-UvSyncEnvironment
 $dependencyMode = if ($useDevDependencies) { "including dev dependencies" } else { "without dev dependencies" }
 
 Write-Phase "Phase 3: Sync Dependencies"
 Write-Step "[Dependencies] Syncing .venv for profile '$resolvedProfile' ($dependencyMode)..." ([ConsoleColor]::Yellow)
-Invoke-CommandSpec -CommandSpec $uvCommand -Arguments $syncArguments
+Invoke-CommandSpec -CommandSpec $uvCommand -Arguments $syncArguments -Environment $syncEnvironment
 
 $venvPython = Join-Path (Get-Location) ".venv\Scripts\python.exe"
 

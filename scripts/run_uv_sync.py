@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import os
 import shutil
 import stat
 import subprocess
@@ -57,6 +58,13 @@ def lock_command() -> list[str]:
     return uv_command_prefix() + ["lock", "--upgrade"]
 
 
+def uv_environment() -> dict[str, str]:
+    env = os.environ.copy()
+    if "UV_LINK_MODE" not in env and "OneDrive" in str(REPO_ROOT):
+        env["UV_LINK_MODE"] = "copy"
+    return env
+
+
 def remove_readonly(func, path, exc_info) -> None:  # pragma: no cover - platform callback
     Path(path).chmod(stat.S_IWRITE)
     func(path)
@@ -87,6 +95,7 @@ def run(command: list[str], *, dry_run: bool) -> None:
     result = subprocess.run(
         command,
         cwd=REPO_ROOT,
+        env=uv_environment(),
         capture_output=True,
         text=True,
         check=False,
