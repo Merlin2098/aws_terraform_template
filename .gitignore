@@ -41,6 +41,10 @@ artifacts/*.zip
 # State files
 *.tfstate
 *.tfstate.*
+*.tfplan
+tfplan
+tfplan-artifact
+tfplan-destroy
 
 # Crash logs
 crash.log
