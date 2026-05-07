@@ -99,6 +99,7 @@ The agent should:
 
 * IAM changes
 * Terraform module changes
+* paid AWS services or production-grade infrastructure defaults
 * data contract updates
 
 ---
@@ -109,6 +110,7 @@ The agent should:
 * SQL separate from Python
 * config-driven pipelines
 * contracts-first validation
+* Terraform should optimize for destroyability, low-cost dev environments, reproducibility, and explicit resource ownership
 * prefer simple over complex
 * keep workflows explicit and reproducible
 

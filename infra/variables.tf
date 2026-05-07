@@ -10,6 +10,12 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "owner" {
+  description = "Owner tag applied to all managed resources."
+  type        = string
+  default     = "data-engineering"
+}
+
 variable "aws_region" {
   description = "AWS region for the deployment."
   type        = string
@@ -26,6 +32,18 @@ variable "artifact_bucket_suffix" {
   description = "Suffix appended to the generated artifact bucket name."
   type        = string
   default     = "artifacts"
+}
+
+variable "artifact_bucket_force_destroy" {
+  description = "Whether Terraform may destroy the artifact bucket even when it contains objects. Keep true for dev and sandbox environments."
+  type        = bool
+  default     = true
+}
+
+variable "enable_artifact_bucket_versioning" {
+  description = "Whether to enable versioning on the artifact bucket. Defaults to false to keep dev environments cheap and easy to destroy."
+  type        = bool
+  default     = false
 }
 
 variable "execution_role_name" {

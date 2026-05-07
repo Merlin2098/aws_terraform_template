@@ -24,12 +24,17 @@
 - Use integration tests only when needed
 - Test outputs and resource attributes
 - Cover multiple variable combinations
+- For modules that create real AWS resources, verify the apply/destroy/apply
+  cycle works without manual cleanup
+- Assert ownership-sensitive infrastructure such as log groups, retention
+  policies, and required tags
 
 ## Common patterns
 
 - Validate outputs (IDs, formats)
 - Test conditional resources (count, for_each)
 - Validate tags and configurations
+- Check that destroyable dev defaults do not leave orphan resources behind
 - Use expect_failures for negative tests
 
 ## Avoid

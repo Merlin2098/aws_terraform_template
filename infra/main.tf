@@ -5,25 +5,27 @@ locals {
   bucket_name  = "${local.name_prefix}-${data.aws_caller_identity.current.account_id}-${var.artifact_bucket_suffix}"
   artifact_key = "packages/${basename(var.artifact_path)}"
   common_tags = merge(
+    var.tags,
     {
       Project     = var.project_name
       Environment = var.environment
-      ManagedBy   = "terraform"
-    },
-    var.tags
+      Owner       = var.owner
+      ManagedBy   = "Terraform"
+    }
   )
 }
 
 resource "aws_s3_bucket" "artifacts" {
-  bucket = local.bucket_name
-  tags   = local.common_tags
+  bucket        = local.bucket_name
+  force_destroy = var.artifact_bucket_force_destroy
+  tags          = local.common_tags
 }
 
 resource "aws_s3_bucket_versioning" "artifacts" {
   bucket = aws_s3_bucket.artifacts.id
 
   versioning_configuration {
-    status = "Enabled"
+    status = var.enable_artifact_bucket_versioning ? "Enabled" : "Suspended"
   }
 }
 

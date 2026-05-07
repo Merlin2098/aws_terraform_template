@@ -79,6 +79,9 @@ terraform -chdir=infra plan
 For Windows-specific `make` usage, including corporate environments where
 `make.exe` is not in `PATH`, see `docs/windows_setup/`.
 
+For Terraform design guardrails used by this template and intended host
+repositories, see `docs/terra_principles.md`.
+
 ## Installation Model
 
 The template is installed into a host repository with:
