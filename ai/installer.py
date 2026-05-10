@@ -24,7 +24,6 @@ EXCLUDED_DIRS = {
     ".vscode",
     "build",
     "dist",
-    "docs",
     "logs",
     "venv",
     "__pycache__",
@@ -38,7 +37,15 @@ EXCLUDED_EXACT_FILES = {
     "infra/crash.log",
     "install_linux.py",
     "install_windows.py",
+    ".claude/settings.local.json",
 }
+# Entries added to the host .gitignore that are not in the template's own
+# .gitignore — they apply to host repos but not to the template itself.
+HOST_EXTRA_GITIGNORE_ENTRIES = [
+    "ai/",       # host: AI guidance is inherited read-only from the template
+    "data/",     # host: runtime data
+    "/prompt/",  # host: workflow scratch
+]
 EXCLUDED_SUFFIXES = {
     ".log",
     ".pyc",
@@ -297,11 +304,14 @@ def existing_gitignore_entries(gitignore_path: Path) -> set[str]:
 
 
 def template_gitignore_entries() -> list[str]:
-    return [
+    from_template = [
         line.strip()
         for line in TEMPLATE_GITIGNORE_PATH.read_text(encoding="utf-8").splitlines()
         if line.strip() and not line.lstrip().startswith("#")
     ]
+    seen = set(from_template)
+    extras = [e for e in HOST_EXTRA_GITIGNORE_ENTRIES if e not in seen]
+    return from_template + extras
 
 
 def append_target_gitignore(target: Path, dry_run: bool) -> list[str]:

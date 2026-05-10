@@ -82,8 +82,5 @@ override.tf.json
 .DS_Store
 Thumbs.db
 
-#Local proyect artifacts
+#Local project artifacts
 .ai/
-ai/
-data/
-/prompt/

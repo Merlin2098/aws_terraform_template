@@ -34,10 +34,15 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert not (target / "pyproject.toml").exists()
     assert not (target / "uv.lock").exists()
     assert not (target / ".template-profile").exists()
-    assert summary["gitignore_updates"] == []
+    # The 3 host-extra entries (ai/, data/, /prompt/) are not in the copied
+    # .gitignore, so append_target_gitignore adds them as updates.
+    assert set(summary["gitignore_updates"]) == {"ai/", "data/", "/prompt/"}
     gitignore = (target / ".gitignore").read_text(encoding="utf-8")
     assert ".ai/" in gitignore
     assert ".venv/" in gitignore
+    assert "ai/" in gitignore
+    assert "data/" in gitignore
+    assert "/prompt/" in gitignore
     assert "Makefile" not in gitignore
 
 
@@ -106,12 +111,16 @@ def test_existing_host_gitignore_gets_only_missing_template_entries(
     assert ".gitignore" in summary["skipped"]
     assert ".venv/" in summary["gitignore_updates"]
     assert ".ai/" not in summary["gitignore_updates"]
+    assert "ai/" in summary["gitignore_updates"]
+    assert "data/" in summary["gitignore_updates"]
+    assert "/prompt/" in summary["gitignore_updates"]
     assert "Makefile" not in summary["gitignore_updates"]
 
     gitignore = host_gitignore.read_text(encoding="utf-8")
     assert "custom.tmp" in gitignore
     assert gitignore.count(".ai/") == 1
     assert ".venv/" in gitignore
+    assert "ai/" in gitignore
     assert "Makefile" not in gitignore
 
 
@@ -201,6 +210,47 @@ def test_without_structure_does_not_create_tests_dir(tmp_path: Path) -> None:
     )
 
     assert not (target / "tests").exists()
+
+
+def test_settings_local_json_is_not_copied_to_host(tmp_path: Path) -> None:
+    target = tmp_path / "host-settings"
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    assert ".claude/settings.local.json" not in summary["copied"]
+    assert any(
+        p == ".claude/settings.local.json" or p.endswith("settings.local.json")
+        for p in summary["ignored"]
+    )
+    assert ".claude/settings.json" in summary["copied"]
+    assert (target / ".claude" / "settings.json").exists()
+    assert not (target / ".claude" / "settings.local.json").exists()
+
+
+def test_docs_directory_is_copied_to_host(tmp_path: Path) -> None:
+    target = tmp_path / "host-docs"
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    assert "docs/terra_principles.md" in summary["copied"]
+    # README.md is excluded by name in is_excluded(); check a different file.
+    assert "docs/windows_setup/make_cheatlist.md" in summary["copied"]
+    assert (target / "docs" / "terra_principles.md").exists()
+    assert (target / "docs" / "windows_setup" / "make_cheatlist.md").exists()
 
 
 def test_installer_rejects_conflicting_package_manager_flags(tmp_path: Path) -> None:
