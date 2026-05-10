@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git check-ignore *)",
+      "Bash(.venv/Scripts/python.exe scripts/testing/run_pytest.py)",
+      "Bash(.venv/Scripts/python.exe install_linux.py --target /tmp/host-test --without-structure --local --pip --dry-run)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
+    ]
+  }
+}
