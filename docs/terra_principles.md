@@ -1,4 +1,4 @@
-# Terraform/AWS Guardrails for Codex Agents
+# Terraform/AWS Guardrails for Agents
 
 ## Core Principles
 

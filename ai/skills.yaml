@@ -97,3 +97,7 @@ terraform_security:
 terraform_style:
   path: ai/skills/terraform/terraform_style.md
   description: Terraform code structure and style conventions
+
+state_management:
+  path: ai/skills/terraform/state_management.md
+  description: Terraform state backends, overrides, and hygiene
