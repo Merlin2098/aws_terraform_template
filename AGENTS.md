@@ -23,6 +23,8 @@ Use:
 * `ai/skills/` for patterns and best practices
 * `ai/skills.yaml` as the authoritative skills index
 * `ai/context.yaml` as the authoritative AI context-generation configuration
+* `specs/template/` for inherited template contracts (cloud profile only, read-only)
+* `specs/project/` for host-authored project specs (cloud profile only)
 
 These files are guidance and configuration inputs copied into host repositories.
 They are not executable orchestration logic.

@@ -9,6 +9,7 @@ TEMPLATE_GITIGNORE_PATH = TEMPLATE_ROOT / ".gitignore"
 TEMPLATE_PROFILE_PATH = Path(".template-profile")
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
+CLOUD_ONLY_TOP_LEVEL_DIRS = {"specs"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
 PACKAGE_MANAGERS = {"pip", "uv"}
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
@@ -43,6 +44,7 @@ EXCLUDED_EXACT_FILES = {
 # .gitignore — they apply to host repos but not to the template itself.
 HOST_EXTRA_GITIGNORE_ENTRIES = [
     "ai/",                        # host: AI guidance is inherited read-only from the template
+    "specs/template/",            # host: template specs are inherited read-only from the template
     "data/",                      # host: runtime data
     "/prompt/",                   # host: workflow scratch
     ".claude/settings.local.json", # host: personal Claude Code settings
@@ -88,7 +90,9 @@ def is_excluded(path: Path) -> bool:
         return True
     if relative in EXCLUDED_EXACT_FILES:
         return True
-    if path.name in {"README.md", "Thumbs.db", ".DS_Store"}:
+    if path.name in {"README.md", "Thumbs.db", ".DS_Store"} and not relative.startswith(
+        "specs/"
+    ):
         return True
     if path.suffix in EXCLUDED_SUFFIXES:
         return True
@@ -201,6 +205,17 @@ def should_copy_structure_path(relative: Path, include_structure: bool) -> bool:
     return True
 
 
+def should_copy_specs_path(relative: Path, environment_profile: str) -> bool:
+    if not relative.parts:
+        return True
+    if (
+        relative.parts[0] in CLOUD_ONLY_TOP_LEVEL_DIRS
+        and environment_profile != "cloud"
+    ):
+        return False
+    return True
+
+
 def iter_template_files(
     *, include_structure: bool, environment_profile: str, package_manager: str
 ) -> tuple[list[Path], list[Path]]:
@@ -211,6 +226,9 @@ def iter_template_files(
         for path in sorted(directory.iterdir(), key=lambda item: item.name.lower()):
             relative = path.relative_to(TEMPLATE_ROOT)
             if not should_copy_structure_path(relative, include_structure):
+                ignored.append(path)
+                continue
+            if not should_copy_specs_path(relative, environment_profile):
                 ignored.append(path)
                 continue
             if not should_copy_package_file(
