@@ -52,7 +52,7 @@ def test_uv_local_main_syncs_local_extra(tmp_path: Path, monkeypatch) -> None:
 
     sync_dependencies.main()
 
-    assert calls == [["uv", "sync", "--extra", "local", "--group", "dev"]]
+    assert calls == [["uv", "sync", "--extra", "local", "--group", "dev-local"]]
 
 
 def test_uv_cloud_main_syncs_local_and_cloud_extras(
@@ -74,7 +74,7 @@ def test_uv_cloud_main_syncs_local_and_cloud_extras(
     sync_dependencies.main()
 
     assert calls == [
-        ["uv", "sync", "--extra", "local", "--group", "dev", "--extra", "cloud"]
+        ["uv", "sync", "--extra", "local", "--group", "dev-local", "--extra", "cloud", "--group", "dev-cloud"]
     ]
 
 
