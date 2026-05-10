@@ -10,10 +10,12 @@ Treat state as part of the architecture, not an afterthought.
 
 ## Remote backend (shared environments)
 
-- Use S3 + DynamoDB only when state must be shared across users or CI.
-- Bucket: versioning enabled, encryption enabled, `force_destroy=false`.
-- DynamoDB table for locking (`PAY_PER_REQUEST`, hash key `LockID`).
-- Configure via `backend.tf` (gitignored — host-specific).
+- Use the S3 backend only when state must be shared across users or CI.
+- Bucket: versioning enabled, encryption enabled, `force_destroy = false`.
+- Use S3 native locking via `use_lockfile = true` instead of DynamoDB.
+  Requires Terraform `>= 1.10` and AWS provider `>= 5.81`.
+- Configure via `backend.tf` (gitignored — host-specific). Start from
+  `infra/backend.tf.example`.
 
 ## Override files
 
