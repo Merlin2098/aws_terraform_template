@@ -34,15 +34,18 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert not (target / "pyproject.toml").exists()
     assert not (target / "uv.lock").exists()
     assert not (target / ".template-profile").exists()
-    # The 3 host-extra entries (ai/, data/, /prompt/) are not in the copied
-    # .gitignore, so append_target_gitignore adds them as updates.
-    assert set(summary["gitignore_updates"]) == {"ai/", "data/", "/prompt/"}
+    # Host-extra entries are not in the copied .gitignore, so
+    # append_target_gitignore adds them as updates.
+    assert set(summary["gitignore_updates"]) == {
+        "ai/", "data/", "/prompt/", ".claude/settings.local.json"
+    }
     gitignore = (target / ".gitignore").read_text(encoding="utf-8")
     assert ".ai/" in gitignore
     assert ".venv/" in gitignore
     assert "ai/" in gitignore
     assert "data/" in gitignore
     assert "/prompt/" in gitignore
+    assert ".claude/settings.local.json" in gitignore
     assert "Makefile" not in gitignore
 
 
@@ -114,6 +117,7 @@ def test_existing_host_gitignore_gets_only_missing_template_entries(
     assert "ai/" in summary["gitignore_updates"]
     assert "data/" in summary["gitignore_updates"]
     assert "/prompt/" in summary["gitignore_updates"]
+    assert ".claude/settings.local.json" in summary["gitignore_updates"]
     assert "Makefile" not in summary["gitignore_updates"]
 
     gitignore = host_gitignore.read_text(encoding="utf-8")

@@ -42,9 +42,10 @@ EXCLUDED_EXACT_FILES = {
 # Entries added to the host .gitignore that are not in the template's own
 # .gitignore — they apply to host repos but not to the template itself.
 HOST_EXTRA_GITIGNORE_ENTRIES = [
-    "ai/",       # host: AI guidance is inherited read-only from the template
-    "data/",     # host: runtime data
-    "/prompt/",  # host: workflow scratch
+    "ai/",                        # host: AI guidance is inherited read-only from the template
+    "data/",                      # host: runtime data
+    "/prompt/",                   # host: workflow scratch
+    ".claude/settings.local.json", # host: personal Claude Code settings
 ]
 EXCLUDED_SUFFIXES = {
     ".log",
