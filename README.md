@@ -19,6 +19,7 @@ basics:
 * how local and cloud dependency profiles should be separated
 * how AI guidance files should live in the repo without becoming runtime logic
 * how to support Windows-restricted environments alongside standard shell flows
+* how project contracts (specs) should be separated from patterns (skills) and hard rules (principles)
 
 This template solves that by giving you a consistent installation path and a
 simple operational model that can be copied into a host repository.
@@ -31,6 +32,8 @@ The template currently supports:
 * host setup for either `pip` or `uv`
 * `local` and `cloud` dependency profiles
 * optional copying of `src/`, `infra/`, and `tests/`
+* a `specs/` layer for project contracts, cloud-profile only, with a clear separation between template-owned specs (`specs/template/`) and host-authored specs (`specs/project/`)
+* an opt-in remote Terraform backend example using S3 native locking (no DynamoDB)
 * explicit project commands for packaging, tests, and AI refresh
 * Windows corporate workflows where `make.exe` may not be available in `PATH`
 
@@ -57,6 +60,9 @@ src/contracts/         Data contracts
 scripts/               Explicit project helpers plus internal hook/testing wrappers
 artifacts/             Generated deployment bundles
 ai/                    AI guidance and AI context-generation source of truth
+specs/                 Project contracts (cloud profile only)
+  specs/template/      Template-owned contracts — read-only in host repos
+  specs/project/       Host-authored contracts — written by the host project
 tests/                 Lightweight validation
 ```
 
@@ -145,3 +151,42 @@ The `ai/` directory is the tracked source of truth for repository guidance:
 
 The generated `.ai/` outputs are optional artifacts. They support AI-assisted
 workflows, but they are not part of runtime execution.
+
+## Project Contracts (specs/)
+
+The `specs/` directory holds project contracts: short, durable documents that
+state what is true, expected, or invariant about the project. Contracts
+complement skills (patterns) and principles (hard rules) without overlapping
+them.
+
+`specs/` is only present in **cloud-profile** installations. Local-profile
+hosts do not receive this folder.
+
+The folder is split into two areas:
+
+* `specs/template/` — contracts inherited from the template. Read-only in host
+  repos; refresh by re-running the installer.
+* `specs/project/` — empty placeholder in the template. The host project writes
+  its own contracts here, following the format defined in
+  `specs/template/000-template-spec-format.md`.
+
+Template specs cover the template contract, the `infra/` baseline invariants,
+and how the guidance layers (skills, specs, principles) relate to each other.
+
+## Remote Terraform Backend
+
+By default, Terraform uses a local backend for dev and sandbox work. When you
+need to share state across users or CI, the template ships an opt-in example:
+
+```bash
+cp infra/backend.tf.example infra/backend.tf
+# edit bucket, key, and region, then:
+terraform -chdir=infra init
+```
+
+The example uses **S3 native locking** (`use_lockfile = true`) introduced in
+Terraform 1.10 and AWS provider 5.81. No DynamoDB table is required. The state
+bucket should have versioning enabled and `force_destroy = false`.
+
+`backend.tf` is gitignored (host-specific). `backend.tf.example` is versioned
+and safe to commit.
