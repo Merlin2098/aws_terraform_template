@@ -176,7 +176,9 @@ function Resolve-UvCommand {
     $attemptedResolvers = @()
     $candidates = @(
         (New-CommandSpec -Command $PythonCommand.Command -BaseArguments @($PythonCommand.BaseArguments + @("-m", "uv")) -Description "uv module via $($PythonCommand.Description)"),
-        (New-CommandSpec -Command "uv" -BaseArguments @() -Description "uv from PATH")
+        (New-CommandSpec -Command "uv" -BaseArguments @() -Description "uv from PATH"),
+        (New-CommandSpec -Command "py" -BaseArguments @("-3", "-m", "uv") -Description "uv module via py -3"),
+        (New-CommandSpec -Command "python" -BaseArguments @("-m", "uv") -Description "uv module via python from PATH")
     )
 
     foreach ($candidate in $candidates) {
