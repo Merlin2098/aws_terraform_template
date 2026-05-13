@@ -45,6 +45,7 @@ artifacts/*.zip
 tfplan
 tfplan-artifact
 tfplan-destroy
+*tfplan*
 
 # Crash logs
 crash.log
