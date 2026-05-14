@@ -58,6 +58,39 @@ Expected behavior:
 
 Reference: https://community.chocolatey.org/packages/make
 
+### Add Make to PATH Permanently (PowerShell, Admin)
+
+If `make.exe` is already installed but not yet in the system `PATH`, run this
+once from an Administrator PowerShell session:
+
+```powershell
+$makePath = (Get-Command make -ErrorAction SilentlyContinue)?.Source |
+    Split-Path -Parent
+
+if (-not $makePath) {
+    # Chocolatey default location — adjust if installed elsewhere
+    $makePath = "$env:ChocolateyInstall\bin"
+}
+
+[System.Environment]::SetEnvironmentVariable(
+    "Path",
+    [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";$makePath",
+    "Machine"
+)
+Write-Host "Added to system PATH: $makePath"
+```
+
+Close and reopen PowerShell, then verify:
+
+```powershell
+make --version
+Get-Command make
+```
+
+This writes to the **Machine** scope so the change persists for all users and
+survives reboots. Use scope `"User"` instead if you only want it for your
+profile and do not have admin rights.
+
 ## 2. GNU Make Without Administrator Rights
 
 Use this path when you cannot install system-wide tools and must keep the setup
