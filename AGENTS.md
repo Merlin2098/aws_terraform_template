@@ -103,6 +103,8 @@ The agent should:
 * Terraform module changes
 * paid AWS services or production-grade infrastructure defaults
 * data contract updates
+* budget limit or alert email changes
+* CloudWatch log group deletion or retention reduction
 
 ---
 
@@ -163,8 +165,10 @@ follow the discovery flow in *Skill Usage*.
 | Step Functions orchestration | `ai/skills/aws/step_functions.md` |
 | Scheduling / event-driven | `ai/skills/aws/eventbridge.md` |
 | S3 / data lake storage | `ai/skills/aws/s3_data_lake.md` |
-| AWS logging / observability | `ai/skills/aws/cloudwatch_logging.md` |
+| AWS logging / observability | `ai/skills/aws/cloudwatch_logging.md`, `ai/skills/terraform/terraform_observability.md` |
 | IAM (policies, roles) | `ai/skills/aws/iam_policies.md`, `ai/skills/terraform/iam_least_privilege.md` |
+| Smoke testing AWS resources | `ai/skills/aws/aws_smoke_testing.md` |
+| Tagging, budgets, drift management, lifecycle governance | `ai/skills/terraform/terraform_governance.md` |
 | Writing or refactoring Terraform | `ai/skills/terraform/terraform_style.md`, `ai/skills/terraform/modules.md` |
 | Terraform state / backends | `ai/skills/terraform/state_management.md` |
 | Terraform tests / mocks | `ai/skills/terraform/terraform_testing.md`, `ai/skills/terraform/terraform_mocks.md` |
@@ -172,6 +176,47 @@ follow the discovery flow in *Skill Usage*.
 | Importing existing resources | `ai/skills/terraform/terraform_import_manual.md`, `ai/skills/terraform/terraform_import_discovery.md` |
 | Module refactor / multi-env | `ai/skills/terraform/terraform_refactoring.md`, `ai/skills/terraform/terraform_stacks.md` |
 | Infra security review | `ai/skills/terraform/terraform_security.md` |
+
+---
+
+## AI Agent Operational Policies (SPEC-009)
+
+These rules apply when working in this template or in any host repository
+created from it.
+
+### The agent MUST
+
+* declare `aws_cloudwatch_log_group` explicitly for every service that produces logs
+* set `retention_in_days` on every log group — never omit it
+* include `aws_budgets_budget` when deploying any environment
+* apply `local.common_tags` (including `CostCenter`) to every resource
+* expose `log_group_name`, `log_group_arn`, and `resource_arn` as outputs in every module
+* generate `tests/aws/` validation scripts in host repositories when deploying AWS infrastructure
+  (see `ai/skills/aws/aws_smoke_testing.md` for structure and templates)
+* validate IAM roles before applying infrastructure changes
+
+### The agent MUST NOT
+
+* delete or overwrite `terraform.tfstate`
+* enable S3 versioning by default — only when explicitly requested and justified
+* assume implicit IAM permissions — all permissions must be declared in Terraform
+* create resources without mandatory tags
+* omit `retention_in_days` on CloudWatch log groups
+
+### Host repository obligation
+
+When deploying AWS resources in a host repository, generate `tests/aws/` with:
+
+```
+tests/aws/
+├── precheck/   # validate_iam.ps1, validate_tags.ps1, validate_budget.ps1, smoke_resources.ps1
+├── smoke/      # smoke_s3.ps1, smoke_cloudwatch.ps1
+├── logs/       # download_cloudwatch_logs.ps1, export_pipeline_outputs.ps1
+├── gitbash/    # precheck.sh (bash equivalent for CI/Linux)
+└── README.md
+```
+
+Scripts must read resource identifiers from `terraform output` — never hardcode names or ARNs.
 
 ---
 

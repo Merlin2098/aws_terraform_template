@@ -101,3 +101,15 @@ terraform_style:
 state_management:
   path: ai/skills/terraform/state_management.md
   description: Terraform state backends, overrides, and hygiene
+
+aws_smoke_testing:
+  path: ai/skills/aws/aws_smoke_testing.md
+  description: Smoke test and validation scripts for AWS resources — generates tests/aws/ in host repositories
+
+terraform_observability:
+  path: ai/skills/terraform/terraform_observability.md
+  description: CloudWatch log groups, retention policies, and mandatory observability outputs
+
+terraform_governance:
+  path: ai/skills/terraform/terraform_governance.md
+  description: Tagging enforcement, budget governance, drift management, and versioning policy

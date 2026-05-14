@@ -57,3 +57,27 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+variable "cost_center" {
+  description = "Cost center tag for budget allocation and cost reporting."
+  type        = string
+  default     = "engineering"
+}
+
+variable "log_retention_days" {
+  description = "CloudWatch log retention in days. Use 7 for demos and labs; set higher for production per compliance requirements."
+  type        = number
+  default     = 7
+}
+
+variable "budget_limit_usd" {
+  description = "Monthly AWS budget limit in USD. Alerts fire at 80% (actual) and 100% (forecasted)."
+  type        = number
+  default     = 25
+}
+
+variable "budget_alert_email" {
+  description = "Email address for budget alerts. Leave empty to skip SNS subscription creation."
+  type        = string
+  default     = ""
+}
