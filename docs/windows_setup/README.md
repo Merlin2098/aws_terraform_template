@@ -61,6 +61,11 @@ To run all configured hooks manually:
 .\.venv\Scripts\pre-commit.exe run --all-files
 ```
 
+In this template repository, the `sync-dependencies` hook defaults to `uv`
+because the template itself is maintained with `pyproject.toml` and `uv.lock`.
+When the installer creates a pip-based host, it rewrites that hook to use
+`--manager pip` and the selected host profile instead.
+
 Reference: https://pre-commit.com/
 
 ## Refresh or Change the Environment
@@ -157,14 +162,16 @@ When the target host chooses `pip`:
 
 - the installer copies `requirements.local.txt` and `requirements.dev.txt`
 - for cloud pip hosts, it also copies `requirements.cloud.txt`
-- the host hook and `Makefile` are rendered for pip-based dependency sync
+- the host hook is rewritten to run `sync_dependencies.py --manager pip --profile <selected-profile>`
+- the `Makefile` is rendered for pip-based dependency sync
 
 When the target host chooses `uv`:
 
 - the installer copies `pyproject.toml` and `uv.lock`
 - it writes `.template-profile` with the selected host profile
 - it skips all `requirements*.txt` files
-- the host hook and `Makefile` use that persisted profile by default
+- the host hook keeps the template `uv` behavior
+- the `Makefile` uses the persisted profile by default
 - local hosts default to `base + local + dev-local`
 - cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
 

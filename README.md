@@ -117,11 +117,13 @@ For `pip` hosts:
 
 * local installs use `requirements.local.txt` and `requirements.dev.txt`
 * cloud installs also include `requirements.cloud.txt`
+* the installer rewrites the `sync-dependencies` hook to run with `--manager pip` and the selected profile
 
 For `uv` hosts:
 
 * the installer copies `pyproject.toml` and `uv.lock`
 * the installer also persists the selected host profile in `.template-profile`
+* the `sync-dependencies` hook keeps the template's `uv` default
 * local hosts sync `base + local + dev-local` by default
 * cloud hosts sync `base + local + cloud + dev-local + dev-cloud` by default
 * packaging still targets cloud runtime needs
