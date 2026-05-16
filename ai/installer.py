@@ -45,6 +45,11 @@ EXCLUDED_EXACT_FILES = {
 HOST_EXTRA_GITIGNORE_ENTRIES = [
     "ai/",                        # host: AI guidance is inherited read-only from the template
     "specs/template/",            # host: template specs are inherited read-only from the template
+    "specs/README.md",            # host: template-owned specs index
+    "docs/windows_setup/",        # host: template-owned Windows setup guide
+    "docs/terra_principles.md",   # host: template-owned Terraform principles doc
+    "docs/terraform_cheatsheet.md", # host: template-owned Terraform cheat sheet
+    "docs/treemap.md",            # host: template-owned repo treemap
     "data/",                      # host: runtime data
     "/prompt/",                   # host: workflow scratch
     ".claude/settings.local.json", # host: personal Claude Code settings

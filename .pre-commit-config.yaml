@@ -1,6 +1,7 @@
 repos:
   - repo: local
     hooks:
+      # Refresh AI-generated repository context before each commit.
       - id: ai-refresh
         name: AI refresh
         entry: python scripts/hooks/ai_refresh.py
@@ -9,20 +10,7 @@ repos:
           - pyyaml
         pass_filenames: false
         stages: [pre-commit]
-      - id: ruff-lint
-        name: ruff lint
-        entry: python scripts/testing/run_ruff_check.py
-        language: python
-        additional_dependencies:
-          - ruff
-        pass_filenames: false
-        stages: [manual]
-      - id: pytest
-        name: pytest
-        entry: python scripts/testing/run_pytest.py
-        language: system
-        pass_filenames: false
-        stages: [manual]
+      # Sync the local environment when dependency definition files change.
       - id: sync-dependencies
         name: Sync virtual environment dependencies
         entry: python scripts/hooks/sync_dependencies.py
