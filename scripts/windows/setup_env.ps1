@@ -256,10 +256,10 @@ function Get-UvSyncArguments {
         [bool]$UseDevDependencies
     )
 
-    $arguments = @("sync", "--extra", "local")
+    $arguments = @("sync")
 
     if ($SelectedProfile -eq "cloud") {
-        $arguments += @("--extra", "cloud")
+        $arguments += @("--extra", "local", "--extra", "cloud")
     }
 
     if ($UseDevDependencies) {

@@ -36,9 +36,19 @@ def test_local_install_copies_only_local_and_dev_requirements(tmp_path: Path) ->
     assert not (target / ".template-profile").exists()
     # Host-extra entries are not in the copied .gitignore, so
     # append_target_gitignore adds them as updates.
-    assert set(summary["gitignore_updates"]) == {
-        "ai/", "data/", "/prompt/", ".claude/settings.local.json"
-    }
+    assert {
+        "ai/",
+        "docs/linux_setup/",
+        "docs/windows_setup/",
+        "specs/template/",
+        "specs/README.md",
+        "docs/terra_principles.md",
+        "docs/terraform_cheatsheet.md",
+        "docs/treemap.md",
+        "data/",
+        "/prompt/",
+        ".claude/settings.local.json",
+    }.issubset(set(summary["gitignore_updates"]))
     gitignore = (target / ".gitignore").read_text(encoding="utf-8")
     assert ".ai/" in gitignore
     assert ".venv/" in gitignore
@@ -115,6 +125,7 @@ def test_existing_host_gitignore_gets_only_missing_template_entries(
     assert ".venv/" in summary["gitignore_updates"]
     assert ".ai/" not in summary["gitignore_updates"]
     assert "ai/" in summary["gitignore_updates"]
+    assert "docs/linux_setup/" in summary["gitignore_updates"]
     assert "data/" in summary["gitignore_updates"]
     assert "/prompt/" in summary["gitignore_updates"]
     assert ".claude/settings.local.json" in summary["gitignore_updates"]
@@ -253,8 +264,80 @@ def test_docs_directory_is_copied_to_host(tmp_path: Path) -> None:
     assert "docs/terra_principles.md" in summary["copied"]
     # README.md is excluded by name in is_excluded(); check a different file.
     assert "docs/windows_setup/make_cheatlist.md" in summary["copied"]
+    assert "docs/linux_setup/make_cheatlist.md" in summary["copied"]
     assert (target / "docs" / "terra_principles.md").exists()
     assert (target / "docs" / "windows_setup" / "make_cheatlist.md").exists()
+    assert (target / "docs" / "linux_setup" / "make_cheatlist.md").exists()
+
+
+def test_linux_setup_readme_stays_template_only(tmp_path: Path) -> None:
+    target = tmp_path / "host-linux-docs"
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    assert "docs/linux_setup/README.md" not in summary["copied"]
+    assert "docs/linux_setup/README.md" in summary["ignored"]
+    assert not (target / "docs" / "linux_setup" / "README.md").exists()
+
+
+def test_run_uv_sync_uses_template_profile_and_can_skip_dev_groups(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import scripts.run_uv_sync as run_uv_sync
+
+    profile_file = tmp_path / ".template-profile"
+    profile_file.write_text("environment_profile=cloud\n", encoding="utf-8")
+
+    monkeypatch.setattr(run_uv_sync, "PROFILE_FILE", profile_file)
+    monkeypatch.setattr(run_uv_sync.shutil, "which", lambda name: None)
+
+    assert run_uv_sync.resolve_profile(None) == "cloud"
+    command = run_uv_sync.sync_command(
+        "local", use_dev_dependencies=False, python_path="/usr/bin/python3"
+    )
+    assert command == [
+        "/usr/bin/python3",
+        "-m",
+        "uv",
+        "sync",
+        "--no-dev",
+    ]
+
+    cloud_command = run_uv_sync.sync_command(
+        "cloud", use_dev_dependencies=False, python_path="/usr/bin/python3"
+    )
+    assert cloud_command == [
+        "/usr/bin/python3",
+        "-m",
+        "uv",
+        "sync",
+        "--extra",
+        "local",
+        "--extra",
+        "cloud",
+        "--no-dev",
+    ]
+
+
+def test_run_uv_sync_parse_args_rejects_conflicting_dev_flags(monkeypatch) -> None:
+    import pytest
+    import scripts.run_uv_sync as run_uv_sync
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_uv_sync.py", "init", "--include-dev", "--no-dev"],
+    )
+
+    with pytest.raises(SystemExit):
+        run_uv_sync.parse_args()
 
 
 def test_installer_rejects_conflicting_package_manager_flags(tmp_path: Path) -> None:

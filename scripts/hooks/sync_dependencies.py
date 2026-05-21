@@ -80,9 +80,12 @@ def uv_command_prefix() -> list[str]:
 
 def install_command(manager: str, profile: str, paths: tuple[Path, ...]) -> list[str]:
     if manager == "uv":
-        command = uv_command_prefix() + ["sync", "--extra", "local", "--group", "dev-local"]
+        command = uv_command_prefix() + ["sync"]
         if profile == "cloud":
-            command.extend(["--extra", "cloud", "--group", "dev-cloud"])
+            command.extend(["--extra", "local", "--extra", "cloud"])
+        command.extend(["--group", "dev-local"])
+        if profile == "cloud":
+            command.extend(["--group", "dev-cloud"])
         return command
 
     command = [str(venv_python()), "-m", "pip", "install"]

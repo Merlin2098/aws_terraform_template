@@ -72,18 +72,21 @@ tests/                 Lightweight validation
 make package
 make test
 make ai-refresh
+./scripts/linux/setup_env.sh
+./scripts/linux/update_venv.sh
 ./scripts/windows/setup_env.ps1
 ./scripts/windows/update_venv.ps1
 ./scripts/windows/run_make.ps1 test
-python scripts/hooks/ai_refresh.py
+python3 scripts/hooks/ai_refresh.py
 python install_windows.py --target /path/to/repo --dry-run
-python install_linux.py --target /path/to/repo --dry-run
+python3 install_linux.py --target /path/to/repo --dry-run
 terraform -chdir=infra init
 terraform -chdir=infra plan
 ```
 
-For Windows-specific `make` usage, including corporate environments where
-`make.exe` is not in `PATH`, see `docs/windows_setup/`.
+For Linux setup, including Ubuntu-style `uv` and `make` usage, see
+`docs/linux_setup/`. For Windows-specific `make` usage, including corporate
+environments where `make.exe` is not in `PATH`, see `docs/windows_setup/`.
 
 For Terraform design guardrails used by this template and intended host
 repositories, see `docs/terra_principles.md`.
@@ -109,6 +112,10 @@ The installer copies template files into the host repository, but it does not:
 * initialize Git
 * execute pre-commit in the host
 
+Use `install_linux.py` or `install_windows.py` only to copy the template into a
+host repository. To bootstrap the current repository environment, use the OS
+setup wrappers under `scripts/linux/` or `scripts/windows/`.
+
 ## Dependency Model
 
 The template supports two host dependency workflows.
@@ -124,9 +131,28 @@ For `uv` hosts:
 * the installer copies `pyproject.toml` and `uv.lock`
 * the installer also persists the selected host profile in `.template-profile`
 * the `sync-dependencies` hook keeps the template's `uv` default
-* local hosts sync `base + local + dev-local` by default
+* local hosts sync `base + dev-local` by default
 * cloud hosts sync `base + local + cloud + dev-local + dev-cloud` by default
-* packaging still targets cloud runtime needs
+* packaging still targets cloud runtime needs, even when local development stays on the lighter local profile
+
+## Linux Workflow
+
+Linux support includes setup and maintenance helpers under `scripts/linux/`.
+
+On Ubuntu and similar distributions, native `make` is the standard path and the
+repository provides explicit shell wrappers for uv environment setup:
+
+* `./scripts/linux/setup_env.sh`
+* `./scripts/linux/update_venv.sh`
+* `make uv-init`
+* `make uv-update`
+* `make test`
+
+Detailed setup and day-to-day command references live in:
+
+* `docs/linux_setup/README.md`
+* `docs/linux_setup/uv_install.md`
+* `docs/linux_setup/make_cheatlist.md`
 
 ## Windows Workflow
 

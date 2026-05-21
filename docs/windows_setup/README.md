@@ -25,7 +25,6 @@ This Windows wrapper resolves Python automatically, validates `uv`, creates
 By default, the local uv workflow installs:
 
 - the shared base dependencies from `pyproject.toml`
-- the `local` optional dependency set
 - the `dev-local` dependency group
 
 The cloud uv workflow installs:
@@ -83,7 +82,7 @@ To prepare the local environment with cloud dependencies explicitly:
 ```
 
 For uv-based hosts, the default profile comes from `.template-profile`. A local
-host stays on `base + local + dev-local` unless you override it explicitly, and
+host stays on `base + dev-local` unless you override it explicitly, and
 a cloud host defaults to `base + local + cloud + dev-local + dev-cloud`.
 
 ## Use Make On Windows
@@ -172,7 +171,7 @@ When the target host chooses `uv`:
 - it skips all `requirements*.txt` files
 - the host hook keeps the template `uv` behavior
 - the `Makefile` uses the persisted profile by default
-- local hosts default to `base + local + dev-local`
+- local hosts default to `base + dev-local`
 - cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
 
 For uv-based hosts, packaging for deployment still uses the cloud dependency set

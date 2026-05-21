@@ -165,7 +165,7 @@ def test_uv_sync_wrapper_dry_run_init() -> None:
     )
 
     assert result.returncode == 0, result.stderr
-    assert "sync --extra local --group dev-local" in result.stdout
+    assert "sync --group dev-local" in result.stdout
 
 
 def test_uv_sync_wrapper_reads_persisted_cloud_profile(tmp_path: Path) -> None:
@@ -187,4 +187,4 @@ def test_uv_sync_wrapper_reads_persisted_cloud_profile(tmp_path: Path) -> None:
         profile_path.write_text(original, encoding="utf-8")
 
     assert result.returncode == 0, result.stderr
-    assert "sync --extra local --group dev-local --extra cloud --group dev-cloud" in result.stdout
+    assert "sync --extra local --extra cloud --group dev-local --group dev-cloud" in result.stdout

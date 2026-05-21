@@ -36,7 +36,9 @@ def test_pip_main_installs_profile_requirements(tmp_path: Path, monkeypatch) -> 
     ]
 
 
-def test_uv_local_main_syncs_local_extra(tmp_path: Path, monkeypatch) -> None:
+def test_uv_local_main_syncs_base_only_plus_local_dev_group(
+    tmp_path: Path, monkeypatch
+) -> None:
     monkeypatch.chdir(tmp_path)
     (tmp_path / "pyproject.toml").write_text("[project]\nname='x'\n", encoding="utf-8")
     calls: list[list[str]] = []
@@ -52,7 +54,7 @@ def test_uv_local_main_syncs_local_extra(tmp_path: Path, monkeypatch) -> None:
 
     sync_dependencies.main()
 
-    assert calls == [["uv", "sync", "--extra", "local", "--group", "dev-local"]]
+    assert calls == [["uv", "sync", "--group", "dev-local"]]
 
 
 def test_uv_cloud_main_syncs_local_and_cloud_extras(
@@ -74,7 +76,18 @@ def test_uv_cloud_main_syncs_local_and_cloud_extras(
     sync_dependencies.main()
 
     assert calls == [
-        ["uv", "sync", "--extra", "local", "--group", "dev-local", "--extra", "cloud", "--group", "dev-cloud"]
+        [
+            "uv",
+            "sync",
+            "--extra",
+            "local",
+            "--extra",
+            "cloud",
+            "--group",
+            "dev-local",
+            "--group",
+            "dev-cloud",
+        ]
     ]
 
 
