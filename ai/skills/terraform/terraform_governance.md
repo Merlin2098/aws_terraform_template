@@ -158,6 +158,37 @@ Never delete `terraform.tfstate` to resolve drift — this orphans infrastructur
 
 ---
 
+## Per-Service Cost Awareness
+
+Some services in this stack have variable, per-unit pricing that makes budget overruns easy to miss. Apply closer monitoring to:
+
+| Service | Billing driver | Risk |
+|---|---|---|
+| Bedrock | Per input/output token | Runaway LLM calls in loops or retries |
+| Textract | Per page analysed | Multi-page TIF files at scale |
+| Glue | Per DPU-hour (min 10 DPUs × 10 min) | Long-running or mis-configured jobs |
+| S3 | Storage + GET/PUT requests | Unbounded pipeline retries writing duplicate objects |
+
+For each of these services, create a separate `aws_budgets_budget` scoped to the service using a `SERVICE` cost filter, or rely on the project-level budget plus CloudWatch metric alarms on the relevant service dimensions.
+
+### Cost Explorer tag filter
+
+To query spend per project using Cost Explorer, filter by the `Project` and `CostCenter` tags already mandated by `local.common_tags`. These tags must be activated in the AWS Billing console under **Cost allocation tags** before they appear in Cost Explorer.
+
+### Alarm threshold recommendation
+
+- 80% of monthly limit → `ACTUAL` spend alarm (real spend exceeded threshold)
+- 100% of monthly limit → `FORECASTED` spend alarm (projected to exceed before month end)
+
+This matches the two-notification pattern already defined in the `aws_budgets_budget` block above.
+
+For per-service cost detail, see:
+- `ai/skills/aws/textract.md` — page count logging
+- `ai/skills/python/bedrock_client.md` — token guard and throttle handling
+- `ai/skills/terraform/terraform_governance.md` (this file) — budget resource definition
+
+---
+
 ## Avoid
 
 - Resources without `tags = local.common_tags`
@@ -165,3 +196,4 @@ Never delete `terraform.tfstate` to resolve drift — this orphans infrastructur
 - Enabling S3 versioning without explicit justification
 - Resolving drift by deleting state files
 - Using `terraform apply` without a prior `terraform plan` review
+- Activating cost allocation tags in code only — they must also be activated in the AWS Billing console

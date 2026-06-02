@@ -36,7 +36,7 @@ iam_least_privilege:
 
 etl_patterns:
   path: ai/skills/data/etl_patterns.md
-  description: ETL pipeline structure and transformations
+  description: ETL pipeline Bronze/Silver/Gold layers, transformations, and OCR normalisation stage with prompt versioning
 
 data_contracts:
   path: ai/skills/data/data_contracts.md
@@ -112,4 +112,64 @@ terraform_observability:
 
 terraform_governance:
   path: ai/skills/terraform/terraform_governance.md
-  description: Tagging enforcement, budget governance, drift management, and versioning policy
+  description: Tagging enforcement, budget governance, per-service cost awareness, drift management, and versioning policy
+
+environment_promotion:
+  path: ai/skills/terraform/environment_promotion.md
+  description: Directory-per-environment promotion pattern, state isolation, and immutable artifact promotion
+
+bedrock_permissions:
+  path: ai/skills/aws/bedrock_permissions.md
+  description: IAM actions, model access activation, and cross-region inference ARNs for AWS Bedrock
+
+textract:
+  path: ai/skills/aws/textract.md
+  description: Async Textract workflows, SNS/SQS notification pattern, and FeatureTypes cost guidance
+
+sqs_patterns:
+  path: ai/skills/aws/sqs_patterns.md
+  description: SQS visibility timeout, dead-letter queues, batch configuration, and Lambda event source mapping
+
+api_gateway:
+  path: ai/skills/aws/api_gateway.md
+  description: HTTP API vs REST API, Lambda proxy integration, CORS, throttling, and Cognito JWT authoriser
+
+cloudfront_s3_hosting:
+  path: ai/skills/aws/cloudfront_s3_hosting.md
+  description: S3 + CloudFront static hosting with OAC, cache behavior split, SPA routing, and cache invalidation
+
+s3_presigned_urls:
+  path: ai/skills/aws/s3_presigned_urls.md
+  description: Presigned PUT/POST URL generation, TTL selection, CORS, and S3 event trigger for pipeline start
+
+cognito_auth:
+  path: ai/skills/aws/cognito_auth.md
+  description: Cognito User Pool setup, JWT validation, API Gateway authoriser, and frontend auth token flow
+
+bedrock_client:
+  path: ai/skills/python/bedrock_client.md
+  description: Bedrock invoke_model and converse patterns, throttling retry, response parsing, and context window guard
+
+error_handling_pipeline:
+  path: ai/skills/python/error_handling_pipeline.md
+  description: Typed exception hierarchy, Step Functions Catch integration, and structured error payloads for pipeline stages
+
+logging_structured:
+  path: ai/skills/python/logging_structured.md
+  description: Mandatory log field contract, JSON formatter, LoggerAdapter context injection, and CloudWatch Insights queries
+
+react_vite_aws:
+  path: ai/skills/frontend/react_vite_aws.md
+  description: Vite environment variables, S3 sync deploy sequence, CloudFront cache invalidation, and CSP headers
+
+api_client_patterns:
+  path: ai/skills/frontend/api_client_patterns.md
+  description: Centralised axios client, request/response interceptors, retry logic, abort controller, and three-state pattern
+
+file_upload_ux:
+  path: ai/skills/frontend/file_upload_ux.md
+  description: Presigned URL upload flow, file validation, XHR progress tracking, drag-and-drop, and pipeline status polling
+
+athena_patterns:
+  path: ai/skills/data/athena_patterns.md
+  description: Athena query lifecycle, result pagination, partition pruning, partition projection, and workgroup cost guardrails

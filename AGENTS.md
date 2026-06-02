@@ -157,25 +157,40 @@ follow the discovery flow in *Skill Usage*.
 | When the task involves… | Consult |
 |---|---|
 | Designing or editing a Python ETL job | `ai/skills/data/etl_patterns.md`, `ai/skills/python/python_project_guidance.md` |
+| OCR normalisation, invoice extraction, LLM document processing | `ai/skills/data/etl_patterns.md`, `ai/skills/python/bedrock_client.md`, `ai/skills/aws/textract.md` |
 | Validation or data quality (Python/SQL/AWS) | `ai/skills/data/data_quality_guidance.md`, `ai/skills/data/data_contracts.md` |
+| Athena queries, partition pruning, query cost | `ai/skills/data/athena_patterns.md`, `ai/skills/sql/sql_workflow_guidance.md` |
 | Python tests | `ai/skills/python/python_testing_quality.md` |
+| Python pipeline error handling, Step Functions exceptions | `ai/skills/python/error_handling_pipeline.md`, `ai/skills/aws/step_functions.md` |
+| Python structured logging, CloudWatch Insights | `ai/skills/python/logging_structured.md`, `ai/skills/aws/cloudwatch_logging.md` |
+| Bedrock invocation, model access, throttling | `ai/skills/python/bedrock_client.md`, `ai/skills/aws/bedrock_permissions.md` |
 | New SQL or transformation refactor | `ai/skills/sql/sql_workflow_guidance.md` |
 | AWS Glue (jobs, crawlers, catalog) | `ai/skills/aws/glue_jobs.md` |
 | AWS Lambda | `ai/skills/aws/lambda_functions.md`, `ai/skills/aws/iam_policies.md` |
 | Step Functions orchestration | `ai/skills/aws/step_functions.md` |
 | Scheduling / event-driven | `ai/skills/aws/eventbridge.md` |
+| SQS queues, DLQs, Lambda event source mapping | `ai/skills/aws/sqs_patterns.md`, `ai/skills/aws/lambda_functions.md` |
+| Textract document analysis | `ai/skills/aws/textract.md`, `ai/skills/aws/sqs_patterns.md` |
+| API Gateway endpoints, CORS, throttling, authorisers | `ai/skills/aws/api_gateway.md`, `ai/skills/aws/lambda_functions.md` |
+| User authentication, Cognito, JWT | `ai/skills/aws/cognito_auth.md`, `ai/skills/aws/api_gateway.md` |
+| S3 presigned URLs, direct browser upload | `ai/skills/aws/s3_presigned_urls.md`, `ai/skills/frontend/file_upload_ux.md` |
+| CloudFront + S3 static hosting, OAC, cache invalidation | `ai/skills/aws/cloudfront_s3_hosting.md` |
 | S3 / data lake storage | `ai/skills/aws/s3_data_lake.md` |
 | AWS logging / observability | `ai/skills/aws/cloudwatch_logging.md`, `ai/skills/terraform/terraform_observability.md` |
 | IAM (policies, roles) | `ai/skills/aws/iam_policies.md`, `ai/skills/terraform/iam_least_privilege.md` |
+| Bedrock IAM, model ARN scoping, cross-region inference | `ai/skills/aws/bedrock_permissions.md`, `ai/skills/terraform/iam_least_privilege.md` |
 | Smoke testing AWS resources | `ai/skills/aws/aws_smoke_testing.md` |
-| Tagging, budgets, drift management, lifecycle governance | `ai/skills/terraform/terraform_governance.md` |
+| Tagging, budgets, per-service cost, drift management | `ai/skills/terraform/terraform_governance.md` |
 | Writing or refactoring Terraform | `ai/skills/terraform/terraform_style.md`, `ai/skills/terraform/modules.md` |
 | Terraform state / backends | `ai/skills/terraform/state_management.md` |
 | Terraform tests / mocks | `ai/skills/terraform/terraform_testing.md`, `ai/skills/terraform/terraform_mocks.md` |
 | Terraform CI/CD | `ai/skills/terraform/terraform_ci_cd.md`, `ai/skills/terraform/terraform_orchestration.md` |
 | Importing existing resources | `ai/skills/terraform/terraform_import_manual.md`, `ai/skills/terraform/terraform_import_discovery.md` |
-| Module refactor / multi-env | `ai/skills/terraform/terraform_refactoring.md`, `ai/skills/terraform/terraform_stacks.md` |
+| Module refactor / multi-env / environment promotion | `ai/skills/terraform/environment_promotion.md`, `ai/skills/terraform/terraform_refactoring.md`, `ai/skills/terraform/terraform_stacks.md` |
 | Infra security review | `ai/skills/terraform/terraform_security.md` |
+| Frontend React + Vite build, deploy, env vars | `ai/skills/frontend/react_vite_aws.md`, `ai/skills/aws/cloudfront_s3_hosting.md` |
+| Frontend API client, auth headers, retries, error handling | `ai/skills/frontend/api_client_patterns.md`, `ai/skills/aws/api_gateway.md` |
+| Frontend file upload, drag-and-drop, upload progress | `ai/skills/frontend/file_upload_ux.md`, `ai/skills/aws/s3_presigned_urls.md` |
 
 ---
 
