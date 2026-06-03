@@ -173,3 +173,31 @@ file_upload_ux:
 athena_patterns:
   path: ai/skills/data/athena_patterns.md
   description: Athena query lifecycle, result pagination, partition pruning, partition projection, and workgroup cost guardrails
+
+saas_frontend:
+  path: ai/skills/saas/frontend.md
+  description: React + Vite + Tailwind SaaS UI patterns, component design, hooks, and form handling
+
+saas_backend:
+  path: ai/skills/saas/backend.md
+  description: FastAPI service layer, SQLAlchemy repository pattern, Pydantic validation, and layered architecture
+
+saas_database:
+  path: ai/skills/saas/database.md
+  description: PostgreSQL/Supabase schema design, Alembic migrations, soft delete, audit fields, and indexes
+
+saas_auth:
+  path: ai/skills/saas/auth.md
+  description: Supabase Auth, JWT validation, RBAC roles (OWNER/ADMIN/SALES/SPECIALIST), and frontend session management
+
+saas_analytics:
+  path: ai/skills/saas/analytics.md
+  description: Operational KPI dashboards, business metrics (appointments, leads, conversion), and historical snapshot tables
+
+saas_deployment:
+  path: ai/skills/saas/deployment.md
+  description: Railway/Vercel deploy, GitHub Actions CI/CD, environment config management, and migration-on-deploy pattern
+
+saas_ux:
+  path: ai/skills/saas/ux.md
+  description: SaaS dashboard UX, form design, navigation patterns, loading/empty states, and accessibility baseline

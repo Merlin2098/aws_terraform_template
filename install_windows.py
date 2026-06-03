@@ -6,6 +6,7 @@ from pathlib import Path
 from ai.installer import (
     install_template,
     print_summary,
+    prompt_capability_profile,
     prompt_environment_profile,
     prompt_include_structure,
     prompt_package_manager,
@@ -72,6 +73,11 @@ def main() -> None:
         action="store_true",
         help="Configure the host project to manage packages with uv.",
     )
+    parser.add_argument(
+        "--saas",
+        action="store_true",
+        help="Include the SaaS capability domain (FastAPI, Supabase, Railway).",
+    )
     args = parser.parse_args()
 
     if args.with_structure and args.without_structure:
@@ -115,6 +121,7 @@ def main() -> None:
             if args.uv
             else prompt_package_manager()
         )
+        capability_profile = "saas" if args.saas else prompt_capability_profile()
         summary = install_template(
             target=target,
             force=args.force,
@@ -122,6 +129,7 @@ def main() -> None:
             include_structure=include_structure,
             environment_profile=environment_profile,
             package_manager=package_manager,
+            capability_profile=capability_profile,
         )
     except ValueError as exc:
         parser.error(str(exc))

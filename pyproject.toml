@@ -32,6 +32,16 @@ local = [
 cloud = [
     "awswrangler",
     "boto3",
+    "python-jose[cryptography]",
+]
+
+saas = [
+    "alembic",
+    "asyncpg",
+    "fastapi",
+    "pydantic-settings",
+    "python-jose[cryptography]",
+    "uvicorn[standard]",
 ]
 
 [dependency-groups]

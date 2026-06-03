@@ -52,6 +52,8 @@ structure:
     - ai/skills.yaml
     - ai/skills/
     - ai/context.yaml
+    - ai/domains/
+    - ai/policies/
     - specs/template/
     - specs/project/
   optional_context:

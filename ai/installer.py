@@ -12,6 +12,12 @@ OPTIONAL_EMPTY_DIRS = {"tests"}
 CLOUD_ONLY_TOP_LEVEL_DIRS = {"specs"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
 PACKAGE_MANAGERS = {"pip", "uv"}
+CAPABILITY_PROFILES = {"saas"}
+SAAS_ONLY_PATHS = {
+    "ai/skills/saas",
+    "ai/domains/saas.md",
+    "requirements.saas.txt",
+}
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
 CLOUD_REQUIREMENTS_PATH = Path("requirements.cloud.txt")
 DEV_REQUIREMENTS_PATH = Path("requirements.dev.txt")
@@ -146,6 +152,22 @@ def prompt_package_manager() -> str:
         print("Please answer pip or uv.")
 
 
+def prompt_capability_profile() -> str | None:
+    while True:
+        selected = (
+            input(
+                "Enable SaaS capability domain (FastAPI, Supabase, Railway)? [y/N]: "
+            )
+            .strip()
+            .lower()
+        )
+        if selected in {"", "n", "no"}:
+            return None
+        if selected in {"y", "yes"}:
+            return "saas"
+        print("Please answer yes or no.")
+
+
 def validate_target(target: Path) -> Path:
     target = target.expanduser().resolve()
     template = TEMPLATE_ROOT.resolve()
@@ -169,6 +191,15 @@ def validate_package_manager(package_manager: str) -> str:
     normalized = package_manager.strip().lower()
     if normalized not in PACKAGE_MANAGERS:
         raise ValueError("Package manager must be 'pip' or 'uv'.")
+    return normalized
+
+
+def validate_capability_profile(capability_profile: str | None) -> str | None:
+    if capability_profile is None or capability_profile == "":
+        return None
+    normalized = capability_profile.strip().lower()
+    if normalized not in CAPABILITY_PROFILES:
+        raise ValueError(f"Capability profile must be one of {CAPABILITY_PROFILES} or empty.")
     return normalized
 
 
@@ -222,8 +253,19 @@ def should_copy_specs_path(relative: Path, environment_profile: str) -> bool:
     return True
 
 
+def should_copy_capability_path(relative: Path, capability_profile: str | None) -> bool:
+    if capability_profile == "saas":
+        return True
+    relative_posix = relative.as_posix()
+    for saas_path in SAAS_ONLY_PATHS:
+        if relative_posix == saas_path or relative_posix.startswith(saas_path + "/"):
+            return False
+    return True
+
+
 def iter_template_files(
-    *, include_structure: bool, environment_profile: str, package_manager: str
+    *, include_structure: bool, environment_profile: str, package_manager: str,
+    capability_profile: str | None = None,
 ) -> tuple[list[Path], list[Path]]:
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
@@ -240,6 +282,9 @@ def iter_template_files(
             if not should_copy_package_file(
                 relative, environment_profile, package_manager
             ):
+                ignored.append(path)
+                continue
+            if not should_copy_capability_path(relative, capability_profile):
                 ignored.append(path)
                 continue
             if is_excluded(path):
@@ -262,6 +307,7 @@ def render_target_file(
     relative: Path,
     package_manager: str,
     environment_profile: str,
+    capability_profile: str | None = None,
 ) -> str:
     if relative == Path(".pre-commit-config.yaml"):
         if package_manager == "uv":
@@ -290,6 +336,7 @@ def render_target_file(
         return (
             f"package_manager={package_manager}\n"
             f"environment_profile={environment_profile}\n"
+            f"capability_profile={capability_profile or ''}\n"
         )
     return source_text
 
@@ -301,6 +348,7 @@ def copy_template_file(
     relative: Path,
     package_manager: str,
     environment_profile: str,
+    capability_profile: str | None = None,
 ) -> None:
     if relative in {Path(".pre-commit-config.yaml"), Path("Makefile"), TEMPLATE_PROFILE_PATH}:
         source_text = source_path.read_text(encoding="utf-8")
@@ -310,6 +358,7 @@ def copy_template_file(
                 relative=relative,
                 package_manager=package_manager,
                 environment_profile=environment_profile,
+                capability_profile=capability_profile,
             ),
             encoding="utf-8",
         )
@@ -407,14 +456,17 @@ def install_template(
     include_structure: bool,
     environment_profile: str,
     package_manager: str = "pip",
+    capability_profile: str | None = None,
 ) -> dict[str, list[str]]:
     target = validate_target(target)
     environment_profile = validate_environment_profile(environment_profile)
     package_manager = validate_package_manager(package_manager)
+    capability_profile = validate_capability_profile(capability_profile)
     candidates, ignored_paths = iter_template_files(
         include_structure=include_structure,
         environment_profile=environment_profile,
         package_manager=package_manager,
+        capability_profile=capability_profile,
     )
     copied: list[str] = []
     skipped: list[str] = []
@@ -448,6 +500,7 @@ def install_template(
             relative=relative,
             package_manager=package_manager,
             environment_profile=environment_profile,
+            capability_profile=capability_profile,
         )
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 

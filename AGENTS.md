@@ -22,6 +22,8 @@ Use:
 
 * `ai/skills/` for patterns and best practices
 * `ai/skills.yaml` as the authoritative skills index
+* `ai/domains/index.md` for domain-based navigation across all skill areas
+* `ai/policies/global.md` for cross-domain policies (advisory and required)
 * `ai/context.yaml` as the authoritative AI context-generation configuration
 * `specs/template/` for inherited template contracts (cloud profile only, read-only)
 * `specs/project/` for host-authored project specs (cloud profile only)
@@ -191,6 +193,13 @@ follow the discovery flow in *Skill Usage*.
 | Frontend React + Vite build, deploy, env vars | `ai/skills/frontend/react_vite_aws.md`, `ai/skills/aws/cloudfront_s3_hosting.md` |
 | Frontend API client, auth headers, retries, error handling | `ai/skills/frontend/api_client_patterns.md`, `ai/skills/aws/api_gateway.md` |
 | Frontend file upload, drag-and-drop, upload progress | `ai/skills/frontend/file_upload_ux.md`, `ai/skills/aws/s3_presigned_urls.md` |
+| SaaS React + Tailwind UI components, hooks, forms | `ai/skills/saas/frontend.md` |
+| SaaS FastAPI endpoints, service layer, repository pattern | `ai/skills/saas/backend.md` |
+| SaaS PostgreSQL schema, Alembic migrations, soft delete | `ai/skills/saas/database.md` |
+| SaaS Supabase Auth, JWT validation, RBAC roles | `ai/skills/saas/auth.md` |
+| SaaS KPI dashboards, business metrics, snapshot tables | `ai/skills/saas/analytics.md` |
+| SaaS Railway / Vercel deploy, GitHub Actions CI/CD | `ai/skills/saas/deployment.md` |
+| SaaS dashboard UX, form flows, navigation, accessibility | `ai/skills/saas/ux.md` |
 
 ---
 

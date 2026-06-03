@@ -16,3 +16,6 @@ sqlalchemy
 # Cloud SDK and AWS integration
 awswrangler
 boto3
+
+# JWT validation (Cognito / Supabase Auth)
+python-jose[cryptography]
