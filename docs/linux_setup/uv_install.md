@@ -101,11 +101,10 @@ Behavior:
 - `update_venv.sh` refreshes the environment after dependency changes
 - both wrappers prefer `python -m uv` for the selected interpreter and fall
   back to `uv` from `PATH` when that is the only valid local installation
-- the normal local uv workflow is `base + dev-local`
-- cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
+- active capabilities determine all extras and dependency groups
 - the active host capabilities are read from `.template-profile.yaml`
 
-To force the cloud profile explicitly:
+To enable Terraform and its transitive AWS/Python dependencies:
 
 ```bash
 # Enable infrastructure:terraform in .template-profile.yaml, then:

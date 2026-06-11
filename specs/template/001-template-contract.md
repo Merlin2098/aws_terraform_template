@@ -23,20 +23,20 @@ and any project bootstrapped from it.
   host repos.
 - **`docs/`** — Human-authored reference (`terra_principles.md`, Terraform
   cheatsheet, Windows setup).
-- **Two dependency profiles** — `local` and `cloud`, materialized as
-  `pyproject.toml` extras and dependency groups (uv).
-- **Capability profiles** — optional domains delivered only when requested.
-  Currently: `saas` (FastAPI, Supabase, Railway skills). Orthogonal to the
-  dependency profile — a host can be `cloud + saas` or `cloud` only.
+- **Capability-driven dependencies** — descriptors map active capabilities to
+  `pyproject.toml` extras and dependency groups.
+- **Capability catalog** — every available capability is recorded in
+  `.template-profile.yaml` with an explicit enabled state.
 - **Installer** — `ai/installer.py` copies the template into a host repo
-  with `--local|--cloud`, `--saas`, and structure flags. Both dimensions are
-  recorded in `.template-profile.yaml` for reproducible re-installs.
+  with repeatable `--enable category:name`, the `--saas` shortcut, and
+  structure flags. An empty interactive selection enables all capabilities;
+  `none` explicitly enables none.
 
 ### What the template expects from the host
 
 - Python `>= 3.x` matching `pyproject.toml`.
-- For the cloud profile: Terraform `>= 1.10`, AWS provider `>= 5.81`, AWS
-  credentials provided out-of-band (the template never stores them).
+- When Terraform or AWS capabilities are enabled: Terraform `>= 1.10`, AWS
+  provider `>= 5.81`, and AWS credentials provided out-of-band.
 - `uv` available.
 - A POSIX shell or PowerShell with the documented Windows wrappers.
 

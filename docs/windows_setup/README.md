@@ -34,9 +34,9 @@ The cloud uv workflow installs:
 - the `dev-local` and `dev-cloud` dependency groups
 
 When you install this template into another repository, the installer copies
-`pyproject.toml` and `uv.lock`. The installer also writes `.template-profile.yaml`
-so the host keeps its selected profile as the default for wrappers and sync
-commands.
+`pyproject.toml` and `uv.lock`. The installer also writes
+`.template-profile.yaml` so wrappers and sync commands use the selected
+capabilities.
 
 Install pre-commit into the current repository environment:
 
@@ -121,11 +121,12 @@ Install the template with an explicit target path:
 .\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo
 ```
 
-Install and choose the dependency profile non-interactively:
+Install and choose capabilities non-interactively:
 
 ```powershell
-.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --local
-.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --cloud
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --enable languages:python
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --enable infrastructure:terraform
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --enable none
 ```
 
 Overwrite existing target files only when intentional:
@@ -153,10 +154,8 @@ The installer:
 - copies `pyproject.toml` and `uv.lock`
 - writes `.template-profile.yaml` with the complete capability catalog
 - keeps the template `uv` hook behavior
-- renders the `Makefile` to use the persisted profile by default
-- local hosts default to `base + dev-local`
-- cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
+- renders the `Makefile` to use the persisted capabilities by default
+- active capabilities determine all extras and dependency groups
 
-Packaging for deployment always uses the cloud dependency set from
-`pyproject.toml` and `uv.lock`, even if the local development environment
-remains on the default local profile.
+Packaging resolves runtime extras from the capabilities enabled in
+`.template-profile.yaml`.

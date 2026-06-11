@@ -16,8 +16,6 @@ TEMPLATE_GITIGNORE_PATH = TEMPLATE_ROOT / ".gitignore"
 TEMPLATE_PROFILE_PATH = Path(PROFILE_FILENAME)
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
-CLOUD_ONLY_TOP_LEVEL_DIRS = {"specs"}
-ENVIRONMENT_PROFILES = {"local", "cloud"}
 PYPROJECT_PATH = Path("pyproject.toml")
 UV_LOCK_PATH = Path("uv.lock")
 
@@ -131,15 +129,6 @@ def prompt_include_structure() -> bool:
         print("Please answer yes or no.")
 
 
-def prompt_environment_profile() -> str:
-    while True:
-        selected = input("Is the host project local or cloud? [local/cloud]: ").strip()
-        normalized = selected.lower()
-        if normalized in ENVIRONMENT_PROFILES:
-            return normalized
-        print("Please answer local or cloud.")
-
-
 def available_capability_ids(
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> list[str]:
@@ -155,18 +144,35 @@ def prompt_enabled_capabilities(
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> list[str]:
     registry = registry or load_registry(TEMPLATE_ROOT)
+    identifiers = available_capability_ids(registry)
     print("Available capabilities:")
-    for identifier in available_capability_ids(registry):
-        print(f"  {identifier}")
+    for index, identifier in enumerate(identifiers, start=1):
+        print(f"  {index}. {identifier}")
     selected = input(
-        "Additional capabilities to enable (comma-separated, empty for none): "
+        "Capabilities to enable (comma-separated numbers, empty for all, "
+        "'none' for none): "
     ).strip()
     if not selected:
-        return []
-    return validate_enabled_capabilities(
-        [value.strip() for value in selected.split(",") if value.strip()],
-        registry,
-    )
+        return available_capability_ids(registry)
+    if selected.strip().lower() == "none":
+        return validate_enabled_capabilities(["none"], registry)
+
+    values: list[str] = []
+    for token in selected.split(","):
+        token = token.strip()
+        if not token:
+            continue
+        if not token.isdigit():
+            raise ValueError(f"Invalid capability number '{token}'.")
+        position = int(token)
+        if not 1 <= position <= len(identifiers):
+            raise ValueError(
+                f"Capability number {position} is out of range "
+                f"(1-{len(identifiers)})."
+            )
+        values.append(identifiers[position - 1])
+
+    return validate_enabled_capabilities(values, registry)
 
 
 def validate_target(target: Path) -> Path:
@@ -181,21 +187,22 @@ def validate_target(target: Path) -> Path:
     return target
 
 
-def validate_environment_profile(environment_profile: str) -> str:
-    normalized = environment_profile.strip().lower()
-    if normalized not in ENVIRONMENT_PROFILES:
-        raise ValueError("Environment profile must be 'local' or 'cloud'.")
-    return normalized
-
-
 def validate_enabled_capabilities(
     values: list[str],
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> list[str]:
     registry = registry or load_registry(TEMPLATE_ROOT)
+    if not values:
+        return available_capability_ids(registry)
+    lowered = [value.strip().lower() for value in values]
+    if "none" in lowered:
+        if len(lowered) != 1:
+            raise ValueError("'none' cannot be combined with other capabilities.")
+        return []
+
     normalized: list[str] = []
-    for value in values:
-        category, name = parse_capability_id(value.lower())
+    for value in lowered:
+        category, name = parse_capability_id(value)
         if category not in registry or name not in registry[category]:
             raise ValueError(
                 f"Unknown capability '{category}:{name}'. Available values: "
@@ -236,21 +243,9 @@ def should_copy_structure_path(relative: Path, include_structure: bool) -> bool:
     return True
 
 
-def should_copy_specs_path(relative: Path, environment_profile: str) -> bool:
-    if not relative.parts:
-        return True
-    if (
-        relative.parts[0] in CLOUD_ONLY_TOP_LEVEL_DIRS
-        and environment_profile != "cloud"
-    ):
-        return False
-    return True
-
-
 def iter_template_files(
     *,
     include_structure: bool,
-    environment_profile: str,
 ) -> tuple[list[Path], list[Path]]:
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
@@ -259,9 +254,6 @@ def iter_template_files(
         for path in sorted(directory.iterdir(), key=lambda item: item.name.lower()):
             relative = path.relative_to(TEMPLATE_ROOT)
             if not should_copy_structure_path(relative, include_structure):
-                ignored.append(path)
-                continue
-            if not should_copy_specs_path(relative, environment_profile):
                 ignored.append(path)
                 continue
             if not should_copy_package_file(relative):
@@ -285,7 +277,6 @@ def render_target_file(
     source_text: str,
     *,
     relative: Path,
-    environment_profile: str,
     capabilities: dict[str, list[str]] | None = None,
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> str:
@@ -294,7 +285,6 @@ def render_target_file(
         return render_profile(
             profile_document(
                 registry,
-                environment=environment_profile,
                 enabled=capabilities or {},
             )
         )
@@ -306,7 +296,6 @@ def copy_template_file(
     destination: Path,
     *,
     relative: Path,
-    environment_profile: str,
     capabilities: dict[str, list[str]] | None = None,
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> None:
@@ -316,7 +305,6 @@ def copy_template_file(
             render_target_file(
                 source_text,
                 relative=relative,
-                environment_profile=environment_profile,
                 capabilities=capabilities,
                 registry=registry,
             ),
@@ -412,24 +400,15 @@ def install_template(
     dry_run: bool,
     *,
     include_structure: bool,
-    environment_profile: str,
     enabled_capabilities: list[str] | None = None,
 ) -> dict[str, list[str]]:
     target = validate_target(target)
-    environment_profile = validate_environment_profile(environment_profile)
     registry = load_registry(TEMPLATE_ROOT)
     selections = list(enabled_capabilities or [])
-    default_capability = (
-        "infrastructure:terraform"
-        if environment_profile == "cloud"
-        else "languages:python"
-    )
-    selections.append(default_capability)
     selections = validate_enabled_capabilities(selections, registry)
     capabilities = capability_selection(selections)
     candidates, ignored_paths = iter_template_files(
         include_structure=include_structure,
-        environment_profile=environment_profile,
     )
     copied: list[str] = []
     skipped: list[str] = []
@@ -461,7 +440,6 @@ def install_template(
             source_path,
             destination,
             relative=relative,
-            environment_profile=environment_profile,
             capabilities=capabilities,
             registry=registry,
         )

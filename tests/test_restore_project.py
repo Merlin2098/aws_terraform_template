@@ -92,7 +92,6 @@ saas_auth:
         project_root / ".template-profile.yaml",
         f"""
 schema_version: 1
-environment: local
 capabilities:
   languages:
     python:

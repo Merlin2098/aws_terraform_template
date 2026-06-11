@@ -48,7 +48,6 @@ def restore_project(project_root: Path, *, dry_run: bool = False) -> dict[str, o
 
     return {
         "status": "ok",
-        "environment": resolved.profile.environment,
         "profile_source": resolved.profile.source,
         "explicit_capabilities": list(resolved.explicit_capabilities),
         "implicit_capabilities": list(resolved.implicit_capabilities),

@@ -16,7 +16,7 @@ basics:
 
 * how Python packaging and deployment bundles should work
 * how SQL, config, infrastructure, and tests should be organized
-* how local and cloud dependency profiles should be separated
+* how dependencies should follow explicit project capabilities
 * how AI guidance files should live in the repo without becoming runtime logic
 * how to support Windows-restricted environments alongside standard shell flows
 * how project contracts (specs) should be separated from patterns (skills) and hard rules (principles)
@@ -30,9 +30,9 @@ The template currently supports:
 
 * installation into another repository through Windows and Linux installer entrypoints
 * host setup with `uv`
-* `local` and `cloud` dependency profiles
+* capability-driven dependency selection
 * optional copying of `src/`, `infra/`, and `tests/`
-* a `specs/` layer for project contracts, cloud-profile only, with a clear separation between template-owned specs (`specs/template/`) and host-authored specs (`specs/project/`)
+* a `specs/` layer with a clear separation between template-owned specs (`specs/template/`) and host-authored specs (`specs/project/`)
 * an opt-in remote Terraform backend example using S3 native locking (no DynamoDB)
 * explicit project commands for packaging, tests, and AI refresh
 * Windows corporate workflows where `make.exe` may not be available in `PATH`
@@ -45,7 +45,7 @@ and no AI logic in execution.
 At a high level, teams use this template in four steps:
 
 1. Install the template into a host repository.
-2. Choose whether the host project is `local` or `cloud`.
+2. Choose the capabilities needed by the host project.
 3. Use explicit commands for packaging, tests, AI refresh, and Terraform work.
 
 ## Structure
@@ -59,7 +59,7 @@ src/contracts/         Data contracts
 scripts/               Explicit project helpers plus internal hook/testing wrappers
 artifacts/             Generated deployment bundles
 ai/                    AI guidance and AI context-generation source of truth
-specs/                 Project contracts (cloud profile only)
+specs/                 Project contracts
   specs/template/      Template-owned contracts — read-only in host repos
   specs/project/       Host-authored contracts — written by the host project
 tests/                 Lightweight validation
@@ -100,7 +100,9 @@ The template is installed into a host repository with:
 Both installers can:
 
 * preview changes with `--dry-run`
-* choose `local` or `cloud`
+* enable capabilities with repeatable `--enable category:name`
+* enable every capability by leaving the interactive selection empty
+* explicitly enable none with `--enable none`
 * optionally include the starter `src/`, `infra/`, and `tests/` trees
 
 The installer copies template files into the host repository, but it does not:
@@ -122,10 +124,9 @@ The template manages host dependencies with `uv`:
 * the installer persists the complete active host catalog in
   `.template-profile.yaml`; capabilities can be enabled later without
   reinstalling the template
-* the `sync-dependencies` hook keeps the template's `uv` default
-* local hosts sync `base + dev-local` by default
-* cloud hosts sync `base + local + cloud + dev-local + dev-cloud` by default
-* packaging still targets cloud runtime needs, even when local development stays on the lighter local profile
+* the `sync-dependencies` hook resolves extras and groups from active capabilities
+* transitive capability dependencies contribute their own extras and groups
+* `dependency_policy.include_dev: false` omits development groups
 
 ## Linux Workflow
 
@@ -179,8 +180,7 @@ state what is true, expected, or invariant about the project. Contracts
 complement skills (patterns) and principles (hard rules) without overlapping
 them.
 
-`specs/` is only present in **cloud-profile** installations. Local-profile
-hosts do not receive this folder.
+`specs/` is copied independently of capability selection.
 
 The folder is split into two areas:
 

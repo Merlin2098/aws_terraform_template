@@ -9,7 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 
 
 def _run_installer(
-    script: str, target: Path, *args: str
+    script: str, target: Path, *args: str, input_text: str | None = None
 ) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [
@@ -24,6 +24,7 @@ def _run_installer(
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
+        input=input_text,
         check=False,
     )
 
@@ -34,7 +35,6 @@ def test_windows_installer_accepts_repeatable_capabilities(tmp_path: Path) -> No
     result = _run_installer(
         "install_windows.py",
         target,
-        "--cloud",
         "--enable",
         "business:saas",
         "--enable",
@@ -47,10 +47,10 @@ def test_windows_installer_accepts_repeatable_capabilities(tmp_path: Path) -> No
     assert not target.exists()
 
 
-def test_linux_installer_accepts_local_shortcut(tmp_path: Path) -> None:
+def test_linux_installer_accepts_none_selection(tmp_path: Path) -> None:
     target = tmp_path / "linux-host"
 
-    result = _run_installer("install_linux.py", target, "--local")
+    result = _run_installer("install_linux.py", target, "--enable", "none")
 
     assert result.returncode == 0, result.stderr
     assert ".template-profile.yaml" in result.stdout
@@ -58,10 +58,19 @@ def test_linux_installer_accepts_local_shortcut(tmp_path: Path) -> None:
     assert not target.exists()
 
 
-def test_installers_reject_conflicting_environment_shortcuts(
-    tmp_path: Path,
-) -> None:
-    result = _run_installer("install_linux.py", tmp_path / "host", "--local", "--cloud")
+def test_empty_interactive_selection_enables_all_capabilities(tmp_path: Path) -> None:
+    result = _run_installer(
+        "install_linux.py",
+        tmp_path / "host",
+        input_text="\n",
+    )
+
+    assert result.returncode == 0, result.stderr
+    assert ".template-profile.yaml" in result.stdout
+
+
+def test_installers_reject_removed_environment_shortcuts(tmp_path: Path) -> None:
+    result = _run_installer("install_linux.py", tmp_path / "host", "--local")
 
     assert result.returncode != 0
-    assert "cannot be combined" in result.stderr
+    assert "unrecognized arguments: --local" in result.stderr

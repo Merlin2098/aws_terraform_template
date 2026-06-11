@@ -133,8 +133,7 @@ Behavior:
 - `update_venv.ps1` refreshes the environment after dependency changes
 - both wrappers prefer `python -m uv` for the selected interpreter and fall
   back to `uv.exe` from `PATH` when that is the only valid local installation
-- the normal local uv workflow is `base + dev-local`
-- cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
+- active capabilities determine all extras and dependency groups
 - active host capabilities are read from `.template-profile.yaml`
 - cloud capabilities can be enabled in `.template-profile.yaml` and then
   synchronized:

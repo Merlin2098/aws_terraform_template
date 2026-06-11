@@ -8,8 +8,6 @@ import yaml
 
 PROFILE_FILENAME = ".template-profile.yaml"
 PROFILE_SCHEMA_VERSION = 1
-ENVIRONMENT_PROFILES = {"local", "cloud"}
-DEFAULT_ENVIRONMENT_PROFILE = "local"
 
 
 @dataclass(frozen=True)
@@ -21,7 +19,6 @@ class DependencyPolicy:
 
 @dataclass
 class Profile:
-    environment: str = DEFAULT_ENVIRONMENT_PROFILE
     capabilities: dict[str, list[str]] = field(default_factory=dict)
     declared_capabilities: dict[str, list[str]] = field(default_factory=dict)
     dependency_policy: DependencyPolicy = field(default_factory=DependencyPolicy)
@@ -88,7 +85,6 @@ def _load_yaml_profile(path: Path) -> Profile:
 
     allowed = {
         "schema_version",
-        "environment",
         "capabilities",
         "dependency_policy",
     }
@@ -104,12 +100,6 @@ def _load_yaml_profile(path: Path) -> Profile:
             f"Unsupported profile schema_version {schema_version!r}; "
             f"expected {PROFILE_SCHEMA_VERSION}."
         )
-
-    environment = (
-        str(loaded.get("environment", DEFAULT_ENVIRONMENT_PROFILE)).strip().lower()
-    )
-    if environment not in ENVIRONMENT_PROFILES:
-        raise ValueError(f"environment must be one of {sorted(ENVIRONMENT_PROFILES)}.")
 
     raw_policy = loaded.get("dependency_policy") or {}
     if not isinstance(raw_policy, dict):
@@ -132,7 +122,6 @@ def _load_yaml_profile(path: Path) -> Profile:
         loaded.get("capabilities")
     )
     return Profile(
-        environment=environment,
         capabilities=capabilities,
         declared_capabilities=declared_capabilities,
         dependency_policy=DependencyPolicy(
@@ -168,7 +157,6 @@ def load_profile(path_or_root: Path) -> Profile:
 def profile_document(
     registry: dict[str, dict[str, Any]],
     *,
-    environment: str,
     enabled: dict[str, list[str]],
     include_dev: bool = True,
     additional_extras: tuple[str, ...] = (),
@@ -185,7 +173,6 @@ def profile_document(
         }
     return {
         "schema_version": PROFILE_SCHEMA_VERSION,
-        "environment": environment,
         "capabilities": capabilities,
         "dependency_policy": {
             "include_dev": include_dev,

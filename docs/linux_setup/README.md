@@ -102,11 +102,12 @@ Install the template with an explicit target path:
 python3 install_linux.py --target /path/to/target-repo
 ```
 
-Install and choose the dependency profile non-interactively:
+Install and choose capabilities non-interactively:
 
 ```bash
-python3 install_linux.py --target /path/to/target-repo --local
-python3 install_linux.py --target /path/to/target-repo --cloud
+python3 install_linux.py --target /path/to/target-repo --enable languages:python
+python3 install_linux.py --target /path/to/target-repo --enable infrastructure:terraform
+python3 install_linux.py --target /path/to/target-repo --enable none
 ```
 
 Overwrite existing target files only when intentional:

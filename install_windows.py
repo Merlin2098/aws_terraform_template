@@ -7,7 +7,6 @@ from ai.installer import (
     install_template,
     print_summary,
     prompt_enabled_capabilities,
-    prompt_environment_profile,
     prompt_include_structure,
     select_target_folder,
 )
@@ -48,16 +47,6 @@ def main() -> None:
         help="Skip the optional src/, infra/, and tests/ trees without prompting.",
     )
     parser.add_argument(
-        "--local",
-        action="store_true",
-        help="Install template dependencies for a local-only host project.",
-    )
-    parser.add_argument(
-        "--cloud",
-        action="store_true",
-        help="Install template dependencies for a cloud host project.",
-    )
-    parser.add_argument(
         "--saas",
         action="store_true",
         help="Include the SaaS capability domain (FastAPI, Supabase, Railway).",
@@ -67,15 +56,15 @@ def main() -> None:
         action="append",
         default=[],
         metavar="CATEGORY:NAME",
-        help="Enable a capability. Repeat for multiple capabilities.",
+        help=(
+            "Enable a capability. Repeat for multiple capabilities, or pass "
+            "'none' to enable none. Empty interactive input enables all."
+        ),
     )
     args = parser.parse_args()
 
     if args.with_structure and args.without_structure:
         parser.error("--with-structure cannot be combined with --without-structure.")
-    if args.local and args.cloud:
-        parser.error("--local cannot be combined with --cloud.")
-
     try:
         target = (
             select_target_folder()
@@ -89,28 +78,16 @@ def main() -> None:
             if args.without_structure
             else prompt_include_structure()
         )
-        environment_profile = (
-            "local"
-            if args.local
-            else "cloud"
-            if args.cloud
-            else prompt_environment_profile()
-        )
         enabled = list(args.enable)
-        if environment_profile == "local":
-            enabled.append("languages:python")
-        if environment_profile == "cloud":
-            enabled.append("infrastructure:terraform")
         if args.saas:
             enabled.append("business:saas")
-        if not (args.local or args.cloud or args.saas or args.enable):
+        if not (args.saas or args.enable):
             enabled.extend(prompt_enabled_capabilities())
         summary = install_template(
             target=target,
             force=args.force,
             dry_run=args.dry_run,
             include_structure=include_structure,
-            environment_profile=environment_profile,
             enabled_capabilities=enabled,
         )
     except ValueError as exc:

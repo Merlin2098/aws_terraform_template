@@ -11,6 +11,7 @@ from ai.installer import (
     validate_enabled_capabilities,
 )
 from ai.runtime.capability_registry import load_registry
+from ai.runtime.project_profile import resolve_project_profile
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -28,7 +29,7 @@ def test_existing_host_file_is_left_untouched(tmp_path: Path) -> None:
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert custom_file.read_text(encoding="utf-8") == original
@@ -47,7 +48,7 @@ def test_existing_host_gitignore_gets_only_missing_template_entries(
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert ".gitignore" in summary["skipped"]
@@ -68,15 +69,14 @@ def test_existing_host_gitignore_gets_only_missing_template_entries(
     assert "Makefile" not in gitignore
 
 
-def test_uv_local_install_copies_only_uv_project_files(tmp_path: Path) -> None:
-    target = tmp_path / "host-uv-local"
+def test_install_without_selection_enables_full_catalog(tmp_path: Path) -> None:
+    target = tmp_path / "host-all-capabilities"
 
     summary = install_template(
         target=target,
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
     )
 
     assert "pyproject.toml" in summary["copied"]
@@ -87,20 +87,25 @@ def test_uv_local_install_copies_only_uv_project_files(tmp_path: Path) -> None:
     profile = yaml.safe_load(
         (target / ".template-profile.yaml").read_text(encoding="utf-8")
     )
-    assert profile["environment"] == "local"
     assert profile["capabilities"]["languages"]["python"]["enabled"] is True
-    assert profile["capabilities"]["cloud"]["aws"]["enabled"] is False
+    assert profile["capabilities"]["cloud"]["aws"]["enabled"] is True
+    assert profile["capabilities"]["business"]["saas"]["enabled"] is True
+    resolved = resolve_project_profile(target)
+    assert resolved.disabled_capabilities == ()
+    assert set(resolved.explicit_capabilities) == set(
+        validate_enabled_capabilities([], load_registry(REPO_ROOT))
+    )
 
 
-def test_uv_cloud_install_renders_cloud_profile_defaults(tmp_path: Path) -> None:
-    target = tmp_path / "host-uv-cloud"
+def test_none_selection_disables_full_catalog(tmp_path: Path) -> None:
+    target = tmp_path / "host-no-capabilities"
 
     install_template(
         target=target,
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="cloud",
+        enabled_capabilities=["none"],
     )
 
     makefile = (target / "Makefile").read_text(encoding="utf-8")
@@ -110,11 +115,9 @@ def test_uv_cloud_install_renders_cloud_profile_defaults(tmp_path: Path) -> None
 
     assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init" in makefile
     assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py update" in makefile
-    assert template_profile["environment"] == "cloud"
-    assert (
-        template_profile["capabilities"]["infrastructure"]["terraform"]["enabled"]
-        is True
-    )
+    assert "environment" not in template_profile
+    assert template_profile["capabilities"]["languages"]["python"]["enabled"] is False
+    assert template_profile["capabilities"]["cloud"]["aws"]["enabled"] is False
 
 
 def test_include_structure_creates_empty_tests_dir_without_template_tests(
@@ -127,7 +130,7 @@ def test_include_structure_creates_empty_tests_dir_without_template_tests(
         force=False,
         dry_run=False,
         include_structure=True,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     tests_dir = target / "tests"
@@ -146,7 +149,7 @@ def test_without_structure_does_not_create_tests_dir(tmp_path: Path) -> None:
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert not (target / "tests").exists()
@@ -160,7 +163,7 @@ def test_settings_local_json_is_not_copied_to_host(tmp_path: Path) -> None:
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert ".claude/settings.local.json" not in summary["copied"]
@@ -181,7 +184,7 @@ def test_docs_directory_is_copied_to_host(tmp_path: Path) -> None:
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert "docs/terra_principles.md" in summary["copied"]
@@ -201,7 +204,7 @@ def test_linux_setup_readme_stays_template_only(tmp_path: Path) -> None:
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert "docs/linux_setup/README.md" not in summary["copied"]
@@ -209,7 +212,7 @@ def test_linux_setup_readme_stays_template_only(tmp_path: Path) -> None:
     assert not (target / "docs" / "linux_setup" / "README.md").exists()
 
 
-def test_install_without_capability_keeps_full_catalog(tmp_path: Path) -> None:
+def test_install_with_none_keeps_full_catalog_files(tmp_path: Path) -> None:
     target = tmp_path / "host-no-saas"
 
     summary = install_template(
@@ -217,7 +220,7 @@ def test_install_without_capability_keeps_full_catalog(tmp_path: Path) -> None:
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
+        enabled_capabilities=["none"],
     )
 
     assert "ai/domains/saas.md" in summary["copied"]
@@ -233,7 +236,6 @@ def test_install_with_saas_capability_includes_saas_paths(tmp_path: Path) -> Non
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="local",
         enabled_capabilities=["business:saas"],
     )
 
@@ -252,7 +254,6 @@ def test_install_with_saas_capability_writes_typed_capabilities_block(
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="cloud",
         enabled_capabilities=["business:saas"],
     )
 
@@ -260,15 +261,15 @@ def test_install_with_saas_capability_writes_typed_capabilities_block(
         (target / ".template-profile.yaml").read_text(encoding="utf-8")
     )
 
-    assert template_profile["environment"] == "cloud"
+    assert "environment" not in template_profile
     assert template_profile["capabilities"]["business"]["saas"]["enabled"] is True
     assert (
         template_profile["capabilities"]["infrastructure"]["terraform"]["enabled"]
-        is True
+        is False
     )
 
 
-def test_install_without_capability_writes_disabled_catalog_entries(
+def test_install_with_none_writes_disabled_catalog_entries(
     tmp_path: Path,
 ) -> None:
     target = tmp_path / "host-uv-no-saas"
@@ -278,7 +279,7 @@ def test_install_without_capability_writes_disabled_catalog_entries(
         force=False,
         dry_run=False,
         include_structure=False,
-        environment_profile="cloud",
+        enabled_capabilities=["none"],
     )
 
     template_profile = yaml.safe_load(
@@ -301,6 +302,25 @@ def test_validate_enabled_capabilities_accepts_multiple_categories() -> None:
 def test_validate_enabled_capabilities_rejects_unknown_value() -> None:
     with pytest.raises(ValueError, match="Unknown capability"):
         validate_enabled_capabilities(["cloud:azure"])
+
+
+def test_validate_enabled_capabilities_defaults_to_all() -> None:
+    registry = load_registry(REPO_ROOT)
+
+    assert validate_enabled_capabilities([], registry) == [
+        f"{category}:{name}"
+        for category in sorted(registry)
+        for name in sorted(registry[category])
+    ]
+
+
+def test_validate_enabled_capabilities_accepts_none() -> None:
+    assert validate_enabled_capabilities(["none"]) == []
+
+
+def test_validate_enabled_capabilities_rejects_none_with_other_values() -> None:
+    with pytest.raises(ValueError, match="cannot be combined"):
+        validate_enabled_capabilities(["none", "languages:python"])
 
 
 def test_run_uv_sync_parse_args_rejects_conflicting_dev_flags(monkeypatch) -> None:

@@ -103,7 +103,6 @@ def test_active_scanners_collects_from_active_capabilities(tmp_path: Path) -> No
     _write(
         tmp_path / ".template-profile.yaml",
         "schema_version: 1\n"
-        "environment: local\n"
         "capabilities:\n"
         "  languages:\n"
         "    python:\n"

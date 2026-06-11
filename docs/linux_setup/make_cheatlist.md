@@ -24,8 +24,6 @@ make uv-reset
 
 ```bash
 ./scripts/linux/setup_env.sh
-# Enable cloud capabilities in .template-profile.yaml, then:
-./scripts/linux/setup_env.sh
 ./scripts/linux/update_venv.sh
 ./scripts/linux/update_venv.sh --no-dev
 ```

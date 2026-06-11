@@ -20,7 +20,6 @@ def _write_yaml(path: Path, content: dict[str, object]) -> None:
 def test_load_profile_defaults_when_files_are_missing(tmp_path: Path) -> None:
     profile = load_profile(tmp_path)
 
-    assert profile.environment == "local"
     assert profile.capabilities == {}
     assert profile.dependency_policy.include_dev is True
     assert profile.source == "default"
@@ -33,7 +32,6 @@ def test_load_yaml_profile_reads_enabled_capabilities_and_policy(
         tmp_path / PROFILE_FILENAME,
         {
             "schema_version": 1,
-            "environment": "cloud",
             "capabilities": {
                 "languages": {"python": {"enabled": True}},
                 "cloud": {"aws": {"enabled": False}},
@@ -48,7 +46,6 @@ def test_load_yaml_profile_reads_enabled_capabilities_and_policy(
 
     profile = load_profile(tmp_path)
 
-    assert profile.environment == "cloud"
     assert profile.capabilities == {"languages": ["python"]}
     assert profile.declared_capabilities == {
         "languages": ["python"],
@@ -65,8 +62,8 @@ def test_load_yaml_profile_reads_enabled_capabilities_and_policy(
     [
         ({"schema_version": 2}, "schema_version"),
         (
-            {"schema_version": 1, "environment": "staging"},
-            "environment",
+            {"schema_version": 1, "environment": "local"},
+            "unknown fields",
         ),
         (
             {
@@ -100,7 +97,6 @@ def test_profile_document_contains_full_catalog() -> None:
     }
     document = profile_document(
         registry,
-        environment="local",
         enabled={"languages": ["python"]},
     )
     rendered = render_profile(document)

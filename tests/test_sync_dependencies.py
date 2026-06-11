@@ -43,7 +43,7 @@ dev-cloud = []
     )
     _write(
         tmp_path / ".template-profile.yaml",
-        "schema_version: 1\nenvironment: local\ncapabilities:\n"
+        "schema_version: 1\ncapabilities:\n"
         f"{capability}"
         "dependency_policy:\n  include_dev: true\n"
         "  additional_extras: []\n  additional_groups: []\n",

@@ -40,7 +40,6 @@ def resolve_active_profile(
     profile = load_profile(REPO_ROOT)
     if use_dev_dependencies is not None:
         profile = Profile(
-            environment=profile.environment,
             capabilities=profile.capabilities,
             declared_capabilities=profile.declared_capabilities,
             dependency_policy=DependencyPolicy(

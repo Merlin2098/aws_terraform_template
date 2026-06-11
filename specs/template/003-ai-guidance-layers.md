@@ -35,7 +35,7 @@ narrow and avoid duplication.
 - The agent reads `AGENTS.md` first; it points to the other layers.
 - [`ai/skills.yaml`](../../ai/skills.yaml) indexes skills.
 - [`ai/context.yaml`](../../ai/context.yaml) lists guidance roots,
-  including `specs/template/` and `specs/project/` (cloud profile only).
+  including `specs/template/` and `specs/project/` when present.
 - `specs/README.md` is the entry point for human readers of this folder.
 
 ## Invariants

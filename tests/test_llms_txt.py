@@ -79,7 +79,6 @@ def test_build_llms_txt_lists_active_capabilities(tmp_path: Path) -> None:
     _write(
         tmp_path / ".template-profile.yaml",
         "schema_version: 1\n"
-        "environment: local\n"
         "capabilities:\n"
         "  languages:\n"
         "    python:\n"
