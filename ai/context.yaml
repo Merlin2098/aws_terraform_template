@@ -3,6 +3,7 @@ artifacts:
   - .ai/skills_registry.json
   - .ai/dependencies_graph.json
   - .ai/treemap.md
+  - llms.txt
 
 ignore_dirs:
   - .ai

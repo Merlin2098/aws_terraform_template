@@ -1,3 +1,6 @@
+# Legacy per ADR-FW-002: pip is no longer the framework's first-class package
+# manager. This script remains for hosts that still use
+# requirements*.txt + pip; it will not gain new functionality.
 from __future__ import annotations
 
 import argparse

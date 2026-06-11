@@ -1,0 +1,22 @@
+# Reproduces the legacy `capability_profile=saas` paths (SPEC-FW-004's
+# SAAS_ONLY_PATHS) as a typed descriptor, per ADR-FW-001 Phase 1.
+name: saas
+type: business
+
+depends_on:
+  frameworks:
+    - react
+  languages:
+    - python
+
+paths:
+  - ai/skills/saas/
+  - ai/domains/saas.md
+  - requirements.saas.txt
+
+dependencies:
+  extras:
+    - saas
+
+artifacts:
+  - context_bundle

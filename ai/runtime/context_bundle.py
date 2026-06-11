@@ -10,7 +10,7 @@ from ai.runtime.skill_registry import build_skills_registry
 from ai.tools.inspect_project import inspect_project
 
 
-def _project_purpose(project: dict[str, Any]) -> str:
+def project_purpose(project: dict[str, Any]) -> str:
     languages = project["project"].get("languages", [])
     providers = project["cloud"].get("providers", [])
     language_text = (
@@ -47,7 +47,7 @@ def build_context_bundle(
     return {
         "project": {
             "name": project["project"]["name"],
-            "purpose": _project_purpose(project),
+            "purpose": project_purpose(project),
         },
         "tech_stack": {
             "languages": project["project"]["languages"],

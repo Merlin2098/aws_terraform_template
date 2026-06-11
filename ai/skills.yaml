@@ -201,3 +201,15 @@ saas_deployment:
 saas_ux:
   path: ai/skills/saas/ux.md
   description: SaaS dashboard UX, form design, navigation patterns, loading/empty states, and accessibility baseline
+
+saas_supabase:
+  path: ai/skills/saas/supabase.md
+  description: Supabase Storage buckets, object path conventions, and RLS policy patterns for tables and storage.objects
+
+saas_vps:
+  path: ai/skills/saas/vps.md
+  description: VPS deployment using Docker Compose, Nginx reverse proxy, Let's Encrypt TLS, and database backup/restore
+
+saas_domains:
+  path: ai/skills/saas/domains.md
+  description: DNS records, Cloudflare proxy/TLS modes, and SPF/DKIM/DMARC for transactional email on a custom domain

@@ -1,0 +1,12 @@
+name: domains
+type: platform
+
+depends_on:
+  business:
+    - saas
+
+paths:
+  - ai/skills/saas/domains.md
+
+artifacts:
+  - context_bundle

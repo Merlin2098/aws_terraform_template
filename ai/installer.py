@@ -3,6 +3,17 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+import yaml
+
+from ai.runtime.capability_registry import (
+    CapabilityDescriptor,
+    active_paths,
+    category_paths,
+    load_registry,
+    normalize_capabilities,
+    resolve_descriptors,
+)
+
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_GITIGNORE_PATH = TEMPLATE_ROOT / ".gitignore"
@@ -11,13 +22,13 @@ OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
 CLOUD_ONLY_TOP_LEVEL_DIRS = {"specs"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
+# "pip" is legacy per ADR-FW-002 — uv is the sole supported package manager
+# for new functionality. Kept for hosts still using requirements*.txt + pip.
 PACKAGE_MANAGERS = {"pip", "uv"}
-CAPABILITY_PROFILES = {"saas"}
-SAAS_ONLY_PATHS = {
-    "ai/skills/saas",
-    "ai/domains/saas.md",
-    "requirements.saas.txt",
-}
+# Capability category whose paths are gated behind explicit selection, per
+# ADR-FW-001 Phase 2 — mirrors the legacy `capability_profile=<value>` axis
+# (SPEC-FW-004's SAAS_ONLY_PATHS), now resolved from ai/capabilities/business/.
+CAPABILITY_GATED_CATEGORY = "business"
 LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
 CLOUD_REQUIREMENTS_PATH = Path("requirements.cloud.txt")
 DEV_REQUIREMENTS_PATH = Path("requirements.dev.txt")
@@ -194,12 +205,20 @@ def validate_package_manager(package_manager: str) -> str:
     return normalized
 
 
-def validate_capability_profile(capability_profile: str | None) -> str | None:
+def validate_capability_profile(
+    capability_profile: str | None,
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
+) -> str | None:
     if capability_profile is None or capability_profile == "":
         return None
     normalized = capability_profile.strip().lower()
-    if normalized not in CAPABILITY_PROFILES:
-        raise ValueError(f"Capability profile must be one of {CAPABILITY_PROFILES} or empty.")
+    if registry is None:
+        registry = load_registry(TEMPLATE_ROOT)
+    available = set(registry.get(CAPABILITY_GATED_CATEGORY, {}))
+    if normalized not in available:
+        raise ValueError(
+            f"Capability profile must be one of {sorted(available)} or empty."
+        )
     return normalized
 
 
@@ -253,20 +272,39 @@ def should_copy_specs_path(relative: Path, environment_profile: str) -> bool:
     return True
 
 
-def should_copy_capability_path(relative: Path, capability_profile: str | None) -> bool:
-    if capability_profile == "saas":
-        return True
+def gated_paths_to_exclude(
+    registry: dict[str, dict[str, CapabilityDescriptor]],
+    capabilities: dict[str, list[str]],
+) -> set[str]:
+    """Paths owned by an unselected capability in the gated category.
+
+    Per ADR-FW-001 Phase 2, the ``business`` category (today: ``saas``) is
+    gated behind explicit selection — its descriptors' ``paths`` are excluded
+    unless that capability is active. Paths declared by a descriptor that *is*
+    active are kept even if another, unselected descriptor also declares them.
+    """
+    all_gated = category_paths(registry, CAPABILITY_GATED_CATEGORY)
+    active = active_paths(resolve_descriptors(registry, capabilities))
+    return all_gated - active
+
+
+def should_copy_capability_path(relative: Path, excluded_paths: set[str]) -> bool:
     relative_posix = relative.as_posix()
-    for saas_path in SAAS_ONLY_PATHS:
-        if relative_posix == saas_path or relative_posix.startswith(saas_path + "/"):
+    for excluded in excluded_paths:
+        excluded = excluded.rstrip("/")
+        if relative_posix == excluded or relative_posix.startswith(excluded + "/"):
             return False
     return True
 
 
 def iter_template_files(
-    *, include_structure: bool, environment_profile: str, package_manager: str,
-    capability_profile: str | None = None,
+    *,
+    include_structure: bool,
+    environment_profile: str,
+    package_manager: str,
+    excluded_capability_paths: set[str] | None = None,
 ) -> tuple[list[Path], list[Path]]:
+    excluded_capability_paths = excluded_capability_paths or set()
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
 
@@ -284,7 +322,7 @@ def iter_template_files(
             ):
                 ignored.append(path)
                 continue
-            if not should_copy_capability_path(relative, capability_profile):
+            if not should_copy_capability_path(relative, excluded_capability_paths):
                 ignored.append(path)
                 continue
             if is_excluded(path):
@@ -308,6 +346,7 @@ def render_target_file(
     package_manager: str,
     environment_profile: str,
     capability_profile: str | None = None,
+    capabilities: dict[str, list[str]] | None = None,
 ) -> str:
     if relative == Path(".pre-commit-config.yaml"):
         if package_manager == "uv":
@@ -333,11 +372,17 @@ def render_target_file(
             .replace("$(PYTHON) scripts/package.py", package_command)
         )
     if relative == TEMPLATE_PROFILE_PATH:
-        return (
+        legacy = (
             f"package_manager={package_manager}\n"
             f"environment_profile={environment_profile}\n"
             f"capability_profile={capability_profile or ''}\n"
         )
+        if not capabilities:
+            return legacy
+        typed_block = yaml.safe_dump(
+            {"capabilities": capabilities}, sort_keys=True, default_flow_style=False
+        )
+        return f"{legacy}\n{typed_block}"
     return source_text
 
 
@@ -349,8 +394,13 @@ def copy_template_file(
     package_manager: str,
     environment_profile: str,
     capability_profile: str | None = None,
+    capabilities: dict[str, list[str]] | None = None,
 ) -> None:
-    if relative in {Path(".pre-commit-config.yaml"), Path("Makefile"), TEMPLATE_PROFILE_PATH}:
+    if relative in {
+        Path(".pre-commit-config.yaml"),
+        Path("Makefile"),
+        TEMPLATE_PROFILE_PATH,
+    }:
         source_text = source_path.read_text(encoding="utf-8")
         destination.write_text(
             render_target_file(
@@ -359,6 +409,7 @@ def copy_template_file(
                 package_manager=package_manager,
                 environment_profile=environment_profile,
                 capability_profile=capability_profile,
+                capabilities=capabilities,
             ),
             encoding="utf-8",
         )
@@ -461,12 +512,17 @@ def install_template(
     target = validate_target(target)
     environment_profile = validate_environment_profile(environment_profile)
     package_manager = validate_package_manager(package_manager)
-    capability_profile = validate_capability_profile(capability_profile)
+    registry = load_registry(TEMPLATE_ROOT)
+    capability_profile = validate_capability_profile(capability_profile, registry)
+    capabilities = normalize_capabilities(
+        [capability_profile] if capability_profile else []
+    )
+    excluded_capability_paths = gated_paths_to_exclude(registry, capabilities)
     candidates, ignored_paths = iter_template_files(
         include_structure=include_structure,
         environment_profile=environment_profile,
         package_manager=package_manager,
-        capability_profile=capability_profile,
+        excluded_capability_paths=excluded_capability_paths,
     )
     copied: list[str] = []
     skipped: list[str] = []
@@ -501,6 +557,7 @@ def install_template(
             package_manager=package_manager,
             environment_profile=environment_profile,
             capability_profile=capability_profile,
+            capabilities=capabilities,
         )
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 

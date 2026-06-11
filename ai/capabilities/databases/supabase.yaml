@@ -1,0 +1,16 @@
+name: supabase
+type: database
+
+depends_on:
+  business:
+    - saas
+
+paths:
+  - ai/skills/saas/supabase.md
+
+dependencies:
+  extras:
+    - supabase
+
+artifacts:
+  - context_bundle

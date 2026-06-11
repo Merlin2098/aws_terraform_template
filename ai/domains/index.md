@@ -118,6 +118,9 @@ Full-stack SaaS applications: React, FastAPI, PostgreSQL/Supabase, Auth, Analyti
 | SaaS Analytics | `ai/skills/saas/analytics.md` |
 | Deployment (Railway/Vercel) | `ai/skills/saas/deployment.md` |
 | UX/UI | `ai/skills/saas/ux.md` |
+| Supabase Storage & RLS | `ai/skills/saas/supabase.md` |
+| VPS Deployment (Docker/Nginx/SSL) | `ai/skills/saas/vps.md` |
+| Domains, DNS & Email | `ai/skills/saas/domains.md` |
 
 ---
 

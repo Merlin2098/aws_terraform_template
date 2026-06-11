@@ -4,7 +4,15 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ai.installer import install_template
+import pytest
+
+from ai.installer import (
+    gated_paths_to_exclude,
+    install_template,
+    should_copy_capability_path,
+    validate_capability_profile,
+)
+from ai.runtime.capability_registry import load_registry
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -160,7 +168,7 @@ def test_uv_local_install_copies_only_uv_project_files(tmp_path: Path) -> None:
     assert (target / "pyproject.toml").exists()
     assert (target / "uv.lock").exists()
     assert (target / ".template-profile").read_text(encoding="utf-8") == (
-        "package_manager=uv\nenvironment_profile=local\n"
+        "package_manager=uv\nenvironment_profile=local\ncapability_profile=\n"
     )
     assert not (target / "requirements.local.txt").exists()
     assert not (target / "requirements.dev.txt").exists()
@@ -187,7 +195,9 @@ def test_uv_cloud_install_renders_cloud_profile_defaults(tmp_path: Path) -> None
     assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init" in makefile
     assert "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py update" in makefile
     assert "uv run python scripts/package.py --package-manager uv" in makefile
-    assert template_profile == "package_manager=uv\nenvironment_profile=cloud\n"
+    assert template_profile == (
+        "package_manager=uv\nenvironment_profile=cloud\ncapability_profile=\n"
+    )
 
 
 def test_include_structure_creates_empty_tests_dir_without_template_tests(
@@ -285,6 +295,134 @@ def test_linux_setup_readme_stays_template_only(tmp_path: Path) -> None:
     assert "docs/linux_setup/README.md" not in summary["copied"]
     assert "docs/linux_setup/README.md" in summary["ignored"]
     assert not (target / "docs" / "linux_setup" / "README.md").exists()
+
+
+def test_validate_capability_profile_accepts_registry_names() -> None:
+    registry = load_registry(REPO_ROOT)
+
+    assert validate_capability_profile("saas", registry) == "saas"
+    assert validate_capability_profile(None, registry) is None
+    assert validate_capability_profile("", registry) is None
+
+
+def test_validate_capability_profile_rejects_unknown_name() -> None:
+    registry = load_registry(REPO_ROOT)
+
+    with pytest.raises(ValueError, match="saas"):
+        validate_capability_profile("not-a-capability", registry)
+
+
+def test_gated_paths_to_exclude_excludes_unselected_business_capability() -> None:
+    registry = load_registry(REPO_ROOT)
+
+    excluded = gated_paths_to_exclude(registry, {})
+
+    assert "ai/skills/saas/" in excluded
+    assert "ai/domains/saas.md" in excluded
+    assert "requirements.saas.txt" in excluded
+
+
+def test_gated_paths_to_exclude_keeps_selected_business_capability() -> None:
+    registry = load_registry(REPO_ROOT)
+
+    excluded = gated_paths_to_exclude(registry, {"business": ["saas"]})
+
+    assert excluded == set()
+
+
+def test_should_copy_capability_path_matches_excluded_prefixes() -> None:
+    excluded = {"ai/skills/saas/", "ai/domains/saas.md"}
+
+    assert not should_copy_capability_path(Path("ai/skills/saas/auth.md"), excluded)
+    assert not should_copy_capability_path(Path("ai/domains/saas.md"), excluded)
+    assert should_copy_capability_path(Path("ai/domains/aws.md"), excluded)
+
+
+def test_install_without_capability_excludes_saas_paths(tmp_path: Path) -> None:
+    target = tmp_path / "host-no-saas"
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+    )
+
+    assert "ai/domains/saas.md" not in summary["copied"]
+    assert "ai/skills/saas/auth.md" not in summary["copied"]
+    assert "requirements.saas.txt" not in summary["copied"]
+    assert "ai/domains/saas.md" in summary["ignored"]
+    assert not (target / "ai" / "domains" / "saas.md").exists()
+    assert not (target / "requirements.saas.txt").exists()
+
+
+def test_install_with_saas_capability_includes_saas_paths(tmp_path: Path) -> None:
+    target = tmp_path / "host-saas"
+
+    summary = install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="local",
+        package_manager="pip",
+        capability_profile="saas",
+    )
+
+    assert "ai/domains/saas.md" in summary["copied"]
+    assert "ai/skills/saas/auth.md" in summary["copied"]
+    assert "requirements.saas.txt" in summary["copied"]
+    assert (target / "ai" / "domains" / "saas.md").exists()
+    assert (target / "requirements.saas.txt").exists()
+
+
+def test_install_with_saas_capability_writes_typed_capabilities_block(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "host-uv-saas"
+
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="cloud",
+        package_manager="uv",
+        capability_profile="saas",
+    )
+
+    template_profile = (target / ".template-profile").read_text(encoding="utf-8")
+
+    assert template_profile.startswith(
+        "package_manager=uv\nenvironment_profile=cloud\ncapability_profile=saas\n"
+    )
+    assert "capabilities:" in template_profile
+    assert "business:" in template_profile
+    assert "- saas" in template_profile
+
+
+def test_install_without_capability_omits_typed_capabilities_block(
+    tmp_path: Path,
+) -> None:
+    target = tmp_path / "host-uv-no-saas"
+
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        environment_profile="cloud",
+        package_manager="uv",
+    )
+
+    template_profile = (target / ".template-profile").read_text(encoding="utf-8")
+
+    assert template_profile == (
+        "package_manager=uv\nenvironment_profile=cloud\ncapability_profile=\n"
+    )
+    assert "capabilities:" not in template_profile
 
 
 def test_run_uv_sync_uses_template_profile_and_can_skip_dev_groups(

@@ -44,6 +44,10 @@ saas = [
     "uvicorn[standard]",
 ]
 
+supabase = [
+    "supabase",
+]
+
 [dependency-groups]
 dev-local = [
     "faker",

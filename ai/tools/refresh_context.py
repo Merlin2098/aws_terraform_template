@@ -9,6 +9,7 @@ from ai.hooks.treemap import write_treemap
 from ai.runtime.config import artifact_paths, load_context_config
 from ai.runtime.context_bundle import build_and_persist_context_bundle
 from ai.runtime.dependency_graph import build_and_persist_dependency_graph
+from ai.runtime.llms_txt import build_and_persist_llms_txt
 from ai.runtime.skill_registry import build_and_persist_skills_registry
 from ai.tools.inspect_project import inspect_project
 
@@ -18,13 +19,19 @@ def _warn(message: str) -> None:
 
 
 def _artifact_path(
-    project_root: Path, artifact_strings: list[str], filename: str
-) -> Path:
+    project_root: Path,
+    artifact_strings: list[str],
+    filename: str,
+    *,
+    required: bool = True,
+) -> Path | None:
     for artifact in artifact_strings:
         path = Path(artifact)
         if path.name == filename:
             return project_root / path
-    raise ValueError(f"Missing artifact path for {filename}")
+    if required:
+        raise ValueError(f"Missing artifact path for {filename}")
+    return None
 
 
 def refresh_context(project_root: Path) -> dict[str, object]:
@@ -48,6 +55,18 @@ def refresh_context(project_root: Path) -> dict[str, object]:
         project_root,
         _artifact_path(project_root, artifact_strings, "dependencies_graph.json"),
     )
+
+    llms_txt_path = _artifact_path(
+        project_root, artifact_strings, "llms.txt", required=False
+    )
+    if llms_txt_path is not None:
+        build_and_persist_llms_txt(
+            project_root,
+            llms_txt_path,
+            project=project,
+            skills_registry=skills_registry,
+        )
+
     write_treemap(
         project_root, _artifact_path(project_root, artifact_strings, "treemap.md")
     )

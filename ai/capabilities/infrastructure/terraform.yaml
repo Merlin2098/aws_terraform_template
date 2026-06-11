@@ -1,0 +1,14 @@
+name: terraform
+type: infrastructure
+
+depends_on:
+  cloud:
+    - aws
+
+paths:
+  - ai/domains/terraform.md
+  - ai/skills/terraform/
+  - specs/
+
+artifacts:
+  - context_bundle

@@ -1,0 +1,16 @@
+name: react
+type: framework
+
+depends_on:
+  languages:
+    - python
+
+paths:
+  - ai/domains/frontend.md
+  - ai/skills/frontend/
+
+scanners:
+  - javascript
+
+artifacts:
+  - context_bundle

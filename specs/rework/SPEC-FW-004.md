@@ -1,5 +1,13 @@
 # SPEC-FW-004 — Capability Profiles in the Installer
 
+> **Partially superseded.** `ADR-FW-001` (Typed Capability Registry) supersedes
+> the single-value `capability_profile` model described here, replacing it with a
+> registry-driven, category-typed capability system. `ADR-FW-002` (Standardize on
+> UV) supersedes the `package_manager` (`pip` | `uv`) dimension referenced below:
+> `uv` is now the sole supported manager and `pip` is legacy. This spec documents
+> the installer state *prior* to those ADRs; read it as historical context, with
+> the ADRs as the binding direction.
+
 ## Context
 
 The installer (`ai/installer.py`) currently supports two orthogonal dimensions:
@@ -90,6 +98,8 @@ Default is `N` (no capability profile). Answering `y` sets `capability_profile=s
 ## References
 
 - `ai/installer.py` — implementation
+- `specs/rework/ADR-FW-001.md` — typed capability registry (supersedes the single-value `capability_profile` model)
+- `specs/rework/ADR-FW-002.md` — UV standardization (supersedes the `pip`/`uv` `package_manager` dimension)
 - `specs/rework/SPEC-FW-002.md` — SaaS domain definition
 - `specs/rework/SPEC-FW-003.md` — domain descriptor contract
 - `specs/template/001-template-contract.md` — overall template contract

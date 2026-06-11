@@ -2,15 +2,18 @@ from __future__ import annotations
 
 import ast
 import json
-from dataclasses import asdict, dataclass
+import re
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from ai.tools.inspect_project import is_ignored_path
 
 
 VERSION = "0.2.0"
+
+DEFAULT_SCANNERS = ["python"]
 
 
 @dataclass
@@ -31,9 +34,19 @@ class Edge:
     lineno: int | None = None
 
 
-def _iter_python_files(project_root: Path) -> list[Path]:
+@dataclass
+class ScannerResult:
+    nodes: list[Node] = field(default_factory=list)
+    edges: list[Edge] = field(default_factory=list)
+    issues: list[dict[str, str]] = field(default_factory=list)
+
+
+ScannerFn = Callable[[Path], ScannerResult]
+
+
+def _iter_files(project_root: Path, pattern: str) -> list[Path]:
     files: list[Path] = []
-    for path in project_root.rglob("*.py"):
+    for path in project_root.rglob(pattern):
         if is_ignored_path(path, project_root):
             continue
         files.append(path)
@@ -62,9 +75,9 @@ def _pick_internal(imported: str, modules: set[str]) -> str | None:
     return None
 
 
-def build_dependency_graph(project_root: Path) -> dict[str, Any]:
-    project_root = project_root.resolve()
-    files = _iter_python_files(project_root)
+def scan_python(project_root: Path) -> ScannerResult:
+    """Build Python module/import nodes and edges via the ``ast`` module."""
+    files = _iter_files(project_root, "*.py")
     module_to_file = {
         _module_name(project_root, path): path.relative_to(project_root).as_posix()
         for path in files
@@ -127,7 +140,175 @@ def build_dependency_graph(project_root: Path) -> dict[str, Any]:
                     )
                 )
 
-    internal_nodes = [node for node in nodes.values() if node.kind == "python_module"]
+    return ScannerResult(nodes=list(nodes.values()), edges=edges, issues=issues)
+
+
+JS_EXTENSIONS = ("*.js", "*.jsx", "*.ts", "*.tsx")
+
+# Matches `import ... from "x"`, `import "x"`, and `require("x")`.
+JS_IMPORT_RE = re.compile(
+    r"""(?:
+        import\s+(?:[^'"]*?\sfrom\s+)?['"](?P<from>[^'"]+)['"]
+        |
+        require\(\s*['"](?P<require>[^'"]+)['"]\s*\)
+    )""",
+    re.VERBOSE,
+)
+
+
+def _js_module_name(project_root: Path, path: Path) -> str:
+    rel = path.relative_to(project_root).as_posix()
+    for suffix in (".tsx", ".ts", ".jsx", ".js"):
+        if rel.endswith(suffix):
+            rel = rel[: -len(suffix)]
+            break
+    if rel.endswith("/index"):
+        rel = rel[: -len("/index")]
+    return rel
+
+
+def scan_javascript(project_root: Path) -> ScannerResult:
+    """Build JS/TS module/import nodes and edges via regex-based import detection.
+
+    No AST library is available for JS/TS in the Python stdlib, so imports are
+    detected with a regex over ``import``/``require`` statements. Internal
+    imports (relative paths) resolve to project modules; everything else is an
+    external package, mirroring ``scan_python``'s node/edge shape.
+    """
+    files: list[Path] = []
+    for pattern in JS_EXTENSIONS:
+        files.extend(_iter_files(project_root, pattern))
+
+    module_to_file = {
+        _js_module_name(project_root, path): path.relative_to(project_root).as_posix()
+        for path in files
+    }
+    modules = set(module_to_file)
+    nodes: dict[str, Node] = {}
+    edges: list[Edge] = []
+    issues: list[dict[str, str]] = []
+
+    for module, rel_path in module_to_file.items():
+        nodes[f"module:{module}"] = Node(
+            id=f"module:{module}",
+            kind="javascript_module",
+            label=module,
+            module=module,
+            file_path=rel_path,
+        )
+
+    for module, rel_path in module_to_file.items():
+        path = project_root / rel_path
+        try:
+            text = path.read_text(encoding="utf-8")
+        except Exception as exc:
+            issues.append({"file": rel_path, "message": str(exc)})
+            continue
+
+        source = f"module:{module}"
+        for lineno, line in enumerate(text.splitlines(), start=1):
+            for match in JS_IMPORT_RE.finditer(line):
+                imported = match.group("from") or match.group("require")
+                if not imported:
+                    continue
+
+                if imported.startswith("."):
+                    base = (Path(rel_path).parent / imported).as_posix()
+                    candidate = re.sub(r"/\./", "/", base)
+                    while "/../" in candidate:
+                        candidate = re.sub(r"[^/]+/\.\./", "", candidate, count=1)
+                    candidate = candidate.lstrip("./")
+                    internal = _pick_internal(candidate, modules) or _pick_internal(
+                        f"{candidate}/index", modules
+                    )
+                    if internal:
+                        target = f"module:{internal}"
+                    else:
+                        target = f"module:{candidate}"
+                        nodes.setdefault(
+                            target,
+                            Node(id=target, kind="javascript_module", label=candidate),
+                        )
+                else:
+                    package = imported.split("/")[0]
+                    if package.startswith("@"):
+                        parts = imported.split("/")
+                        package = "/".join(parts[:2]) if len(parts) > 1 else package
+                    target = f"external:{package}"
+                    nodes.setdefault(
+                        target,
+                        Node(
+                            id=target,
+                            kind="external_package",
+                            label=package,
+                            module=package,
+                        ),
+                    )
+
+                edges.append(
+                    Edge(
+                        source=source,
+                        target=target,
+                        kind="imports",
+                        raw=imported,
+                        lineno=lineno,
+                    )
+                )
+
+    return ScannerResult(nodes=list(nodes.values()), edges=edges, issues=issues)
+
+
+SCANNERS: dict[str, ScannerFn] = {
+    "python": scan_python,
+    "javascript": scan_javascript,
+}
+
+
+def active_scanners(project_root: Path) -> list[str]:
+    """Resolve which registered scanners apply to ``project_root``.
+
+    Reads the capability registry and the host's ``.template-profile`` to
+    collect the ``scanners:`` declared by active descriptors (per
+    ADR-FW-001). Falls back to :data:`DEFAULT_SCANNERS` for legacy hosts
+    without typed capabilities, per SPEC-FW-005 §9.
+    """
+    from ai.runtime.capability_registry import load_registry, resolve_descriptors
+    from ai.runtime.profile import load_profile
+
+    registry = load_registry(project_root)
+    profile = load_profile(project_root / ".template-profile")
+    descriptors = resolve_descriptors(registry, profile.capabilities)
+
+    names: list[str] = []
+    for descriptor in descriptors:
+        for scanner in descriptor.scanners:
+            if scanner not in names:
+                names.append(scanner)
+
+    return names or list(DEFAULT_SCANNERS)
+
+
+def build_dependency_graph(
+    project_root: Path, scanners: list[str] | None = None
+) -> dict[str, Any]:
+    project_root = project_root.resolve()
+    scanner_names = scanners if scanners is not None else active_scanners(project_root)
+
+    nodes: dict[str, Node] = {}
+    edges: list[Edge] = []
+    issues: list[dict[str, str]] = []
+
+    for name in scanner_names:
+        scanner = SCANNERS.get(name)
+        if scanner is None:
+            continue
+        result = scanner(project_root)
+        for node in result.nodes:
+            nodes.setdefault(node.id, node)
+        edges.extend(result.edges)
+        issues.extend(result.issues)
+
+    internal_nodes = [node for node in nodes.values() if node.kind.endswith("_module")]
     external_nodes = [
         node for node in nodes.values() if node.kind == "external_package"
     ]
@@ -136,6 +317,7 @@ def build_dependency_graph(project_root: Path) -> dict[str, Any]:
         "version": VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "project_root": str(project_root),
+        "scanners": scanner_names,
         "nodes": [
             asdict(node) for node in sorted(nodes.values(), key=lambda item: item.id)
         ],

@@ -1,0 +1,12 @@
+name: vps
+type: platform
+
+depends_on:
+  business:
+    - saas
+
+paths:
+  - ai/skills/saas/vps.md
+
+artifacts:
+  - context_bundle

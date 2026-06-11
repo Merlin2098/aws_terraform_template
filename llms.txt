@@ -1,0 +1,86 @@
+# aws_terraform_template
+
+> Python, sql and terraform project for data workflows on AWS.
+
+## Architecture
+
+- languages: python, sql, terraform
+- cloud: aws
+- infrastructure: terraform
+
+## Capabilities
+
+- (none active — see ai/capabilities/ for available capabilities)
+
+## Skills / Guidance
+
+- ai/skills/frontend/api_client_patterns.md: Centralised axios client, request/response interceptors, retry logic, abort controller, and three-state pattern
+- ai/skills/aws/api_gateway.md: HTTP API vs REST API, Lambda proxy integration, CORS, throttling, and Cognito JWT authoriser
+- ai/skills/data/athena_patterns.md: Athena query lifecycle, result pagination, partition pruning, partition projection, and workgroup cost guardrails
+- ai/skills/aws/aws_smoke_testing.md: Smoke test and validation scripts for AWS resources — generates tests/aws/ in host repositories
+- ai/skills/python/bedrock_client.md: Bedrock invoke_model and converse patterns, throttling retry, response parsing, and context window guard
+- ai/skills/aws/bedrock_permissions.md: IAM actions, model access activation, and cross-region inference ARNs for AWS Bedrock
+- ai/skills/aws/cloudfront_s3_hosting.md: S3 + CloudFront static hosting with OAC, cache behavior split, SPA routing, and cache invalidation
+- ai/skills/aws/cloudwatch_logging.md: Logging and monitoring with CloudWatch
+- ai/skills/aws/cognito_auth.md: Cognito User Pool setup, JWT validation, API Gateway authoriser, and frontend auth token flow
+- ai/skills/data/data_contracts.md: Data validation and schema enforcement
+- ai/skills/data/data_quality_guidance.md: Deterministic data quality checks for Python, SQL, and AWS workflows
+- ai/skills/terraform/environment_promotion.md: Directory-per-environment promotion pattern, state isolation, and immutable artifact promotion
+- ai/skills/python/error_handling_pipeline.md: Typed exception hierarchy, Step Functions Catch integration, and structured error payloads for pipeline stages
+- ai/skills/data/etl_patterns.md: ETL pipeline Bronze/Silver/Gold layers, transformations, and OCR normalisation stage with prompt versioning
+- ai/skills/aws/eventbridge.md: Event-driven architecture using EventBridge
+- ai/skills/frontend/file_upload_ux.md: Presigned URL upload flow, file validation, XHR progress tracking, drag-and-drop, and pipeline status polling
+- ai/skills/aws/glue_jobs.md: AWS Glue job design patterns
+- ai/skills/terraform/iam_least_privilege.md: IAM policies with least privilege principle
+- ai/skills/aws/iam_policies.md: IAM roles and least privilege policies
+- ai/skills/aws/lambda_functions.md: Event-driven compute with AWS Lambda
+- ai/skills/python/logging_structured.md: Mandatory log field contract, JSON formatter, LoggerAdapter context injection, and CloudWatch Insights queries
+- ai/skills/python/python_project_guidance.md: Simple, maintainable Python automation and pipeline code
+- ai/skills/python/python_testing_quality.md: Testing guidance for Python automation, data workflows, and AWS boundaries
+- ai/skills/frontend/react_vite_aws.md: Vite environment variables, S3 sync deploy sequence, CloudFront cache invalidation, and CSP headers
+- ai/skills/aws/s3_data_lake.md: Data lake architecture using S3
+- ai/skills/aws/s3_presigned_urls.md: Presigned PUT/POST URL generation, TTL selection, CORS, and S3 event trigger for pipeline start
+- ai/skills/saas/analytics.md: Operational KPI dashboards, business metrics (appointments, leads, conversion), and historical snapshot tables
+- ai/skills/saas/auth.md: Supabase Auth, JWT validation, RBAC roles (OWNER/ADMIN/SALES/SPECIALIST), and frontend session management
+- ai/skills/saas/backend.md: FastAPI service layer, SQLAlchemy repository pattern, Pydantic validation, and layered architecture
+- ai/skills/saas/database.md: PostgreSQL/Supabase schema design, Alembic migrations, soft delete, audit fields, and indexes
+- ai/skills/saas/deployment.md: Railway/Vercel deploy, GitHub Actions CI/CD, environment config management, and migration-on-deploy pattern
+- ai/skills/saas/domains.md: DNS records, Cloudflare proxy/TLS modes, and SPF/DKIM/DMARC for transactional email on a custom domain
+- ai/skills/saas/frontend.md: React + Vite + Tailwind SaaS UI patterns, component design, hooks, and form handling
+- ai/skills/saas/supabase.md: Supabase Storage buckets, object path conventions, and RLS policy patterns for tables and storage.objects
+- ai/skills/saas/ux.md: SaaS dashboard UX, form design, navigation patterns, loading/empty states, and accessibility baseline
+- ai/skills/saas/vps.md: VPS deployment using Docker Compose, Nginx reverse proxy, Let's Encrypt TLS, and database backup/restore
+- ai/skills/sql/sql_workflow_guidance.md: Maintainable SQL file organization and transformation workflow guidance
+- ai/skills/aws/sqs_patterns.md: SQS visibility timeout, dead-letter queues, batch configuration, and Lambda event source mapping
+- ai/skills/terraform/state_management.md: Terraform state backends, overrides, and hygiene
+- ai/skills/aws/step_functions.md: Workflow orchestration using Step Functions
+- ai/skills/terraform/terraform_ci_cd.md: CI/CD patterns for Terraform validation and testing
+- ai/skills/terraform/terraform_governance.md: Tagging enforcement, budget governance, per-service cost awareness, drift management, and versioning policy
+- ai/skills/terraform/terraform_import_discovery.md: Discover and bulk import resources using Terraform Search
+- ai/skills/terraform/terraform_import_manual.md: Import existing resources manually into Terraform
+- ai/skills/terraform/terraform_mocks.md: Mock providers for Terraform testing without AWS
+- ai/skills/terraform/modules.md: Terraform reusable module patterns
+- ai/skills/terraform/terraform_observability.md: CloudWatch log groups, retention policies, and mandatory observability outputs
+- ai/skills/terraform/terraform_orchestration.md: Orchestrate Terraform execution using CI/CD and external tools
+- ai/skills/terraform/terraform_refactoring.md: Refactor Terraform into reusable modules
+- ai/skills/terraform/terraform_security.md: Security best practices for Terraform infrastructure
+- ai/skills/terraform/terraform_stacks.md: Manage multi-environment infrastructure with Terraform Stacks
+- ai/skills/terraform/terraform_style.md: Terraform code structure and style conventions
+- ai/skills/terraform/terraform_testing.md: Terraform testing patterns (unit, integration, assertions)
+- ai/skills/aws/textract.md: Async Textract workflows, SNS/SQS notification pattern, and FeatureTypes cost guidance
+
+## Relevant Specs
+
+- specs/template/000-template-spec-format.md
+- specs/template/001-template-contract.md
+- specs/template/002-infra-baseline.md
+- specs/template/003-ai-guidance-layers.md
+- specs/template/009-cloud-observability-guardrails.md
+- specs/project/README.md
+
+## Agent Onboarding
+
+- Start with AGENTS.md for the agent contract and skill trigger map.
+- ai/context.yaml is the authoritative AI context-generation config.
+- ai/domains/index.md provides domain-based navigation across skills.
+- .ai/ contains generated context artifacts (optional, never required at runtime).

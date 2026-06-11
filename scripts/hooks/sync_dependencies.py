@@ -7,10 +7,18 @@ import subprocess
 import sys
 from pathlib import Path
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(_REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(_REPO_ROOT))
+
+from ai.runtime.profile import resolve_environment_profile  # noqa: E402
+
 
 HASH_FILE = Path(".venv/.deps_hash")
 REQUIREMENTS_GLOB = "requirements*.txt"
 ENVIRONMENT_PROFILES = {"local", "cloud"}
+# "pip" is legacy per ADR-FW-002 — uv is the sole supported package manager
+# for new functionality. Kept for hosts still using requirements*.txt + pip.
 PACKAGE_MANAGERS = {"pip", "uv"}
 PROFILE_FILE = Path(".template-profile")
 
@@ -103,27 +111,11 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def profile_from_template_file() -> str | None:
-    if not PROFILE_FILE.exists():
-        return None
-    for line in PROFILE_FILE.read_text(encoding="utf-8").splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        key, separator, value = line.partition("=")
-        if separator and key.strip() == "environment_profile":
-            normalized = value.strip().lower()
-            if normalized in ENVIRONMENT_PROFILES:
-                return normalized
-    return None
-
-
 def resolve_profile(manager: str, selected: str | None) -> str:
     if selected:
         return selected
     if manager == "uv":
-        persisted = profile_from_template_file()
-        if persisted:
-            return persisted
+        return resolve_environment_profile(PROFILE_FILE, None)
     return "local"
 
 

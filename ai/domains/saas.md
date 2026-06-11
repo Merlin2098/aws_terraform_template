@@ -32,6 +32,9 @@ This domain is independent of the existing Data Product, AWS, Terraform, and Pyt
 | SG5 — SaaS Analytics | `ai/skills/saas/analytics.md` | KPIs, dashboards, business metrics |
 | SG6 — Deployment | `ai/skills/saas/deployment.md` | Railway, Vercel, GitHub Actions, env config |
 | SG7 — UX/UI | `ai/skills/saas/ux.md` | Dashboard design, form flows, accessibility |
+| SG8 — Supabase Storage & RLS | `ai/skills/saas/supabase.md` | Storage buckets, object paths, RLS policies |
+| SG9 — VPS Deployment | `ai/skills/saas/vps.md` | Docker Compose, Nginx, Let's Encrypt, backups |
+| SG10 — Domains & Email | `ai/skills/saas/domains.md` | DNS, Cloudflare, TLS, SPF/DKIM/DMARC |
 
 ---
 

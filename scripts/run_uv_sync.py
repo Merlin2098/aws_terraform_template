@@ -14,6 +14,11 @@ VENV_DIR = REPO_ROOT / ".venv"
 PROFILE_FILE = REPO_ROOT / ".template-profile"
 ENVIRONMENT_PROFILES = {"local", "cloud"}
 
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from ai.runtime.profile import resolve_environment_profile  # noqa: E402
+
 
 def uv_command_prefix(python_path: str | None = None) -> list[str]:
     uv_path = shutil.which("uv")
@@ -26,27 +31,8 @@ def uv_command_prefix(python_path: str | None = None) -> list[str]:
     return [sys.executable, "-m", "uv"]
 
 
-def profile_from_template_file() -> str | None:
-    if not PROFILE_FILE.exists():
-        return None
-    for line in PROFILE_FILE.read_text(encoding="utf-8").splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        key, separator, value = line.partition("=")
-        if separator and key.strip() == "environment_profile":
-            normalized = value.strip().lower()
-            if normalized in ENVIRONMENT_PROFILES:
-                return normalized
-    return None
-
-
 def resolve_profile(selected: str | None) -> str:
-    if selected:
-        return selected
-    persisted = profile_from_template_file()
-    if persisted:
-        return persisted
-    return "local"
+    return resolve_environment_profile(PROFILE_FILE, selected)
 
 
 def sync_command(

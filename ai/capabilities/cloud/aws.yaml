@@ -1,0 +1,17 @@
+name: aws
+type: cloud
+
+depends_on:
+  languages:
+    - python
+
+paths:
+  - ai/domains/aws.md
+  - ai/skills/aws/
+
+dependencies:
+  extras:
+    - cloud
+
+artifacts:
+  - context_bundle

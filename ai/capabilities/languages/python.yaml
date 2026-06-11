@@ -1,0 +1,18 @@
+name: python
+type: language
+
+paths:
+  - ai/domains/python.md
+  - ai/skills/python/
+
+dependencies:
+  groups:
+    - dev-local
+
+scanners:
+  - python
+
+artifacts:
+  - dependency_graph
+  - context_bundle
+  - skills_registry
