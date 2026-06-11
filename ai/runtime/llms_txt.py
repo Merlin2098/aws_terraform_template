@@ -3,24 +3,20 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from ai.runtime.capability_registry import load_registry, resolve_descriptors
-from ai.runtime.context_bundle import project_purpose
-from ai.runtime.profile import load_profile
+from ai.runtime.project_profile import ResolvedProfile, resolve_project_profile
 from ai.runtime.skill_registry import build_skills_registry
 from ai.tools.inspect_project import inspect_project
 
 
 def _capability_lines(
-    project_root: Path, profile_capabilities: dict[str, list[str]]
+    resolved: ResolvedProfile,
 ) -> list[str]:
-    registry = load_registry(project_root)
-    descriptors = resolve_descriptors(registry, profile_capabilities)
-    if not descriptors:
+    if not resolved.descriptors:
         return ["- (none active — see ai/capabilities/ for available capabilities)"]
     return [
         f"- {descriptor.name} ({descriptor.category}/{descriptor.type or 'unknown'})"
         for descriptor in sorted(
-            descriptors, key=lambda item: (item.category, item.name)
+            resolved.descriptors, key=lambda item: (item.category, item.name)
         )
     ]
 
@@ -52,6 +48,7 @@ def build_llms_txt(
     *,
     project: dict[str, Any] | None = None,
     skills_registry: dict[str, Any] | None = None,
+    resolved: ResolvedProfile | None = None,
 ) -> str:
     """Build the contents of ``llms.txt``.
 
@@ -62,19 +59,24 @@ def build_llms_txt(
     """
     project_root = project_root.resolve()
     project = project or inspect_project(project_root)
-    skills_registry = skills_registry or build_skills_registry(project_root)
-    profile = load_profile(project_root / ".template-profile")
+    resolved = resolved or resolve_project_profile(
+        project_root, validate_dependencies=False
+    )
+    skills_registry = skills_registry or build_skills_registry(
+        project_root, resolved=resolved
+    )
 
-    name = project["project"]["name"]
-    purpose = project_purpose(project)
     languages = project["project"].get("languages", []) or ["unknown"]
     cloud_providers = project["cloud"].get("providers", []) or ["none"]
     infra_tools = project["cloud"].get("infra_tools", []) or ["none"]
 
     lines = [
-        f"# {name}",
+        "# Project AI Guide",
         "",
-        f"> {purpose}",
+        "> Generic instructions and discovered context for the current project.",
+        "",
+        "Use the repository contents and active capability profile as the source "
+        "of truth. Do not infer behavior from the repository name.",
         "",
         "## Architecture",
         "",
@@ -84,7 +86,7 @@ def build_llms_txt(
         "",
         "## Capabilities",
         "",
-        *_capability_lines(project_root, profile.capabilities),
+        *_capability_lines(resolved),
         "",
         "## Skills / Guidance",
         "",
@@ -117,9 +119,13 @@ def build_and_persist_llms_txt(
     *,
     project: dict[str, Any] | None = None,
     skills_registry: dict[str, Any] | None = None,
+    resolved: ResolvedProfile | None = None,
 ) -> str:
     content = build_llms_txt(
-        project_root, project=project, skills_registry=skills_registry
+        project_root,
+        project=project,
+        skills_registry=skills_registry,
+        resolved=resolved,
     )
     write_llms_txt(content, output_path)
     return content

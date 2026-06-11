@@ -6,6 +6,8 @@ paths:
   - ai/skills/python/
 
 dependencies:
+  extras:
+    - local
   groups:
     - dev-local
 

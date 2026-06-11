@@ -11,13 +11,16 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VENV_DIR = REPO_ROOT / ".venv"
-PROFILE_FILE = REPO_ROOT / ".template-profile"
-ENVIRONMENT_PROFILES = {"local", "cloud"}
 
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from ai.runtime.profile import resolve_environment_profile  # noqa: E402
+from ai.runtime.profile import DependencyPolicy, Profile, load_profile  # noqa: E402
+from ai.runtime.project_profile import (  # noqa: E402
+    ResolvedProfile,
+    resolve_project_profile,
+    uv_sync_args,
+)
 
 
 def uv_command_prefix(python_path: str | None = None) -> list[str]:
@@ -31,27 +34,39 @@ def uv_command_prefix(python_path: str | None = None) -> list[str]:
     return [sys.executable, "-m", "uv"]
 
 
-def resolve_profile(selected: str | None) -> str:
-    return resolve_environment_profile(PROFILE_FILE, selected)
+def resolve_active_profile(
+    *, use_dev_dependencies: bool | None = None
+) -> ResolvedProfile:
+    profile = load_profile(REPO_ROOT)
+    if use_dev_dependencies is not None:
+        profile = Profile(
+            environment=profile.environment,
+            capabilities=profile.capabilities,
+            declared_capabilities=profile.declared_capabilities,
+            dependency_policy=DependencyPolicy(
+                include_dev=use_dev_dependencies,
+                additional_extras=profile.dependency_policy.additional_extras,
+                additional_groups=profile.dependency_policy.additional_groups,
+            ),
+            schema_version=profile.schema_version,
+            source=profile.source,
+        )
+    return resolve_project_profile(REPO_ROOT, profile=profile)
 
 
 def sync_command(
-    profile: str, *, use_dev_dependencies: bool, python_path: str | None = None
+    resolved: ResolvedProfile,
+    *,
+    python_path: str | None = None,
+    locked: bool = False,
 ) -> list[str]:
-    command = uv_command_prefix(python_path) + ["sync"]
-    if profile == "cloud":
-        command.extend(["--extra", "local", "--extra", "cloud"])
-    if use_dev_dependencies:
-        command.extend(["--group", "dev-local"])
-        if profile == "cloud":
-            command.extend(["--group", "dev-cloud"])
-    else:
-        command.append("--no-dev")
-    return command
+    return uv_command_prefix(python_path) + uv_sync_args(resolved, locked=locked)
 
 
-def lock_command(python_path: str | None = None) -> list[str]:
-    return uv_command_prefix(python_path) + ["lock", "--upgrade"]
+def lock_command(python_path: str | None = None, *, check: bool = False) -> list[str]:
+    return uv_command_prefix(python_path) + (
+        ["lock", "--check"] if check else ["lock", "--upgrade"]
+    )
 
 
 def uv_environment() -> dict[str, str]:
@@ -61,7 +76,7 @@ def uv_environment() -> dict[str, str]:
     return env
 
 
-def remove_readonly(func, path, exc_info) -> None:  # pragma: no cover - platform callback
+def remove_readonly(func, path, exc_info) -> None:  # pragma: no cover
     Path(path).chmod(stat.S_IWRITE)
     func(path)
 
@@ -69,19 +84,19 @@ def remove_readonly(func, path, exc_info) -> None:  # pragma: no cover - platfor
 def reset_venv() -> None:
     resolved = VENV_DIR.resolve()
     if resolved == REPO_ROOT.resolve() or resolved.parent != REPO_ROOT.resolve():
-        raise RuntimeError(f"Refusing to remove unexpected environment path: {resolved}")
+        raise RuntimeError(
+            f"Refusing to remove unexpected environment path: {resolved}"
+        )
     if VENV_DIR.exists():
         shutil.rmtree(VENV_DIR, onexc=remove_readonly)
 
 
 def is_permission_sync_error(error: subprocess.CalledProcessError) -> bool:
-    text = ""
-    if error.stdout:
-        text += error.stdout
-    if error.stderr:
-        text += error.stderr
-    lowered = text.lower()
-    return "failed to remove directory" in lowered or "access denied" in lowered or "acceso denegado" in lowered
+    text = f"{error.stdout or ''}{error.stderr or ''}".lower()
+    return any(
+        marker in text
+        for marker in ("failed to remove directory", "access denied", "acceso denegado")
+    )
 
 
 def run(command: list[str], *, dry_run: bool) -> None:
@@ -110,49 +125,56 @@ def run(command: list[str], *, dry_run: bool) -> None:
 
 
 def run_init(
-    *, dry_run: bool, profile: str, use_dev_dependencies: bool, python_path: str | None
+    *,
+    dry_run: bool,
+    resolved: ResolvedProfile,
+    python_path: str | None,
+    locked: bool = False,
 ) -> None:
-    command = sync_command(
-        profile, use_dev_dependencies=use_dev_dependencies, python_path=python_path
-    )
+    command = sync_command(resolved, python_path=python_path, locked=locked)
     try:
         run(command, dry_run=dry_run)
     except subprocess.CalledProcessError as error:
-        if dry_run or not is_permission_sync_error(error):
+        if dry_run or locked or not is_permission_sync_error(error):
             raise
-        print("uv sync hit a locked or inconsistent .venv. Rebuilding the environment and retrying...")
+        print(
+            "uv sync hit a locked or inconsistent .venv. "
+            "Rebuilding the environment and retrying..."
+        )
         try:
             reset_venv()
         except OSError as reset_error:
             raise SystemExit(
-                "Could not reset .venv because some files are still in use. Close editors, terminals, or background tools using the environment and run `make uv-reset`."
+                "Could not reset .venv because some files are still in use. "
+                "Close editors, terminals, or background tools using the "
+                "environment and run `make uv-reset`."
             ) from reset_error
         run(command, dry_run=False)
 
 
 def run_update(
-    *, dry_run: bool, profile: str, use_dev_dependencies: bool, python_path: str | None
+    *,
+    dry_run: bool,
+    resolved: ResolvedProfile,
+    python_path: str | None,
 ) -> None:
     try:
         run(lock_command(python_path), dry_run=dry_run)
-        run(
-            sync_command(
-                profile,
-                use_dev_dependencies=use_dev_dependencies,
-                python_path=python_path,
-            ),
-            dry_run=dry_run,
-        )
+        run(sync_command(resolved, python_path=python_path), dry_run=dry_run)
     except subprocess.CalledProcessError as error:
         if not dry_run and is_permission_sync_error(error):
             raise SystemExit(
-                "uv update could not clean the current .venv. Close tools using the environment and run `make uv-reset`."
+                "uv update could not clean the current .venv. Close tools "
+                "using the environment and run `make uv-reset`."
             ) from error
         raise
 
 
 def run_reset(
-    *, dry_run: bool, profile: str, use_dev_dependencies: bool, python_path: str | None
+    *,
+    dry_run: bool,
+    resolved: ResolvedProfile,
+    python_path: str | None,
 ) -> None:
     print(f"Resetting {VENV_DIR}")
     if not dry_run:
@@ -160,38 +182,25 @@ def run_reset(
             reset_venv()
         except OSError as error:
             raise SystemExit(
-                "Could not remove .venv because some files are still in use. Close editors, terminals, or background tools using the environment and retry `make uv-reset`."
+                "Could not remove .venv because some files are still in use. "
+                "Close tools using the environment and retry `make uv-reset`."
             ) from error
-    run(
-        sync_command(
-            profile, use_dev_dependencies=use_dev_dependencies, python_path=python_path
-        ),
-        dry_run=dry_run,
-    )
+    run(sync_command(resolved, python_path=python_path), dry_run=dry_run)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Run uv environment sync commands with profile-aware recovery behavior."
+        description="Run capability-aware uv environment commands."
     )
-    parser.add_argument("mode", choices=("init", "update", "reset"))
-    parser.add_argument("--profile", choices=sorted(ENVIRONMENT_PROFILES))
+    parser.add_argument("mode", choices=("init", "update", "reset", "ci"))
     parser.add_argument(
         "--python-path",
-        help="Use this Python interpreter for `python -m uv` when uv is not available in PATH.",
+        help="Use this Python interpreter for `python -m uv` when needed.",
     )
     dev_group = parser.add_mutually_exclusive_group()
-    dev_group.add_argument(
-        "--include-dev",
-        action="store_true",
-        help="Install dev dependency groups for the selected profile.",
-    )
-    dev_group.add_argument(
-        "--no-dev",
-        action="store_true",
-        help="Skip dev dependency groups and sync only runtime dependencies.",
-    )
-    parser.add_argument("--dry-run", action="store_true", help="Print the uv commands without executing them.")
+    dev_group.add_argument("--include-dev", action="store_true")
+    dev_group.add_argument("--no-dev", action="store_true")
+    parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
 
 
@@ -200,30 +209,34 @@ def main() -> None:
     if args.python_path and not Path(args.python_path).exists():
         raise SystemExit(f"Python not found at '{args.python_path}'.")
 
-    profile = resolve_profile(args.profile)
-    use_dev_dependencies = not args.no_dev
+    dev_override = False if args.no_dev else True if args.include_dev else None
+    resolved = resolve_active_profile(use_dev_dependencies=dev_override)
     if args.mode == "init":
         run_init(
             dry_run=args.dry_run,
-            profile=profile,
-            use_dev_dependencies=use_dev_dependencies,
+            resolved=resolved,
             python_path=args.python_path,
         )
-        return
-    if args.mode == "update":
+    elif args.mode == "update":
         run_update(
             dry_run=args.dry_run,
-            profile=profile,
-            use_dev_dependencies=use_dev_dependencies,
+            resolved=resolved,
             python_path=args.python_path,
         )
-        return
-    run_reset(
-        dry_run=args.dry_run,
-        profile=profile,
-        use_dev_dependencies=use_dev_dependencies,
-        python_path=args.python_path,
-    )
+    elif args.mode == "reset":
+        run_reset(
+            dry_run=args.dry_run,
+            resolved=resolved,
+            python_path=args.python_path,
+        )
+    else:
+        run(lock_command(args.python_path, check=True), dry_run=args.dry_run)
+        run_init(
+            dry_run=args.dry_run,
+            resolved=resolved,
+            python_path=args.python_path,
+            locked=True,
+        )
 
 
 if __name__ == "__main__":

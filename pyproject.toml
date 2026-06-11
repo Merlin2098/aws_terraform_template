@@ -51,6 +51,7 @@ supabase = [
 [dependency-groups]
 dev-local = [
     "faker",
+    "httpx",
     "hypothesis",
     "pre-commit",
     "pytest",

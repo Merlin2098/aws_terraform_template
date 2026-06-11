@@ -3,20 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.restore_project import (
-    gated_paths_to_exclude,
-    restore_project,
-    validate_consistency,
-)
-
-
-def _normalize_artifact(path: Path, content: str) -> str:
-    """Strip volatile fields (e.g. ``generated_at`` timestamps) before comparing."""
-    if path.suffix != ".json":
-        return content
-    payload = json.loads(content)
-    payload.pop("generated_at", None)
-    return json.dumps(payload, indent=2, sort_keys=True)
+from scripts.restore_project import restore_project, validate_consistency
 
 
 def _write(path: Path, content: str) -> None:
@@ -24,199 +11,186 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _create_sample_project(project_root: Path) -> None:
+def _create_sample_project(project_root: Path, *, enable_saas: bool = True) -> None:
     _write(
-        project_root / "ai" / "context.yaml",
-        """artifacts:
+        project_root / "pyproject.toml",
+        """
+[project]
+name = "sample"
+version = "0.1.0"
+dependencies = []
+[project.optional-dependencies]
+local = []
+saas = []
+[dependency-groups]
+dev-local = []
+""",
+    )
+    _write(
+        project_root / "ai/context.yaml",
+        """
+artifacts:
   - .ai/context_bundle.yaml
   - .ai/skills_registry.json
   - .ai/dependencies_graph.json
   - .ai/treemap.md
   - llms.txt
-
-ignore_dirs:
-  - .ai
-  - __pycache__
-
-treemap_ignore_dirs:
-  - .ai
-  - __pycache__
-
+ignore_dirs: [.ai, __pycache__]
+treemap_ignore_dirs: [.ai, __pycache__]
 ignore_top_level_files: []
-
-structure:
-  python:
-    - src/
-    - scripts/
-  guidance:
-    - ai/skills.yaml
-    - ai/skills/
-    - ai/context.yaml
-
-rules:
-  - .ai/ is optional generated context and is never required at runtime.
-
+structure: {}
+rules: []
 entrypoint_roots:
-  directories:
-    - scripts
-    - src/jobs
-
+  directories: [src]
 module_roots:
-  directories:
-    - src
+  directories: [src]
 """,
     )
     _write(
-        project_root / "ai" / "capabilities" / "business" / "saas.yaml",
-        """name: saas
-type: business
-
-paths:
-  - ai/skills/saas/
-  - ai/domains/saas.md
+        project_root / "ai/capabilities/languages/python.yaml",
+        """
+name: python
+paths: [ai/skills/python/]
+dependencies:
+  extras: [local]
+  groups: [dev-local]
+scanners: [python]
+artifacts: [dependency_graph, context_bundle, skills_registry]
 """,
     )
     _write(
-        project_root / "ai" / "skills.yaml",
-        """example_skill:
+        project_root / "ai/capabilities/frameworks/react.yaml",
+        "name: react\ndepends_on:\n  languages: [python]\n",
+    )
+    _write(
+        project_root / "ai/capabilities/business/saas.yaml",
+        """
+name: saas
+depends_on:
+  frameworks: [react]
+paths: [ai/skills/saas/]
+dependencies:
+  extras: [saas]
+artifacts: [context_bundle]
+""",
+    )
+    _write(
+        project_root / "ai/skills.yaml",
+        """
+python_skill:
   path: ai/skills/python/example.md
-  description: Example skill
-
+  description: Python guidance
 saas_auth:
   path: ai/skills/saas/auth.md
-  description: SaaS auth skill
+  description: SaaS guidance
 """,
     )
-    _write(project_root / "ai" / "skills" / "python" / "example.md", "# Example\n")
-    _write(project_root / "ai" / "skills" / "saas" / "auth.md", "# SaaS auth\n")
-    _write(project_root / "src" / "jobs" / "example_job.py", "import json\n")
-    _write(project_root / "scripts" / "helper.py", "print('ok')\n")
-
-
-def test_gated_paths_to_exclude_without_saas(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path)
-
-    excluded = gated_paths_to_exclude(tmp_path, {})
-
-    assert "ai/skills/saas/" in excluded
-    assert "ai/domains/saas.md" in excluded
-
-
-def test_gated_paths_to_exclude_with_saas(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path)
-
-    excluded = gated_paths_to_exclude(tmp_path, {"business": ["saas"]})
-
-    assert excluded == set()
-
-
-def test_validate_consistency_flags_gated_skill_without_capability(
-    tmp_path: Path,
-) -> None:
-    _create_sample_project(tmp_path)
-
-    result = validate_consistency(tmp_path, {})
-
-    assert result["missing"] == []
-    assert "ai/skills/saas/auth.md" in result["gated"]
-    assert "ai/skills/python/example.md" not in result["gated"]
-
-
-def test_validate_consistency_passes_when_capability_active(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path)
-
-    result = validate_consistency(tmp_path, {"business": ["saas"]})
-
-    assert result["missing"] == []
-    assert result["gated"] == []
-
-
-def test_validate_consistency_flags_missing_skill_file(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path)
+    _write(project_root / "ai/skills/python/example.md", "# Python\n")
+    _write(project_root / "ai/skills/saas/auth.md", "# SaaS\n")
+    _write(project_root / "src/main.py", "import json\n")
     _write(
-        tmp_path / "ai" / "skills.yaml",
-        """ghost_skill:
-  path: ai/skills/python/ghost.md
-  description: Does not exist on disk
+        project_root / ".template-profile.yaml",
+        f"""
+schema_version: 1
+environment: local
+capabilities:
+  languages:
+    python:
+      enabled: true
+  frameworks:
+    react:
+      enabled: false
+  business:
+    saas:
+      enabled: {str(enable_saas).lower()}
+dependency_policy:
+  include_dev: true
+  additional_extras: []
+  additional_groups: []
 """,
     )
 
-    result = validate_consistency(tmp_path, {})
 
-    assert result["missing"] == ["ai/skills/python/ghost.md"]
+def test_validate_consistency_checks_active_skill_files(tmp_path: Path) -> None:
+    _create_sample_project(tmp_path, enable_saas=False)
+
+    assert validate_consistency(tmp_path) == {"missing": [], "gated": []}
+
+    (tmp_path / "ai/skills/python/example.md").unlink()
+    assert validate_consistency(tmp_path)["missing"] == ["ai/skills/python/example.md"]
 
 
-def test_restore_project_dry_run_skips_context_and_dependencies(
+def test_restore_dry_run_reports_explicit_implicit_and_disabled(
     tmp_path: Path,
 ) -> None:
     _create_sample_project(tmp_path)
-    _write(
-        tmp_path / ".template-profile",
-        "environment_profile=cloud\ncapability_profile=saas\n",
-    )
 
     payload = restore_project(tmp_path, dry_run=True)
 
-    assert payload["status"] == "ok"
-    assert payload["environment_profile"] == "cloud"
-    assert payload["package_manager"] is None
-    assert payload["capabilities"] == {"business": ["saas"]}
-    assert payload["active_capabilities"] == ["saas"]
+    assert payload["explicit_capabilities"] == [
+        "languages:python",
+        "business:saas",
+    ]
+    assert payload["implicit_capabilities"] == ["frameworks:react"]
+    assert payload["disabled_capabilities"] == []
     assert payload["dependencies"]["status"] == "skipped"
     assert payload["context"]["status"] == "skipped"
-    assert payload["consistency"] == {"missing": [], "gated": []}
 
 
-def test_restore_project_regenerates_context_artifacts(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path)
-    _write(
-        tmp_path / ".template-profile",
-        "environment_profile=local\ncapability_profile=saas\n",
-    )
+def test_restore_regenerates_filtered_context_artifacts(tmp_path: Path) -> None:
+    _create_sample_project(tmp_path, enable_saas=False)
 
     payload = restore_project(tmp_path, dry_run=False)
 
     assert payload["context"]["status"] == "ok"
-    for relative_path in payload["context"]["artifacts"]:
-        assert (tmp_path / relative_path).exists()
+    registry = (tmp_path / ".ai/skills_registry.json").read_text(encoding="utf-8")
+    assert "python_skill" in registry
+    assert "saas_auth" not in registry
+    assert (tmp_path / "llms.txt").exists()
 
 
-def test_restore_project_is_idempotent(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path)
-    _write(
-        tmp_path / ".template-profile",
-        "environment_profile=local\ncapability_profile=saas\n",
+def test_enabling_capability_changes_generated_skill_registry(tmp_path: Path) -> None:
+    _create_sample_project(tmp_path, enable_saas=False)
+    restore_project(tmp_path, dry_run=False)
+    disabled_registry = (tmp_path / ".ai/skills_registry.json").read_text(
+        encoding="utf-8"
     )
 
-    first = restore_project(tmp_path, dry_run=False)
-    snapshot = {
-        path: _normalize_artifact(
-            Path(path), (tmp_path / path).read_text(encoding="utf-8")
-        )
-        for path in first["context"]["artifacts"]
-    }
+    profile_path = tmp_path / ".template-profile.yaml"
+    profile_path.write_text(
+        profile_path.read_text(encoding="utf-8").replace(
+            "saas:\n      enabled: false", "saas:\n      enabled: true"
+        ),
+        encoding="utf-8",
+    )
+    restore_project(tmp_path, dry_run=False)
+    enabled_registry = (tmp_path / ".ai/skills_registry.json").read_text(
+        encoding="utf-8"
+    )
 
+    assert "saas_auth" not in disabled_registry
+    assert "saas_auth" in enabled_registry
+
+
+def test_restore_is_idempotent(tmp_path: Path) -> None:
+    _create_sample_project(tmp_path)
+
+    first = restore_project(tmp_path, dry_run=False)
+
+    def normalized(relative: str) -> str:
+        content = (tmp_path / relative).read_text(encoding="utf-8")
+        if relative.endswith("dependencies_graph.json"):
+            payload = json.loads(content)
+            payload.pop("generated_at", None)
+            return json.dumps(payload, sort_keys=True)
+        return content
+
+    snapshot = {
+        relative: normalized(relative) for relative in first["context"]["artifacts"]
+    }
     second = restore_project(tmp_path, dry_run=False)
 
     assert second["context"]["artifacts"] == first["context"]["artifacts"]
-    for path in second["context"]["artifacts"]:
-        content = (tmp_path / path).read_text(encoding="utf-8")
-        assert _normalize_artifact(Path(path), content) == snapshot[path]
-
-
-def test_restore_project_without_capability_block_uses_legacy_profile(
-    tmp_path: Path,
-) -> None:
-    _create_sample_project(tmp_path)
-    _write(
-        tmp_path / ".template-profile",
-        "package_manager=pip\nenvironment_profile=local\ncapability_profile=\n",
-    )
-
-    payload = restore_project(tmp_path, dry_run=True)
-
-    assert payload["capabilities"] == {}
-    assert payload["active_capabilities"] == []
-    assert payload["consistency"]["gated"] == ["ai/skills/saas/auth.md"]
-    assert "requirements*.txt" in payload["dependencies"]["warning"]
-    assert "pip support has been retired" in payload["dependencies"]["warning"]
+    assert {
+        relative: normalized(relative) for relative in second["context"]["artifacts"]
+    } == snapshot

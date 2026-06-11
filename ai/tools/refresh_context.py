@@ -10,8 +10,12 @@ from ai.runtime.config import artifact_paths, load_context_config
 from ai.runtime.context_bundle import build_and_persist_context_bundle
 from ai.runtime.dependency_graph import build_and_persist_dependency_graph
 from ai.runtime.llms_txt import build_and_persist_llms_txt
-from ai.runtime.skill_registry import build_and_persist_skills_registry
+from ai.runtime.skill_registry import (
+    build_and_persist_skills_registry,
+    build_skills_registry,
+)
 from ai.tools.inspect_project import inspect_project
+from ai.runtime.project_profile import resolve_project_profile
 
 
 def _warn(message: str) -> None:
@@ -39,22 +43,48 @@ def refresh_context(project_root: Path) -> dict[str, object]:
     config = load_context_config(project_root)
     artifact_strings = artifact_paths(config)
     project = inspect_project(project_root)
+    resolved = resolve_project_profile(project_root, validate_dependencies=False)
+    active_artifacts = set(resolved.artifacts)
+    if resolved.profile.source != "yaml" and not active_artifacts:
+        active_artifacts = {
+            "skills_registry",
+            "context_bundle",
+            "dependency_graph",
+        }
 
-    skills_registry = build_and_persist_skills_registry(
-        project_root,
-        _artifact_path(project_root, artifact_strings, "skills_registry.json"),
-    )
-    build_and_persist_context_bundle(
-        project_root,
-        _artifact_path(project_root, artifact_strings, "context_bundle.yaml"),
-        project=project,
-        skills_registry=skills_registry,
-    )
+    generated: list[str] = []
+    if "skills_registry" in active_artifacts:
+        skills_path = _artifact_path(
+            project_root, artifact_strings, "skills_registry.json"
+        )
+        skills_registry = build_and_persist_skills_registry(
+            project_root,
+            skills_path,
+            resolved=resolved,
+        )
+        generated.append(skills_path.relative_to(project_root).as_posix())
+    else:
+        skills_registry = build_skills_registry(project_root, resolved=resolved)
 
-    build_and_persist_dependency_graph(
-        project_root,
-        _artifact_path(project_root, artifact_strings, "dependencies_graph.json"),
-    )
+    if "context_bundle" in active_artifacts:
+        context_path = _artifact_path(
+            project_root, artifact_strings, "context_bundle.yaml"
+        )
+        build_and_persist_context_bundle(
+            project_root,
+            context_path,
+            project=project,
+            skills_registry=skills_registry,
+            resolved=resolved,
+        )
+        generated.append(context_path.relative_to(project_root).as_posix())
+
+    if "dependency_graph" in active_artifacts:
+        graph_path = _artifact_path(
+            project_root, artifact_strings, "dependencies_graph.json"
+        )
+        build_and_persist_dependency_graph(project_root, graph_path)
+        generated.append(graph_path.relative_to(project_root).as_posix())
 
     llms_txt_path = _artifact_path(
         project_root, artifact_strings, "llms.txt", required=False
@@ -65,16 +95,18 @@ def refresh_context(project_root: Path) -> dict[str, object]:
             llms_txt_path,
             project=project,
             skills_registry=skills_registry,
+            resolved=resolved,
         )
+        generated.append(llms_txt_path.relative_to(project_root).as_posix())
 
-    write_treemap(
-        project_root, _artifact_path(project_root, artifact_strings, "treemap.md")
-    )
+    treemap_path = _artifact_path(project_root, artifact_strings, "treemap.md")
+    write_treemap(project_root, treemap_path)
+    generated.append(treemap_path.relative_to(project_root).as_posix())
 
     return {
         "status": "ok",
         "mode": "full",
-        "artifacts": artifact_strings,
+        "artifacts": generated,
     }
 
 

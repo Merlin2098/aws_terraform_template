@@ -119,7 +119,9 @@ setup wrappers under `scripts/linux/` or `scripts/windows/`.
 The template manages host dependencies with `uv`:
 
 * the installer copies `pyproject.toml` and `uv.lock`
-* the installer also persists the selected host profile in `.template-profile`
+* the installer persists the complete active host catalog in
+  `.template-profile.yaml`; capabilities can be enabled later without
+  reinstalling the template
 * the `sync-dependencies` hook keeps the template's `uv` default
 * local hosts sync `base + dev-local` by default
 * cloud hosts sync `base + local + cloud + dev-local + dev-cloud` by default

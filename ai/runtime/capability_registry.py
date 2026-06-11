@@ -21,10 +21,6 @@ CAPABILITY_CATEGORIES = (
 
 CAPABILITIES_DIRNAME = "capabilities"
 
-# Legacy `capability_profile=<value>` (SPEC-FW-004) normalizes into this
-# category, per ADR-FW-001's Compatibility Strategy.
-LEGACY_CAPABILITY_PROFILE_CATEGORY = "business"
-
 
 def _string_list(value: Any) -> list[str]:
     if not isinstance(value, list):
@@ -102,60 +98,9 @@ def load_registry(
     return registry
 
 
-def normalize_capabilities(raw: Any) -> dict[str, list[str]]:
-    """Normalize a capabilities value into the typed ``{category: [names]}`` shape.
-
-    Accepts, per ADR-FW-001's Compatibility Strategy:
-
-    - The typed block: ``{category: [names], ...}`` (returned as-is, sorted).
-    - A flat legacy list: ``[name, ...]`` (placed under
-      ``LEGACY_CAPABILITY_PROFILE_CATEGORY``).
-    - ``None`` / empty (returns an empty mapping).
-    """
-    if isinstance(raw, dict):
-        normalized: dict[str, list[str]] = {}
-        for category, values in raw.items():
-            names = _string_list(values)
-            if names:
-                normalized[str(category).strip()] = names
-        return normalized
-
-    flat = _string_list(raw)
-    if not flat:
-        return {}
-    return {LEGACY_CAPABILITY_PROFILE_CATEGORY: flat}
-
-
-def resolve_descriptors(
-    registry: dict[str, dict[str, CapabilityDescriptor]],
-    capabilities: dict[str, list[str]],
-) -> list[CapabilityDescriptor]:
-    """Resolve the active capability selection into descriptors.
-
-    Unknown category/name combinations are skipped silently — the registry is
-    additive and a host's `.template-profile` may reference capabilities that
-    have not been migrated to a descriptor yet.
-    """
-    resolved: list[CapabilityDescriptor] = []
-    for category, names in capabilities.items():
-        category_registry = registry.get(category, {})
-        for name in names:
-            descriptor = category_registry.get(name)
-            if descriptor is not None:
-                resolved.append(descriptor)
-    return resolved
-
-
 def active_paths(descriptors: list[CapabilityDescriptor]) -> set[str]:
     """Union of all ``paths`` declared by the given descriptors."""
     paths: set[str] = set()
     for descriptor in descriptors:
         paths.update(descriptor.paths)
     return paths
-
-
-def category_paths(
-    registry: dict[str, dict[str, CapabilityDescriptor]], category: str
-) -> set[str]:
-    """Union of all ``paths`` declared by every descriptor in ``category``."""
-    return active_paths(list(registry.get(category, {}).values()))

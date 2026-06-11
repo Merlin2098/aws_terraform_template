@@ -6,7 +6,6 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 python_path=""
-profile=""
 use_dev_dependencies="true"
 dev_option=""
 
@@ -24,7 +23,6 @@ Usage: ./scripts/linux/update_venv.sh [options]
 
 Options:
   --python-path PATH  Use this Python interpreter explicitly.
-  --profile PROFILE   Use the local or cloud dependency profile.
   --include-dev       Install dev dependency groups explicitly.
   --no-dev            Skip dev dependency groups.
   -h, --help          Show this help text.
@@ -69,17 +67,6 @@ resolve_python_command() {
     exit 1
 }
 
-validate_profile() {
-    local selected="$1"
-    if [[ -z "${selected}" ]]; then
-        return
-    fi
-    if [[ "${selected}" != "local" && "${selected}" != "cloud" ]]; then
-        printf "Profile must be 'local' or 'cloud'.\n" >&2
-        exit 1
-    fi
-}
-
 parse_args() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
@@ -89,14 +76,6 @@ parse_args() {
                     exit 1
                 fi
                 python_path="$2"
-                shift 2
-                ;;
-            --profile)
-                if [[ $# -lt 2 ]]; then
-                    printf "Expected a value after --profile.\n" >&2
-                    exit 1
-                fi
-                profile="$2"
                 shift 2
                 ;;
             --include-dev)
@@ -131,8 +110,6 @@ parse_args() {
 }
 
 parse_args "$@"
-validate_profile "${profile}"
-
 if [[ ! -d "${REPO_ROOT}/.venv" ]]; then
     printf "No .venv directory was found. Run ./scripts/linux/setup_env.sh first.\n" >&2
     exit 1
@@ -164,11 +141,10 @@ write_step "[Project] Verified pyproject.toml and existing .venv."
 
 write_phase "Phase 3: Sync Environment"
 command=("${selected_python}" "${REPO_ROOT}/scripts/run_uv_sync.py" "update" "--python-path" "${selected_python}")
-if [[ -n "${profile}" ]]; then
-    command+=("--profile" "${profile}")
-fi
 if [[ "${use_dev_dependencies}" == "false" ]]; then
     command+=("--no-dev")
+else
+    command+=("--include-dev")
 fi
 write_step "[Dependencies] Running: ${command[*]}"
 (

@@ -42,9 +42,9 @@ Capability profiles are orthogonal to environment profiles. A project can be
 
 All other paths in `ai/` are unaffected by `capability_profile`.
 
-### `.template-profile` record
+### retired profile format record
 
-The `.template-profile` file written to the host must record all three dimensions
+The retired profile format file written to the host must record all three dimensions
 so the host can re-install with the same settings:
 
 ```

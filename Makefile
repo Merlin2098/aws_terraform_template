@@ -8,7 +8,7 @@ UV ?= uv
 BOOTSTRAP_PYTHON ?= python3
 endif
 
-.PHONY: init uv-init uv-update uv-reset package treemap lint fmt test clean ai-refresh restore
+.PHONY: init sync uv-init uv-update uv-reset uv-ci package treemap lint fmt test clean ai-refresh restore
 
 init:
 	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init
@@ -16,11 +16,16 @@ init:
 uv-init:
 	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init
 
+sync: uv-init
+
 uv-update:
 	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py update
 
 uv-reset:
 	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py reset
+
+uv-ci:
+	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py ci
 
 package:
 	$(PYTHON) scripts/package.py

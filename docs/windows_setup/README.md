@@ -34,7 +34,7 @@ The cloud uv workflow installs:
 - the `dev-local` and `dev-cloud` dependency groups
 
 When you install this template into another repository, the installer copies
-`pyproject.toml` and `uv.lock`. The installer also writes `.template-profile`
+`pyproject.toml` and `uv.lock`. The installer also writes `.template-profile.yaml`
 so the host keeps its selected profile as the default for wrappers and sync
 commands.
 
@@ -64,15 +64,17 @@ To refresh the local uv environment after editing dependencies:
 .\scripts\windows\update_venv.ps1
 ```
 
-To prepare the local environment with cloud dependencies explicitly:
+To enable cloud dependencies, set
+`capabilities.infrastructure.terraform.enabled: true` in
+`.template-profile.yaml`, then run:
 
 ```powershell
-.\scripts\windows\update_venv.ps1 -Profile cloud
+.\scripts\windows\update_venv.ps1
 ```
 
-For uv-based hosts, the default profile comes from `.template-profile`. A local
-host stays on `base + dev-local` unless you override it explicitly, and
-a cloud host defaults to `base + local + cloud + dev-local + dev-cloud`.
+For uv-based hosts, `.template-profile.yaml` is the active manifest. Enable or
+disable capabilities there, then run `update_venv.ps1`; transitive capability
+dependencies determine the extras and groups synchronized by uv.
 
 ## Use Make On Windows
 
@@ -149,7 +151,7 @@ are not copied to the target repository.
 The installer:
 
 - copies `pyproject.toml` and `uv.lock`
-- writes `.template-profile` with the selected host profile
+- writes `.template-profile.yaml` with the complete capability catalog
 - keeps the template `uv` hook behavior
 - renders the `Makefile` to use the persisted profile by default
 - local hosts default to `base + dev-local`

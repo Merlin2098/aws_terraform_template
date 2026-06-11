@@ -30,7 +30,7 @@ and any project bootstrapped from it.
   dependency profile — a host can be `cloud + saas` or `cloud` only.
 - **Installer** — `ai/installer.py` copies the template into a host repo
   with `--local|--cloud`, `--saas`, and structure flags. Both dimensions are
-  recorded in `.template-profile` for reproducible re-installs.
+  recorded in `.template-profile.yaml` for reproducible re-installs.
 
 ### What the template expects from the host
 

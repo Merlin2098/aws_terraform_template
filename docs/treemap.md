@@ -81,16 +81,18 @@ aws_terraform_template/
 |   |-- test_capability_registry.py
 |   |-- test_dependency_graph.py
 |   |-- test_example_job.py
+|   |-- test_install_entrypoints.py
 |   |-- test_installer.py
 |   |-- test_llms_txt.py
 |   |-- test_profile.py
+|   |-- test_project_profile.py
 |   |-- test_refresh_context.py
 |   |-- test_restore_project.py
 |   |-- test_script_wrappers.py
 |   `-- test_sync_dependencies.py
 |-- .gitattributes
 |-- .pre-commit-config.yaml
-|-- .template-profile
+|-- .template-profile.yaml
 |-- AGENTS.md
 |-- CLAUDE.md
 |-- install_linux.py

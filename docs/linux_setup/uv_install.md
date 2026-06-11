@@ -103,12 +103,13 @@ Behavior:
   back to `uv` from `PATH` when that is the only valid local installation
 - the normal local uv workflow is `base + dev-local`
 - cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
-- the default host profile is read from `.template-profile`
+- the active host capabilities are read from `.template-profile.yaml`
 
 To force the cloud profile explicitly:
 
 ```bash
-./scripts/linux/update_venv.sh --profile cloud
+# Enable infrastructure:terraform in .template-profile.yaml, then:
+./scripts/linux/update_venv.sh
 ```
 
 To sync only runtime dependencies:

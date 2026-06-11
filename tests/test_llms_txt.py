@@ -58,7 +58,9 @@ def test_build_llms_txt_includes_project_summary_and_skills(tmp_path: Path) -> N
 
     content = build_llms_txt(tmp_path)
 
-    assert content.startswith(f"# {tmp_path.name}")
+    assert content.startswith("# Project AI Guide")
+    assert tmp_path.name not in content
+    assert "Do not infer behavior from the repository name." in content
     assert "## Architecture" in content
     assert "## Capabilities" in content
     assert "## Skills / Guidance" in content
@@ -75,9 +77,14 @@ def test_build_llms_txt_lists_active_capabilities(tmp_path: Path) -> None:
         "name: python\ntype: language\n",
     )
     _write(
-        tmp_path / ".template-profile",
-        "package_manager=uv\nenvironment_profile=local\n"
-        "capabilities:\n  languages:\n    - python\n",
+        tmp_path / ".template-profile.yaml",
+        "schema_version: 1\n"
+        "environment: local\n"
+        "capabilities:\n"
+        "  languages:\n"
+        "    python:\n"
+        "      enabled: true\n"
+        "dependency_policy: {}\n",
     )
 
     content = build_llms_txt(tmp_path)

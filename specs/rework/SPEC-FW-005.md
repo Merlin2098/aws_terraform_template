@@ -68,7 +68,7 @@ decisions rather than presenting open options.
 | Dependency graph scanner is Python-specific | `ai/runtime/dependency_graph.py`: `_iter_python_files`, `_module_name`, `ast.parse` | The IR (`Node`/`Edge`) is already language-neutral, but `build_dependency_graph` couples scanning + IR construction in one Python-only function. Cannot add a TS/React scanner without duplicating the function. |
 | `refresh_context.py` artifact set is fixed | `ai/tools/refresh_context.py`: hardcoded calls to 4 builders, `_artifact_path` requires all 4 filenames in `ai/context.yaml.artifacts` | Adding `llms.txt` (or skipping artifacts for capabilities that don't need them) requires editing this function directly; no plug-in/registration model. |
 | SaaS domain has 3 of ~12 needed sub-areas | `ai/skills/saas/` (frontend, backend, database, auth, analytics, deployment, ux — 7 files) | `upgrade.md` §4 asks for Supabase (Storage, RLS detail), VPS (Docker/Nginx/SSL/Backup), Domains (DNS/Cloudflare/SSL/Email) — none exist as skills yet. |
-| `.template-profile` schema is fixed at 3 lines | `ai/installer.py` `render_target_file` (TEMPLATE_PROFILE_PATH branch); read by `scripts/run_uv_sync.py::profile_from_template_file` and `scripts/hooks/sync_dependencies.py::profile_from_template_file` (duplicated logic in both files) | A capability list needs a 4th line/format, and the parsing logic is already duplicated across two scripts — a third consumer (restore) would triplicate it. |
+| retired profile format schema is fixed at 3 lines | `ai/installer.py` `render_target_file` (TEMPLATE_PROFILE_PATH branch); read by `scripts/run_uv_sync.py::profile_from_template_file` and `scripts/hooks/sync_dependencies.py::profile_from_template_file` (duplicated logic in both files) | A capability list needs a 4th line/format, and the parsing logic is already duplicated across two scripts — a third consumer (restore) would triplicate it. |
 
 ---
 
@@ -134,7 +134,7 @@ decisions rather than presenting open options.
   consumed by the installer (what to copy), restore (what to sync/regenerate), and
   the artifact pipeline (what to scan/generate). The active capability set is read
   through one shared parser (`ai/runtime/profile.py`) so installer, sync scripts,
-  and restore never duplicate `.template-profile` parsing.
+  and restore never duplicate retired profile format parsing.
 - The Scanner → IR → Generator split isolates language-specific code (scanners)
   from artifact logic (generators), reusing the existing `Node`/`Edge` dataclasses
   as the IR — no new data model needed.
@@ -156,10 +156,10 @@ Incremental, one subsystem per follow-up spec, following the spec sequence set b
    lists and normalize them internally. No behavior change for hosts.
 2. **SPEC-FW-007 — Installer Registry Integration.**
    Replace `CAPABILITY_PROFILES`/`SAAS_ONLY_PATHS`/`should_copy_capability_path`
-   with registry-driven path resolution. Extend `.template-profile` to carry the
+   with registry-driven path resolution. Extend retired profile format to carry the
    typed capability block (see Backward Compatibility below).
 3. **SPEC-FW-008 — Shared Profile Parser.**
-   Extract `.template-profile` parsing into `ai/runtime/profile.py`, eliminating
+   Extract retired profile format parsing into `ai/runtime/profile.py`, eliminating
    the duplicated `profile_from_template_file` logic in `scripts/run_uv_sync.py`
    and `scripts/hooks/sync_dependencies.py` and giving restore a single reader.
 4. **SPEC-FW-009 — Restore Project Command.**
@@ -189,7 +189,7 @@ Each spec should land independently; SPEC-FW-006 is the hard prerequisite for
 
 Per `ADR-FW-001`, migration is **additive and non-breaking** in its first phase:
 
-- **`.template-profile`** — keep `package_manager=` and `environment_profile=`
+- **retired profile format** — keep `package_manager=` and `environment_profile=`
   lines exactly as-is (read by `scripts/run_uv_sync.py` and
   `scripts/hooks/sync_dependencies.py`). Add a typed capability block as the new
   source of truth. The shared parser (`ai/runtime/profile.py`, SPEC-FW-008)
@@ -205,7 +205,7 @@ Per `ADR-FW-001`, migration is **additive and non-breaking** in its first phase:
     business: [saas]
   ```
 
-- **Legacy normalization** — old `.template-profile` files keep working. When the
+- **Legacy normalization** — old retired profile format files keep working. When the
   typed block is absent, the parser derives capabilities from the legacy fields:
   `capability_profile=saas` → `capabilities.business: [saas]`. The first phase
   also accepts a **flat** list (`capabilities: [saas]`) and normalizes it
@@ -218,7 +218,7 @@ Per `ADR-FW-001`, migration is **additive and non-breaking** in its first phase:
   `terraform` present ⇒ `cloud`), but that derivation is **not forced** in the
   first migration.
 - **`package_manager`** — `uv` only, per `ADR-FW-002`. The field is retained for
-  legacy `.template-profile` readability but is no longer a live selection axis.
+  legacy retired profile format readability but is no longer a live selection axis.
 
 ---
 
@@ -250,7 +250,7 @@ ai/
 │       └── saas.yaml            # migrated from SAAS_ONLY_PATHS (SPEC-FW-006)
 ├── runtime/
 │   ├── capability_registry.py   # NEW — loads ai/capabilities/**/*.yaml (SPEC-FW-006)
-│   ├── profile.py               # NEW — shared .template-profile parser (SPEC-FW-008)
+│   ├── profile.py               # NEW — shared retired profile format parser (SPEC-FW-008)
 │   ├── scanners/                # NEW — Scanner Layer (SPEC-FW-010)
 │   │   ├── python_scanner.py    #   extracted from dependency_graph.py
 │   │   └── ts_scanner.py         #   new
@@ -368,7 +368,7 @@ change** — only a new descriptor file.
 
 ### Backward compatibility
 
-Per §5: legacy `.template-profile` files (with `environment_profile=` /
+Per §5: legacy retired profile format files (with `environment_profile=` /
 `package_manager=` / `capability_profile=saas`) remain valid and are normalized
 into the typed model (`capability_profile=saas` → `capabilities.business: [saas]`)
 by the shared parser. A flat `capabilities: [saas]` list is also accepted and
@@ -495,7 +495,7 @@ ts_scanner.py     ────┘     dependency_graph.py)        ├─→ tree
 |---|---|
 | Project summary | `context_bundle.yaml` → `project.name`, `project.purpose` |
 | Architecture summary | `context_bundle.yaml` → `tech_stack`, `structure` |
-| Current capabilities | `.template-profile` typed capability block, read via `ai/runtime/profile.py` (post SPEC-FW-006/007/008) |
+| Current capabilities | retired profile format typed capability block, read via `ai/runtime/profile.py` (post SPEC-FW-006/007/008) |
 | Relevant specifications | `specs/template/` + `specs/project/` index (file listing with titles, read from each file's first `#` heading) |
 | Agent onboarding | `AGENTS.md` summary (purpose + working style sections) + `ai/domains/index.md` domain map |
 
@@ -543,13 +543,13 @@ to later phases.
 
 | Risk | Likelihood | Impact | Mitigation |
 |---|---|---|---|
-| Legacy host `.template-profile` files lack the typed capability block | Medium | Medium — wrong capabilities resolved | `ADR-FW-001` keeps migration additive: the shared parser normalizes legacy `environment_profile`/`capability_profile` into the typed model and also accepts a flat list during the first phase. No forced re-install. |
+| Legacy host retired profile format files lack the typed capability block | Medium | Medium — wrong capabilities resolved | `ADR-FW-001` keeps migration additive: the shared parser normalizes legacy `environment_profile`/`capability_profile` into the typed model and also accepts a flat list during the first phase. No forced re-install. |
 | Typed capability registry drifts out of sync with `ai/skills.yaml` / `ai/domains/` | Medium | Medium — agent gets inconsistent guidance | Add a `restore` validation step (SPEC-FW-009) that checks every skill in `ai/skills.yaml` maps to exactly one capability descriptor, extending the existing SPEC-FW-003 invariant ("every skill appears in exactly one domain descriptor"). |
 | Category typing adds friction (users unsure which category a capability belongs to) | Medium | Low | Document categories in the registry README/loader; validate `type`/category at load time (`ADR-FW-001` "validation rules per capability type"). |
 | TS/React scanner (SPEC-FW-010) produces noisy/incorrect edges with regex-based parsing | Medium | Low — affects only `dependencies_graph.json`, which is optional `.ai/` context | Keep scope minimal (package.json + top-level imports); document known limitations; do not block on full AST accuracy since `.ai/` is "never required at runtime". |
 | `llms.txt` at repo root becomes another artifact to keep in sync, adding maintenance burden | Low | Low | Generate purely from existing artifacts (no new scanning); regenerated automatically by `ai-refresh` pre-commit hook, same as other `.ai/` artifacts. |
 | SaaS expansion (SPEC-FW-011) grows `ai/skills/saas/` significantly, increasing agent context size for non-SaaS hosts | Low | Medium | Mitigated by registry-driven path resolution — non-`saas` hosts never receive these files. |
-| Duplicated `.template-profile` parsing logic (`run_uv_sync.py` and `sync_dependencies.py`) diverges further as capabilities are added | Medium | Medium | Extract shared parsing into `ai/runtime/profile.py` (SPEC-FW-008), the single reader for installer, sync scripts, and restore. |
+| Duplicated retired profile format parsing logic (`run_uv_sync.py` and `sync_dependencies.py`) diverges further as capabilities are added | Medium | Medium | Extract shared parsing into `ai/runtime/profile.py` (SPEC-FW-008), the single reader for installer, sync scripts, and restore. |
 
 ---
 
@@ -601,5 +601,5 @@ One decision remains open but does **not** block its follow-up spec:
 - `ai/tools/inspect_project.py` — language/stack detection used for scanner selection.
 - `scripts/run_uv_sync.py`, `scripts/hooks/sync_dependencies.py` — dependency sync, profile parsing to be shared.
 - `pyproject.toml` — categorized dependency manifest (extras + groups).
-- `.template-profile` — persisted profile/capability record.
+- retired profile format — persisted profile/capability record.
 - `ai/policies/global.md` — Policy 002 (ADR Before Architecture Change), under which ADR-FW-001/002 were recorded.

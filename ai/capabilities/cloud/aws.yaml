@@ -12,6 +12,8 @@ paths:
 dependencies:
   extras:
     - cloud
+  groups:
+    - dev-cloud
 
 artifacts:
   - context_bundle

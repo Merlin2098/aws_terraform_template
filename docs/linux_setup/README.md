@@ -52,15 +52,17 @@ To refresh the local uv environment after editing dependencies:
 ./scripts/linux/update_venv.sh
 ```
 
-To prepare the local environment with cloud dependencies explicitly:
+To scale the host to cloud capabilities, edit `.template-profile.yaml` and set:
 
-```bash
-./scripts/linux/update_venv.sh --profile cloud
+```yaml
+capabilities:
+  infrastructure:
+    terraform:
+      enabled: true
 ```
 
-For uv-based hosts, the default profile comes from `.template-profile`. A local
-host stays on `base + dev-local` unless you override it explicitly, and
-a cloud host defaults to `base + local + cloud + dev-local + dev-cloud`.
+Then run `./scripts/linux/update_venv.sh`. Capabilities and their transitive
+dependencies determine the extras and groups synchronized by uv.
 
 To sync only runtime dependencies:
 

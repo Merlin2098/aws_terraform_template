@@ -6,6 +6,9 @@ from typing import Any
 
 import yaml
 
+from ai.runtime.capability_registry import active_paths, load_registry
+from ai.runtime.project_profile import ResolvedProfile, resolve_project_profile
+
 
 def _infer_domain(path_text: str, fallback: str = "general") -> str:
     parts = Path(path_text).as_posix().split("/")
@@ -71,7 +74,37 @@ def _registry_from_scan(skills_root: Path, project_root: Path) -> list[dict[str,
     return skills
 
 
-def build_skills_registry(project_root: Path) -> dict[str, Any]:
+def _path_matches(path_text: str, prefix: str) -> bool:
+    normalized = prefix.rstrip("/")
+    return path_text == normalized or path_text.startswith(normalized + "/")
+
+
+def _filter_active_skills(
+    project_root: Path,
+    skills: list[dict[str, str]],
+    resolved: ResolvedProfile,
+) -> list[dict[str, str]]:
+    registry = load_registry(project_root)
+    owned_paths = active_paths(
+        [
+            descriptor
+            for category in registry.values()
+            for descriptor in category.values()
+        ]
+    )
+    active = set(resolved.paths)
+    filtered: list[dict[str, str]] = []
+    for skill in skills:
+        path_text = skill["path"]
+        owners = [prefix for prefix in owned_paths if _path_matches(path_text, prefix)]
+        if not owners or any(prefix in active for prefix in owners):
+            filtered.append(skill)
+    return filtered
+
+
+def build_skills_registry(
+    project_root: Path, *, resolved: ResolvedProfile | None = None
+) -> dict[str, Any]:
     project_root = project_root.resolve()
     index_path = project_root / "ai" / "skills.yaml"
     skills_root = project_root / "ai" / "skills"
@@ -81,6 +114,10 @@ def build_skills_registry(project_root: Path) -> dict[str, Any]:
     else:
         skills = _registry_from_scan(skills_root, project_root)
 
+    resolved = resolved or resolve_project_profile(
+        project_root, validate_dependencies=False
+    )
+    skills = _filter_active_skills(project_root, skills, resolved)
     return {"skills": skills}
 
 
@@ -92,8 +129,11 @@ def write_skills_registry(registry: dict[str, Any], output_path: Path) -> None:
 
 
 def build_and_persist_skills_registry(
-    project_root: Path, output_path: Path
+    project_root: Path,
+    output_path: Path,
+    *,
+    resolved: ResolvedProfile | None = None,
 ) -> dict[str, Any]:
-    registry = build_skills_registry(project_root)
+    registry = build_skills_registry(project_root, resolved=resolved)
     write_skills_registry(registry, output_path)
     return registry

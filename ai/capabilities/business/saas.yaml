@@ -1,5 +1,3 @@
-# Reproduces the legacy `capability_profile=saas` paths (SPEC-FW-004's
-# SAAS_ONLY_PATHS) as a typed descriptor, per ADR-FW-001 Phase 1.
 name: saas
 type: business
 

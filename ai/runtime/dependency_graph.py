@@ -267,25 +267,15 @@ SCANNERS: dict[str, ScannerFn] = {
 def active_scanners(project_root: Path) -> list[str]:
     """Resolve which registered scanners apply to ``project_root``.
 
-    Reads the capability registry and the host's ``.template-profile`` to
+    Reads the capability registry and the host's active YAML profile to
     collect the ``scanners:`` declared by active descriptors (per
     ADR-FW-001). Falls back to :data:`DEFAULT_SCANNERS` for legacy hosts
     without typed capabilities, per SPEC-FW-005 §9.
     """
-    from ai.runtime.capability_registry import load_registry, resolve_descriptors
-    from ai.runtime.profile import load_profile
+    from ai.runtime.project_profile import resolve_project_profile
 
-    registry = load_registry(project_root)
-    profile = load_profile(project_root / ".template-profile")
-    descriptors = resolve_descriptors(registry, profile.capabilities)
-
-    names: list[str] = []
-    for descriptor in descriptors:
-        for scanner in descriptor.scanners:
-            if scanner not in names:
-                names.append(scanner)
-
-    return names or list(DEFAULT_SCANNERS)
+    resolved = resolve_project_profile(project_root, validate_dependencies=False)
+    return list(resolved.scanners) or list(DEFAULT_SCANNERS)
 
 
 def build_dependency_graph(

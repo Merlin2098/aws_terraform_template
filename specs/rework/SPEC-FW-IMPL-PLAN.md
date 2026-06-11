@@ -43,10 +43,9 @@ ADRs):
   shared profile parser (`SPEC-FW-008`) are pure additions — new files, no
   existing behavior changes — and should land before anything that changes
   `ai/installer.py` or sync scripts.
-- **Legacy stays parseable.** `.template-profile` files using
-  `package_manager=` / `environment_profile=` / `capability_profile=saas`
-  must continue to parse correctly throughout the program (per ADR-FW-001's
-  Compatibility Strategy).
+- **The retired profile format is unsupported.** Compatibility parsing for
+  `package_manager=`, `environment_profile=`, and `capability_profile=saas`
+  has been removed. Hosts must use `.template-profile.yaml`.
 - **uv-only is a precondition, not a phase deliverable.** ADR-FW-002 mostly
   *removes* future work (no new pip features) rather than *adding* it; its
   main implementation cost is deciding how far to retire `run_pip_init.py`
@@ -113,7 +112,7 @@ Key relationships:
   the registry defines). It does **not** depend on 007.
 - **SPEC-FW-007** depends on both 006 (descriptor model) and 008 (shared
   parser) — the installer should call the shared parser rather than
-  reimplement `.template-profile` parsing a third time.
+  reimplement retired profile format parsing a third time.
 - **SPEC-FW-009** depends on 006, 007, and 008: restore re-reads the profile
   (008), resolves capabilities (006), and needs the installer's path-resolution
   logic to already be registry-driven (007) so restore and install share one
@@ -152,7 +151,7 @@ Key relationships:
 | `ai/skills.yaml` | 011, 012, 013, 014 (new skill entries per new capability) |
 | `ai/domains/index.md` | 011, 012, 013, 014 (new domain links, same pattern as `ai/domains/saas.md` today) |
 | `pyproject.toml` | ADR-FW-002 (extras/groups cleanup), 011/012/013/014 (new optional dependency groups per capability) |
-| `.template-profile` | 006 (new typed `capabilities:` block, additive), 008 (parsed by shared parser) |
+| retired profile format | 006 (new typed `capabilities:` block, additive), 008 (parsed by shared parser) |
 
 ---
 
@@ -163,20 +162,20 @@ Key relationships:
 | **SPEC-FW-001** | Implemented | `ai/domains/` exists with `index.md`, `aws.md`, `data-product.md`, `frontend.md`, `python.md`, `saas.md`, `terraform.md`. |
 | **SPEC-FW-002** | Implemented | `ai/skills/saas/` contains `analytics.md`, `auth.md`, `backend.md`, `database.md`, `deployment.md`, `frontend.md`, `ux.md`; `ai/domains/saas.md` exists. |
 | **SPEC-FW-003** | Implemented | `ai/skills.yaml` registry + `ai/runtime/skill_registry.py` build the descriptor-to-skill mapping described by the spec. |
-| **SPEC-FW-004** | Implemented, partially superseded | `ai/installer.py` has `CAPABILITY_PROFILES = {"saas"}`, `SAAS_ONLY_PATHS`, `prompt_capability_profile`, `validate_capability_profile`, `should_copy_capability_path`, and writes `capability_profile=` to `.template-profile` — exactly as SPEC-FW-004 describes. The spec itself now carries a supersession note pointing at ADR-FW-001/002 as the binding direction for the *next* iteration of this mechanism. |
+| **SPEC-FW-004** | Superseded | The flat capability profile and its installer APIs were removed in favor of the typed capability registry and `.template-profile.yaml`. |
 | **SPEC-FW-005** | Implemented (as a planning spec); reconciled | Already updated in this working tree to reference ADR-FW-001/002 as resolved decisions; its §4/§7/§11 define the SPEC-FW-006..014 sequence used by this plan. |
-| **ADR-FW-001 (Typed Capability Registry)** | Not Implemented | No `ai/capabilities/` directory, no `ai/runtime/capability_registry.py`, no `ai/runtime/profile.py`. Confirmed via `git ls-files` and directory listing. |
-| **ADR-FW-002 (uv-only)** | Implemented | `pyproject.toml` (with `[project.optional-dependencies]` and `[dependency-groups]`) and `uv.lock` are authoritative for `uv sync`; `scripts/run_uv_sync.py` is the only sync path. SPEC-FW-015 (Phase 7) removed `scripts/run_pip_init.py`, root `requirements*.txt`, and the `package_manager` (`pip`\|`uv`) axis from `ai/installer.py` and `scripts/hooks/sync_dependencies.py`. `ai/runtime/profile.py`/`scripts/restore_project.py` retain documented legacy `package_manager=pip` read/warning carve-outs. |
-| **SPEC-FW-006 (Typed Capability Registry)** | Not Implemented | — |
+| **ADR-FW-001 (Typed Capability Registry)** | Implemented | `ai/capabilities/`, `ai/runtime/capability_registry.py`, and `ai/runtime/profile.py` provide the active typed registry and YAML profile model. |
+| **ADR-FW-002 (uv-only)** | Implemented | `pyproject.toml` and `uv.lock` are authoritative; no package-manager axis or retired-profile compatibility remains. |
+| **SPEC-FW-006 (Typed Capability Registry)** | Implemented | Capability descriptors and the shared registry are active. |
 | **SPEC-FW-007 (Installer Registry Integration)** | Not Implemented | — |
-| **SPEC-FW-008 (Shared Profile Parser)** | Not Implemented | `profile_from_template_file` is duplicated verbatim (with a slightly different `ENVIRONMENT_PROFILES`-only scope) in `scripts/run_uv_sync.py` and `scripts/hooks/sync_dependencies.py`; `ai/installer.py` writes `.template-profile` but no module reads the full triple back. |
-| **SPEC-FW-009 (Restore Project Command)** | Not Implemented | No `scripts/restore_project.py`. |
+| **SPEC-FW-008 (Shared Profile Parser)** | Implemented | `ai/runtime/profile.py` is the sole parser and accepts only `.template-profile.yaml`. |
+| **SPEC-FW-009 (Restore Project Command)** | Implemented | `scripts/restore_project.py` uses the shared YAML profile and resolver. |
 | **SPEC-FW-010 (Multi-Stack Scanner Pipeline)** | Not Implemented | `ai/runtime/dependency_graph.py` is Python-only (`_iter_python_files`, `ast`-based). No `llms.txt` generator. |
 | **SPEC-FW-011 (SaaS/Supabase/VPS/Domains Expansion)** | Not Implemented | `ai/skills/saas/` has 7 generic files; no Supabase-, VPS-, or domain/DNS-specific skill content or descriptors. |
 | **SPEC-FW-012 (AI Agent Ecosystem Capabilities)** | Not Implemented | No LangGraph/agents/MCP descriptors or skills. |
 | **SPEC-FW-013 (Kubernetes and Linux Capabilities)** | Not Implemented | `scripts/linux/` exists (shell setup scripts) but is not descriptor- or capability-driven; no Kubernetes content. |
 | **SPEC-FW-014 (Golang Capability and Scanner)** | Not Implemented | No Go descriptors, skills, or scanner. |
-| **SPEC-FW-015 (Pip Legacy Retirement)** | Implemented | `pip`/`requirements*.txt` code paths removed from `ai/installer.py`, `scripts/hooks/sync_dependencies.py`, `install_linux.py`/`install_windows.py`, `scripts/package.py`; `scripts/run_pip_init.py` and root `requirements*.txt` deleted. `ai/runtime/profile.py` and `scripts/restore_project.py` retain documented compatibility carve-outs (legacy `package_manager=pip` parsing + migration warning). |
+| **SPEC-FW-015 (Pip Legacy Retirement)** | Implemented | `pip`/`requirements*.txt` code paths and all retired-profile compatibility carve-outs were removed. |
 
 ---
 
@@ -210,7 +209,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 - **Missing**: replace `CAPABILITY_PROFILES`/`SAAS_ONLY_PATHS`/
   `should_copy_capability_path` with registry-driven path resolution sourced
   from `ai/capabilities/*/*.yaml` `paths:` entries; installer must still accept
-  legacy `.template-profile` inputs and produce output indistinguishable from
+  legacy retired profile format inputs and produce output indistinguishable from
   today for hosts that don't opt into the typed block.
 - **Reuse**: `ai/installer.py`'s existing predicate composition style
   (`should_copy_specs_path`, `should_copy_requirements_file`,
@@ -228,7 +227,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 
 - **Missing**: `ai/runtime/profile.py` exposing a single
   `load_profile(project_root) -> Profile` (or similar) that reads
-  `.template-profile`, normalizes legacy fields (`package_manager`,
+  retired profile format, normalizes legacy fields (`package_manager`,
   `environment_profile`, `capability_profile`) and the new typed
   `capabilities:` block (once 006 exists) into one object.
 - **Reuse**: the two near-identical `profile_from_template_file` functions in
@@ -333,7 +332,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 | Spec | Files affected | Risk level | Breaking-change potential |
 |---|---|---|---|
 | **SPEC-FW-006** | New: `ai/capabilities/**/*.yaml`, `ai/runtime/capability_registry.py`. No existing files modified. | **Low** | **None** — purely additive; nothing references these files yet. |
-| **SPEC-FW-007** | `ai/installer.py` (core rewrite of capability-related constants/functions: `CAPABILITY_PROFILES`, `SAAS_ONLY_PATHS`, `prompt_capability_profile`, `validate_capability_profile`, `should_copy_capability_path`, `iter_template_files` composition, `.template-profile` writer). | **High** | **Low** — if the registry is seeded with descriptors that reproduce today's `saas`-only behavior exactly, and legacy `.template-profile` files keep parsing per ADR-FW-001's compatibility strategy, hosts see no behavior change. Risk is concentrated in *prompting UX changes* for multi-category selection, not in file-copy outcomes. |
+| **SPEC-FW-007** | `ai/installer.py` (core rewrite of capability-related constants/functions: `CAPABILITY_PROFILES`, `SAAS_ONLY_PATHS`, `prompt_capability_profile`, `validate_capability_profile`, `should_copy_capability_path`, `iter_template_files` composition, retired profile format writer). | **High** | **Low** — if the registry is seeded with descriptors that reproduce today's `saas`-only behavior exactly, and legacy retired profile format files keep parsing per ADR-FW-001's compatibility strategy, hosts see no behavior change. Risk is concentrated in *prompting UX changes* for multi-category selection, not in file-copy outcomes. |
 | **SPEC-FW-008** | `ai/runtime/profile.py` (new); `scripts/run_uv_sync.py` (replace local `profile_from_template_file`/`resolve_profile` with import); `scripts/hooks/sync_dependencies.py` (same). | **Medium** | **Low** — internal refactor of two call sites; external CLI behavior (`run_uv_sync.py init/update/reset`, `sync_dependencies.py`) unchanged if the shared parser preserves current semantics (including the uv-only guard quirk noted in §4). |
 | **SPEC-FW-009** | New: `scripts/restore_project.py`. Possibly small additions to `ai/tools/refresh_context.py` if restore needs a programmatic entrypoint vs. CLI subprocess call. | **Medium** | **None** — new command, nothing depends on it existing. |
 | **SPEC-FW-010** | `ai/runtime/dependency_graph.py` (generalize Python-only scanning into a registry of per-language scanners sharing `Node`/`Edge`); new `ai/runtime/llms_txt.py` (or similar); `ai/tools/refresh_context.py` (register new artifact + new scanners); `ai/context.yaml` (new artifact path, possibly new structure/ignore entries). | **Medium** | **None** — `.ai/` artifacts and `llms.txt` are documented as optional/regeneratable (SPEC-FW-005 §9: "`.ai/` never required at runtime"); existing Python-only output remains a subset of the generalized output. |
@@ -350,7 +349,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 | Spec | Implementation effort | Testing effort | Migration effort | Notes |
 |---|---|---|---|---|
 | **SPEC-FW-006** | M | S | None | New directory tree + loader module; testing is mostly schema/parsing unit tests; no migration since nothing consumes it yet. |
-| **SPEC-FW-007** | L | L | S | Core installer logic change; testing must cover both legacy `.template-profile` inputs and new typed-block inputs producing identical file sets for equivalent configurations (regression/dry-run diff). Migration is "none" for hosts (legacy files still parse) but "small" for the template's own documentation/prompts. |
+| **SPEC-FW-007** | L | L | S | Core installer logic change; testing must cover both legacy retired profile format inputs and new typed-block inputs producing identical file sets for equivalent configurations (regression/dry-run diff). Migration is "none" for hosts (legacy files still parse) but "small" for the template's own documentation/prompts. |
 | **SPEC-FW-008** | S | S | None | Mechanical extraction of ~15-line function into a shared module; unit tests for normalization edge cases (legacy flat list, legacy `capability_profile=`, new typed block, missing file). |
 | **SPEC-FW-009** | M | M | None | New orchestrator script composing existing pieces (`run_uv_sync`, `refresh_context`, registry); testing is mostly idempotency (`restore` run twice produces no diff) and consistency validation. |
 | **SPEC-FW-010** | L | L | None | Generalizing the dependency-graph scanner and adding `llms.txt` generation is the largest single engineering effort in the program; testing needs fixtures per language (Python today, at least one non-Python fixture to prove generalization). |
@@ -409,8 +408,8 @@ For each not-yet-implemented spec: what's missing, what existing code should be
     behavior-preserving).
 - **Validation criteria**: Unit tests for `capability_registry.py` covering
   all 9 categories' descriptor parsing and legacy normalization; unit tests
-  for `profile.py` covering legacy-only `.template-profile`, typed-block
-  `.template-profile`, and missing-file cases; `scripts/run_uv_sync.py init
+  for `profile.py` covering legacy-only retired profile format, typed-block
+  retired profile format, and missing-file cases; `scripts/run_uv_sync.py init
   --dry-run` and `scripts/hooks/sync_dependencies.py` produce identical output
   before/after the extraction (regression check).
 
@@ -426,7 +425,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
     `capability_registry` for path resolution, while
     `should_copy_capability_path`'s *call site* in the existing predicate
     composition (`iter_template_files`) is preserved.
-  - `.template-profile` writer extended to optionally emit the typed
+  - retired profile format writer extended to optionally emit the typed
     `capabilities:` block (additive — legacy fields `package_manager=`/
     `environment_profile=`/`capability_profile=` still written for backward
     compatibility per ADR-FW-001).
@@ -435,14 +434,14 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 - **Validation criteria**: Dry-run diff — installing with today's
   `saas`-only flow against the new registry-driven installer produces the
   same file set as before (using `ai/capabilities/business/saas.yaml` seeded
-  in Phase 1 to reproduce `SAAS_ONLY_PATHS`); a legacy `.template-profile`
+  in Phase 1 to reproduce `SAAS_ONLY_PATHS`); a legacy retired profile format
   (no typed block) round-trips through install → restore (once Phase 3 exists)
   without data loss.
 
 ### Phase 3 — Dependency & Restore (SPEC-FW-009)
 
 - **Goal**: Provide a single `restore` command that brings a host back to a
-  consistent state from its `.template-profile` + capability registry.
+  consistent state from its retired profile format + capability registry.
 - **Specs included**: SPEC-FW-009.
 - **Dependencies**: Phase 1 (profile parser, registry) and Phase 2 (installer's
   registry-driven path resolution, so restore and install share logic).
@@ -456,7 +455,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
     path declared by an active capability (extends SPEC-FW-003's invariant).
 - **Validation criteria**: Running `restore_project.py` twice in a row
   produces no further changes (idempotency); running it after a manual edit to
-  `.template-profile` (e.g., adding `capability_profile=saas` by hand) produces
+  retired profile format (e.g., adding `capability_profile=saas` by hand) produces
   the same result as running the installer with that capability selected.
 
 ### Phase 4 — Artifact System / Multi-Stack Scanner Pipeline (SPEC-FW-010)
@@ -578,7 +577,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
   matches; `pytest -q`, `ruff check .`, `ruff format --check .` pass;
   `python scripts/restore_project.py --dry-run --pretty` still reports zero
   `missing` entries. **Breaking change** (documented): hosts with
-  `package_manager=pip` in `.template-profile` must follow SPEC-FW-015's
+  `package_manager=pip` in retired profile format must follow SPEC-FW-015's
   Migration Strategy before their next restore/sync.
 
 ---
@@ -598,7 +597,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 ### Most invasive changes
 
 1. **SPEC-FW-007** — touches `ai/installer.py`'s constants, validators,
-   prompts, path predicates, and `.template-profile` writer simultaneously.
+   prompts, path predicates, and retired profile format writer simultaneously.
 2. **SPEC-FW-010** — generalizing `ai/runtime/dependency_graph.py` from a
    Python-specific module to a multi-language scanner registry is the largest
    structural change to a runtime module in the program.
@@ -609,7 +608,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
   `sync_dependencies.py` dry-run output unchanged (regression diff against
   pre-Phase-1 output).
 - **After Phase 2**: installer dry-run diff against Phase-1 baseline for (a) a
-  legacy `.template-profile` and (b) a fresh install with `saas` selected —
+  legacy retired profile format and (b) a fresh install with `saas` selected —
   both must match pre-refactor file sets exactly.
 - **After Phase 3**: `restore_project.py` idempotency check (run twice, diff
   is empty); restore-from-legacy-profile matches fresh-install-with-same-options.
@@ -627,12 +626,11 @@ For each not-yet-implemented spec: what's missing, what existing code should be
   pure deletion with zero impact on running hosts, since `.ai/` artifacts and
   `llms.txt` are documented as "never required at runtime" (SPEC-FW-005 §9).
 - Phase 0 and Phase 2/3 are the only phases that touch files hosts actively
-  depend on (`ai/installer.py`, `.template-profile`, sync scripts). For these:
+  depend on (`ai/installer.py`, retired profile format, sync scripts). For these:
   - Phase 0's changes are comments/markers only — trivially revertible.
-  - Phase 2's installer changes must preserve the legacy `.template-profile`
-    parse path per ADR-FW-001's Compatibility Strategy at all times during
-    rollout, so a revert of Phase 2 leaves legacy hosts unaffected (they were
-    never depending on the new typed block).
+  - Phase 2 introduced a deliberate profile-format break. Hosts must migrate
+    to `.template-profile.yaml` before using current installer, restore, or sync
+    commands.
   - Phase 3 (`restore_project.py`) is a new, optional command — reverting it
     removes the command but does not affect install/update flows.
 
@@ -641,7 +639,7 @@ For each not-yet-implemented spec: what's missing, what existing code should be
 ## 9. Validation Strategy
 
 - **Installer (Phase 2)**: dry-run diff. Run the current installer and the
-  refactored installer against the same target directory + `.template-profile`
+  refactored installer against the same target directory + retired profile format
   combinations (no profile / `local` / `cloud` / `cloud+saas`); diff the
   resulting file trees — must be empty for equivalent inputs.
 - **Dependency resolution (Phases 1, 5, 6)**: `uv sync` must resolve the
@@ -749,7 +747,7 @@ begins:
   is planning only, per `docs/prompt/implement.md`'s constraints.
 - Authoring SPEC-FW-012, SPEC-FW-013, or SPEC-FW-014 themselves — this plan
   sequences them but does not write their Context/Contract/Invariants sections.
-- Modifying `ai/installer.py`, `pyproject.toml`, `.template-profile`, or any
+- Modifying `ai/installer.py`, `pyproject.toml`, retired profile format, or any
   `scripts/*` file.
 - Resolving the Open Decisions listed in §10 — they are flagged for follow-up
   ADRs/decision notes, not decided here.
@@ -783,6 +781,6 @@ begins:
 - `scripts/run_uv_sync.py`, `scripts/run_pip_init.py`,
   `scripts/hooks/sync_dependencies.py` — dependency sync scripts (Phase 0/1
   targets).
-- `pyproject.toml`, `.template-profile`, `ai/context.yaml`, `ai/skills.yaml`,
+- `pyproject.toml`, retired profile format, `ai/context.yaml`, `ai/skills.yaml`,
   `ai/policies/global.md` — configuration and policy files referenced
   throughout.

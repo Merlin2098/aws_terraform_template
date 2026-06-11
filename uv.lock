@@ -360,6 +360,7 @@ dev-cloud = [
 ]
 dev-local = [
     { name = "faker" },
+    { name = "httpx" },
     { name = "hypothesis" },
     { name = "pre-commit" },
     { name = "pytest" },
@@ -409,6 +410,7 @@ dev-cloud = [
 ]
 dev-local = [
     { name = "faker" },
+    { name = "httpx" },
     { name = "hypothesis" },
     { name = "pre-commit" },
     { name = "pytest" },

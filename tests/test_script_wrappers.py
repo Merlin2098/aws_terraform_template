@@ -152,29 +152,21 @@ def test_uv_sync_wrapper_dry_run_init() -> None:
     )
 
     assert result.returncode == 0, result.stderr
-    assert "sync --group dev-local" in result.stdout
+    assert "sync --no-default-groups --extra local --group dev-local" in result.stdout
 
 
-def test_uv_sync_wrapper_reads_persisted_cloud_profile(tmp_path: Path) -> None:
-    profile_path = REPO_ROOT / ".template-profile"
-    original = profile_path.read_text(encoding="utf-8")
-    try:
-        profile_path.write_text(
-            "environment_profile=cloud\n",
-            encoding="utf-8",
-        )
-        result = subprocess.run(
-            [sys.executable, "scripts/run_uv_sync.py", "init", "--dry-run"],
-            cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-    finally:
-        profile_path.write_text(original, encoding="utf-8")
+def test_uv_sync_wrapper_builds_cloud_command_from_capabilities() -> None:
+    from ai.runtime.profile import Profile
+    from ai.runtime.project_profile import resolve_project_profile
+    from scripts.run_uv_sync import sync_command
 
-    assert result.returncode == 0, result.stderr
-    assert (
-        "sync --extra local --extra cloud --group dev-local --group dev-cloud"
-        in result.stdout
+    resolved = resolve_project_profile(
+        REPO_ROOT,
+        profile=Profile(capabilities={"infrastructure": ["terraform"]}),
     )
+    command = sync_command(resolved)
+    text = " ".join(command)
+
+    assert "--no-default-groups" in text
+    assert "--extra local --extra cloud" in text
+    assert "--group dev-local --group dev-cloud" in text

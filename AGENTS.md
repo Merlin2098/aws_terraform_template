@@ -2,15 +2,18 @@
 
 ## Purpose
 
-This repository is an AWS + Terraform data engineering template used to
-bootstrap host repositories.
+This file defines the working contract for AI agents in the current project.
+It is intentionally project-name agnostic so it remains valid when copied into
+or used to bootstrap another repository.
 
-Agents should support work that stays valid both in this template repository and
-in host projects installed from it:
+Agents should first inspect the repository and its active capabilities before
+assuming a language, cloud provider, framework, or infrastructure stack.
+Typical supported work may include:
 
 * Python data jobs and helpers
 * SQL transformations
 * Terraform infrastructure
+* Application and frontend code
 * Config-driven workflows
 * Lightweight testing and packaging workflows
 
@@ -25,17 +28,18 @@ Use:
 * `ai/domains/index.md` for domain-based navigation across all skill areas
 * `ai/policies/global.md` for cross-domain policies (advisory and required)
 * `ai/context.yaml` as the authoritative AI context-generation configuration
-* `specs/template/` for inherited template contracts (cloud profile only, read-only)
-* `specs/project/` for host-authored project specs (cloud profile only)
+* `.template-profile.yaml` for active project capabilities and dependency policy
+* `specs/template/` for inherited contracts when that directory is present
+* `specs/project/` for project-authored specs when that directory is present
 
-These files are guidance and configuration inputs copied into host repositories.
+These files are project guidance and configuration inputs.
 They are not executable orchestration logic.
 
 ---
 
 ## Working Style
 
-When assisting in this repository or a host repository created from it:
+When assisting in a project that contains this guidance:
 
 1. Understand the objective and current repository shape
 2. Search for existing implementations before proposing new files
@@ -79,14 +83,14 @@ Do not introduce hidden automation.
 
 ## Package Manager Awareness
 
-Host repositories created from this template may use either `pip` or `uv`.
+Projects using this guidance use `uv` for Python dependency management.
 
 The agent should:
 
-* inspect the files present in the repository before choosing a dependency workflow
-* follow `requirements*.txt` workflows when the host is configured for `pip`
-* follow `pyproject.toml` and `uv.lock` workflows when the host is configured for `uv`
-* keep packaging, testing, and environment guidance aligned with the package-manager choice already installed in the host
+* inspect `.template-profile.yaml`, `pyproject.toml`, and `uv.lock`
+* resolve active dependency extras and groups from the project profile
+* use the repository's documented `uv` wrappers or explicit `uv` commands
+* keep packaging, testing, and environment guidance aligned with the active capabilities
 
 ---
 
@@ -205,8 +209,7 @@ follow the discovery flow in *Skill Usage*.
 
 ## AI Agent Operational Policies (SPEC-009)
 
-These rules apply when working in this template or in any host repository
-created from it.
+These rules apply when the project enables AWS or Terraform capabilities.
 
 ### The agent MUST
 
@@ -215,7 +218,7 @@ created from it.
 * include `aws_budgets_budget` when deploying any environment
 * apply `local.common_tags` (including `CostCenter`) to every resource
 * expose `log_group_name`, `log_group_arn`, and `resource_arn` as outputs in every module
-* generate `tests/aws/` validation scripts in host repositories when deploying AWS infrastructure
+* generate `tests/aws/` validation scripts when deploying AWS infrastructure
   (see `ai/skills/aws/aws_smoke_testing.md` for structure and templates)
 * validate IAM roles before applying infrastructure changes
 
@@ -227,9 +230,9 @@ created from it.
 * create resources without mandatory tags
 * omit `retention_in_days` on CloudWatch log groups
 
-### Host repository obligation
+### AWS project obligation
 
-When deploying AWS resources in a host repository, generate `tests/aws/` with:
+When deploying AWS resources, generate `tests/aws/` with:
 
 ```
 tests/aws/
@@ -248,4 +251,4 @@ Scripts must read resource identifiers from `terraform output` — never hardcod
 
 Simple. Explicit. Reproducible.
 
-AI is a helper for the host project, not the system itself.
+AI is a helper for the current project, not the system itself.

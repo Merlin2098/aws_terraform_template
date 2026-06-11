@@ -306,7 +306,7 @@ Replace hardcoded SaaS-only logic with registry-driven path resolution.
 
 ### Phase 3 — Shared Profile Parser
 
-Extract `.template-profile` parsing into:
+Extract retired profile format parsing into:
 
 ```text
 ai/runtime/profile.py

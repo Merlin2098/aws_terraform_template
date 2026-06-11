@@ -3,29 +3,21 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
-import yaml
-
 from ai.runtime.capability_registry import (
     CapabilityDescriptor,
-    active_paths,
-    category_paths,
     load_registry,
-    normalize_capabilities,
-    resolve_descriptors,
 )
+from ai.runtime.profile import PROFILE_FILENAME, profile_document, render_profile
+from ai.runtime.project_profile import parse_capability_id
 
 
 TEMPLATE_ROOT = Path(__file__).resolve().parents[1]
 TEMPLATE_GITIGNORE_PATH = TEMPLATE_ROOT / ".gitignore"
-TEMPLATE_PROFILE_PATH = Path(".template-profile")
+TEMPLATE_PROFILE_PATH = Path(PROFILE_FILENAME)
 OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
 CLOUD_ONLY_TOP_LEVEL_DIRS = {"specs"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
-# Capability category whose paths are gated behind explicit selection, per
-# ADR-FW-001 Phase 2 — mirrors the legacy `capability_profile=<value>` axis
-# (SPEC-FW-004's SAAS_ONLY_PATHS), now resolved from ai/capabilities/business/.
-CAPABILITY_GATED_CATEGORY = "business"
 PYPROJECT_PATH = Path("pyproject.toml")
 UV_LOCK_PATH = Path("uv.lock")
 
@@ -148,18 +140,33 @@ def prompt_environment_profile() -> str:
         print("Please answer local or cloud.")
 
 
-def prompt_capability_profile() -> str | None:
-    while True:
-        selected = (
-            input("Enable SaaS capability domain (FastAPI, Supabase, Railway)? [y/N]: ")
-            .strip()
-            .lower()
-        )
-        if selected in {"", "n", "no"}:
-            return None
-        if selected in {"y", "yes"}:
-            return "saas"
-        print("Please answer yes or no.")
+def available_capability_ids(
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
+) -> list[str]:
+    registry = registry or load_registry(TEMPLATE_ROOT)
+    return [
+        f"{category}:{name}"
+        for category in sorted(registry)
+        for name in sorted(registry[category])
+    ]
+
+
+def prompt_enabled_capabilities(
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
+) -> list[str]:
+    registry = registry or load_registry(TEMPLATE_ROOT)
+    print("Available capabilities:")
+    for identifier in available_capability_ids(registry):
+        print(f"  {identifier}")
+    selected = input(
+        "Additional capabilities to enable (comma-separated, empty for none): "
+    ).strip()
+    if not selected:
+        return []
+    return validate_enabled_capabilities(
+        [value.strip() for value in selected.split(",") if value.strip()],
+        registry,
+    )
 
 
 def validate_target(target: Path) -> Path:
@@ -181,21 +188,31 @@ def validate_environment_profile(environment_profile: str) -> str:
     return normalized
 
 
-def validate_capability_profile(
-    capability_profile: str | None,
+def validate_enabled_capabilities(
+    values: list[str],
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
-) -> str | None:
-    if capability_profile is None or capability_profile == "":
-        return None
-    normalized = capability_profile.strip().lower()
-    if registry is None:
-        registry = load_registry(TEMPLATE_ROOT)
-    available = set(registry.get(CAPABILITY_GATED_CATEGORY, {}))
-    if normalized not in available:
-        raise ValueError(
-            f"Capability profile must be one of {sorted(available)} or empty."
-        )
+) -> list[str]:
+    registry = registry or load_registry(TEMPLATE_ROOT)
+    normalized: list[str] = []
+    for value in values:
+        category, name = parse_capability_id(value.lower())
+        if category not in registry or name not in registry[category]:
+            raise ValueError(
+                f"Unknown capability '{category}:{name}'. Available values: "
+                f"{', '.join(available_capability_ids(registry))}."
+            )
+        identifier = f"{category}:{name}"
+        if identifier not in normalized:
+            normalized.append(identifier)
     return normalized
+
+
+def capability_selection(values: list[str]) -> dict[str, list[str]]:
+    selected: dict[str, list[str]] = {}
+    for value in values:
+        category, name = parse_capability_id(value)
+        selected.setdefault(category, []).append(name)
+    return selected
 
 
 def should_copy_package_file(relative: Path) -> bool:
@@ -230,38 +247,11 @@ def should_copy_specs_path(relative: Path, environment_profile: str) -> bool:
     return True
 
 
-def gated_paths_to_exclude(
-    registry: dict[str, dict[str, CapabilityDescriptor]],
-    capabilities: dict[str, list[str]],
-) -> set[str]:
-    """Paths owned by an unselected capability in the gated category.
-
-    Per ADR-FW-001 Phase 2, the ``business`` category (today: ``saas``) is
-    gated behind explicit selection — its descriptors' ``paths`` are excluded
-    unless that capability is active. Paths declared by a descriptor that *is*
-    active are kept even if another, unselected descriptor also declares them.
-    """
-    all_gated = category_paths(registry, CAPABILITY_GATED_CATEGORY)
-    active = active_paths(resolve_descriptors(registry, capabilities))
-    return all_gated - active
-
-
-def should_copy_capability_path(relative: Path, excluded_paths: set[str]) -> bool:
-    relative_posix = relative.as_posix()
-    for excluded in excluded_paths:
-        excluded = excluded.rstrip("/")
-        if relative_posix == excluded or relative_posix.startswith(excluded + "/"):
-            return False
-    return True
-
-
 def iter_template_files(
     *,
     include_structure: bool,
     environment_profile: str,
-    excluded_capability_paths: set[str] | None = None,
 ) -> tuple[list[Path], list[Path]]:
-    excluded_capability_paths = excluded_capability_paths or set()
     copied_candidates: list[Path] = []
     ignored: list[Path] = []
 
@@ -275,9 +265,6 @@ def iter_template_files(
                 ignored.append(path)
                 continue
             if not should_copy_package_file(relative):
-                ignored.append(path)
-                continue
-            if not should_copy_capability_path(relative, excluded_capability_paths):
                 ignored.append(path)
                 continue
             if is_excluded(path):
@@ -299,20 +286,18 @@ def render_target_file(
     *,
     relative: Path,
     environment_profile: str,
-    capability_profile: str | None = None,
     capabilities: dict[str, list[str]] | None = None,
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> str:
     if relative == TEMPLATE_PROFILE_PATH:
-        legacy = (
-            f"environment_profile={environment_profile}\n"
-            f"capability_profile={capability_profile or ''}\n"
+        registry = registry or load_registry(TEMPLATE_ROOT)
+        return render_profile(
+            profile_document(
+                registry,
+                environment=environment_profile,
+                enabled=capabilities or {},
+            )
         )
-        if not capabilities:
-            return legacy
-        typed_block = yaml.safe_dump(
-            {"capabilities": capabilities}, sort_keys=True, default_flow_style=False
-        )
-        return f"{legacy}\n{typed_block}"
     return source_text
 
 
@@ -322,8 +307,8 @@ def copy_template_file(
     *,
     relative: Path,
     environment_profile: str,
-    capability_profile: str | None = None,
     capabilities: dict[str, list[str]] | None = None,
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
 ) -> None:
     if relative == TEMPLATE_PROFILE_PATH:
         source_text = source_path.read_text(encoding="utf-8")
@@ -332,8 +317,8 @@ def copy_template_file(
                 source_text,
                 relative=relative,
                 environment_profile=environment_profile,
-                capability_profile=capability_profile,
                 capabilities=capabilities,
+                registry=registry,
             ),
             encoding="utf-8",
         )
@@ -428,20 +413,23 @@ def install_template(
     *,
     include_structure: bool,
     environment_profile: str,
-    capability_profile: str | None = None,
+    enabled_capabilities: list[str] | None = None,
 ) -> dict[str, list[str]]:
     target = validate_target(target)
     environment_profile = validate_environment_profile(environment_profile)
     registry = load_registry(TEMPLATE_ROOT)
-    capability_profile = validate_capability_profile(capability_profile, registry)
-    capabilities = normalize_capabilities(
-        [capability_profile] if capability_profile else []
+    selections = list(enabled_capabilities or [])
+    default_capability = (
+        "infrastructure:terraform"
+        if environment_profile == "cloud"
+        else "languages:python"
     )
-    excluded_capability_paths = gated_paths_to_exclude(registry, capabilities)
+    selections.append(default_capability)
+    selections = validate_enabled_capabilities(selections, registry)
+    capabilities = capability_selection(selections)
     candidates, ignored_paths = iter_template_files(
         include_structure=include_structure,
         environment_profile=environment_profile,
-        excluded_capability_paths=excluded_capability_paths,
     )
     copied: list[str] = []
     skipped: list[str] = []
@@ -474,8 +462,8 @@ def install_template(
             destination,
             relative=relative,
             environment_profile=environment_profile,
-            capability_profile=capability_profile,
             capabilities=capabilities,
+            registry=registry,
         )
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 

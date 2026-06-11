@@ -7,7 +7,7 @@ from pathlib import Path
 from ai.installer import (
     install_template,
     print_summary,
-    prompt_capability_profile,
+    prompt_enabled_capabilities,
     prompt_environment_profile,
     prompt_include_structure,
 )
@@ -69,6 +69,13 @@ def main() -> None:
         action="store_true",
         help="Include the SaaS capability domain (FastAPI, Supabase, Railway).",
     )
+    parser.add_argument(
+        "--enable",
+        action="append",
+        default=[],
+        metavar="CATEGORY:NAME",
+        help="Enable a capability. Repeat for multiple capabilities.",
+    )
     args = parser.parse_args()
 
     if args.with_structure and args.without_structure:
@@ -100,19 +107,32 @@ def main() -> None:
             if args.cloud
             else prompt_environment_profile()
         )
-        capability_profile = "saas" if args.saas else prompt_capability_profile()
+        enabled = list(args.enable)
+        if environment_profile == "local":
+            enabled.append("languages:python")
+        if environment_profile == "cloud":
+            enabled.append("infrastructure:terraform")
+        if args.saas:
+            enabled.append("business:saas")
+        if not (args.local or args.cloud or args.saas or args.enable):
+            enabled.extend(prompt_enabled_capabilities())
         summary = install_template(
             target=target,
             force=args.force,
             dry_run=args.dry_run,
             include_structure=include_structure,
             environment_profile=environment_profile,
-            capability_profile=capability_profile,
+            enabled_capabilities=enabled,
         )
     except ValueError as exc:
         parser.error(str(exc))
 
     print_summary(summary, dry_run=args.dry_run)
+    print(
+        "\nNext step:\n"
+        "  ./scripts/linux/setup_env.sh\n"
+        "The installer did not create or synchronize .venv."
+    )
 
 
 if __name__ == "__main__":

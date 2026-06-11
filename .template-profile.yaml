@@ -1,0 +1,30 @@
+schema_version: 1
+environment: local
+capabilities:
+  business:
+    saas:
+      enabled: false
+  cloud:
+    aws:
+      enabled: false
+  databases:
+    supabase:
+      enabled: false
+  frameworks:
+    react:
+      enabled: false
+  infrastructure:
+    terraform:
+      enabled: false
+  languages:
+    python:
+      enabled: true
+  platform:
+    domains:
+      enabled: false
+    vps:
+      enabled: false
+dependency_policy:
+  include_dev: true
+  additional_extras: []
+  additional_groups: []

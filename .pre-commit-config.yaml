@@ -15,5 +15,5 @@ repos:
         name: Sync virtual environment dependencies
         entry: python scripts/hooks/sync_dependencies.py
         language: system
-        files: ^(pyproject\.toml|uv\.lock|\.template-profile)$
+        files: ^(pyproject\.toml|uv\.lock|\.template-profile\.yaml|ai/capabilities/.+\.yaml)$
         pass_filenames: false

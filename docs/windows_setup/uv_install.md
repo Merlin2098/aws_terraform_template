@@ -135,11 +135,12 @@ Behavior:
   back to `uv.exe` from `PATH` when that is the only valid local installation
 - the normal local uv workflow is `base + dev-local`
 - cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
-- the default host profile is read from `.template-profile`
-- cloud can still be forced explicitly:
+- active host capabilities are read from `.template-profile.yaml`
+- cloud capabilities can be enabled in `.template-profile.yaml` and then
+  synchronized:
 
 ```powershell
-.\scripts\windows\update_venv.ps1 -Profile cloud
+.\scripts\windows\update_venv.ps1
 ```
 
 ## 4. Uv Host Package Refresh Warning

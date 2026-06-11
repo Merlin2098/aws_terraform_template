@@ -2,116 +2,203 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import yaml
 
-from ai.runtime.capability_registry import normalize_capabilities
-
-
+PROFILE_FILENAME = ".template-profile.yaml"
+PROFILE_SCHEMA_VERSION = 1
 ENVIRONMENT_PROFILES = {"local", "cloud"}
-PACKAGE_MANAGERS = {"pip", "uv"}
 DEFAULT_ENVIRONMENT_PROFILE = "local"
+
+
+@dataclass(frozen=True)
+class DependencyPolicy:
+    include_dev: bool = True
+    additional_extras: tuple[str, ...] = ()
+    additional_groups: tuple[str, ...] = ()
 
 
 @dataclass
 class Profile:
-    """Normalized view of a host's `.template-profile` file.
-
-    Combines the legacy fields (`package_manager`, `environment_profile`,
-    `capability_profile`) with the typed `capabilities:` block from
-    ADR-FW-001. Legacy `capability_profile=<value>` is folded into
-    `capabilities` so callers only need to read one shape.
-    """
-
-    environment_profile: str | None = None
-    package_manager: str | None = None
+    environment: str = DEFAULT_ENVIRONMENT_PROFILE
     capabilities: dict[str, list[str]] = field(default_factory=dict)
+    declared_capabilities: dict[str, list[str]] = field(default_factory=dict)
+    dependency_policy: DependencyPolicy = field(default_factory=DependencyPolicy)
+    schema_version: int = PROFILE_SCHEMA_VERSION
+    source: str = "default"
 
 
-def _parse_template_profile(text: str) -> dict[str, str]:
-    values: dict[str, str] = {}
-    for line in text.splitlines():
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        key, separator, value = line.partition("=")
-        if separator:
-            values[key.strip()] = value.strip()
-    return values
+def profile_path(project_root: Path) -> Path:
+    return project_root / PROFILE_FILENAME
 
 
-def load_profile(profile_file: Path) -> Profile:
-    """Read and normalize a `.template-profile` file.
+def _string_list(value: Any, field_name: str) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError(f"{field_name} must be a list of strings.")
+    return tuple(dict.fromkeys(item.strip() for item in value if item.strip()))
 
-    Returns an empty `Profile` if the file does not exist. Supports both the
-    legacy `key=value` format and a typed `capabilities:` block written in
-    YAML mapping syntax (`category:\\n  - name`), per ADR-FW-001's
-    Compatibility Strategy.
-    """
-    if not profile_file.exists():
-        return Profile()
 
-    text = profile_file.read_text(encoding="utf-8")
-    values = _parse_template_profile(text)
+def _parse_yaml_capabilities(
+    value: Any,
+) -> tuple[dict[str, list[str]], dict[str, list[str]]]:
+    if value is None:
+        return {}, {}
+    if not isinstance(value, dict):
+        raise ValueError("capabilities must be a mapping.")
 
-    environment_profile = values.get("environment_profile", "").strip().lower() or None
-    if environment_profile not in ENVIRONMENT_PROFILES:
-        environment_profile = None
+    enabled: dict[str, list[str]] = {}
+    declared: dict[str, list[str]] = {}
+    for raw_category, raw_entries in value.items():
+        category = str(raw_category).strip()
+        if not category or not isinstance(raw_entries, dict):
+            raise ValueError(f"capabilities.{category or '<empty>'} must be a mapping.")
+        for raw_name, raw_config in raw_entries.items():
+            name = str(raw_name).strip()
+            if not name or not isinstance(raw_config, dict):
+                raise ValueError(
+                    f"capabilities.{category}.{name or '<empty>'} must be a mapping."
+                )
+            declared.setdefault(category, []).append(name)
+            unknown = set(raw_config) - {"enabled"}
+            if unknown:
+                raise ValueError(
+                    f"capabilities.{category}.{name} has unknown fields: "
+                    f"{', '.join(sorted(unknown))}."
+                )
+            is_enabled = raw_config.get("enabled", False)
+            if not isinstance(is_enabled, bool):
+                raise ValueError(
+                    f"capabilities.{category}.{name}.enabled must be boolean."
+                )
+            if is_enabled:
+                enabled.setdefault(category, []).append(name)
+    return enabled, declared
 
-    package_manager = values.get("package_manager", "").strip().lower() or None
-    if package_manager not in PACKAGE_MANAGERS:
-        package_manager = None
 
-    capabilities = _load_capabilities_block(text)
-    if not capabilities:
-        legacy_capability_profile = values.get("capability_profile", "").strip().lower()
-        if legacy_capability_profile:
-            capabilities = normalize_capabilities([legacy_capability_profile])
+def _load_yaml_profile(path: Path) -> Profile:
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        raise ValueError(f"Invalid YAML in {path.name}: {exc}") from exc
+    if not isinstance(loaded, dict):
+        raise ValueError(f"{path.name} must contain a YAML mapping.")
 
+    allowed = {
+        "schema_version",
+        "environment",
+        "capabilities",
+        "dependency_policy",
+    }
+    unknown = set(loaded) - allowed
+    if unknown:
+        raise ValueError(
+            f"{path.name} has unknown fields: {', '.join(sorted(unknown))}."
+        )
+
+    schema_version = loaded.get("schema_version")
+    if schema_version != PROFILE_SCHEMA_VERSION:
+        raise ValueError(
+            f"Unsupported profile schema_version {schema_version!r}; "
+            f"expected {PROFILE_SCHEMA_VERSION}."
+        )
+
+    environment = (
+        str(loaded.get("environment", DEFAULT_ENVIRONMENT_PROFILE)).strip().lower()
+    )
+    if environment not in ENVIRONMENT_PROFILES:
+        raise ValueError(f"environment must be one of {sorted(ENVIRONMENT_PROFILES)}.")
+
+    raw_policy = loaded.get("dependency_policy") or {}
+    if not isinstance(raw_policy, dict):
+        raise ValueError("dependency_policy must be a mapping.")
+    policy_unknown = set(raw_policy) - {
+        "include_dev",
+        "additional_extras",
+        "additional_groups",
+    }
+    if policy_unknown:
+        raise ValueError(
+            "dependency_policy has unknown fields: "
+            f"{', '.join(sorted(policy_unknown))}."
+        )
+    include_dev = raw_policy.get("include_dev", True)
+    if not isinstance(include_dev, bool):
+        raise ValueError("dependency_policy.include_dev must be boolean.")
+
+    capabilities, declared_capabilities = _parse_yaml_capabilities(
+        loaded.get("capabilities")
+    )
     return Profile(
-        environment_profile=environment_profile,
-        package_manager=package_manager,
+        environment=environment,
         capabilities=capabilities,
+        declared_capabilities=declared_capabilities,
+        dependency_policy=DependencyPolicy(
+            include_dev=include_dev,
+            additional_extras=_string_list(
+                raw_policy.get("additional_extras"),
+                "dependency_policy.additional_extras",
+            ),
+            additional_groups=_string_list(
+                raw_policy.get("additional_groups"),
+                "dependency_policy.additional_groups",
+            ),
+        ),
+        source="yaml",
     )
 
 
-def _load_capabilities_block(text: str) -> dict[str, list[str]]:
-    """Parse a trailing YAML `capabilities:` block, if present.
+def load_profile(path_or_root: Path) -> Profile:
+    """Load the active YAML profile."""
+    candidate = path_or_root
+    if candidate.is_dir():
+        yaml_path = profile_path(candidate)
+    elif candidate.name == PROFILE_FILENAME:
+        yaml_path = candidate
+    else:
+        yaml_path = candidate / PROFILE_FILENAME
 
-    `.template-profile` is primarily `key=value`, but ADR-FW-001 allows an
-    additional typed `capabilities:` mapping appended to the file. Lines
-    using `=` are not valid YAML mappings, so only lines that are not legacy
-    `key=value` pairs are considered for YAML parsing.
-    """
-    yaml_lines = [
-        line
-        for line in text.splitlines()
-        if line.strip() and "=" not in line.split("#", 1)[0]
-    ]
-    if not yaml_lines:
-        return {}
-
-    try:
-        loaded = yaml.safe_load("\n".join(yaml_lines))
-    except yaml.YAMLError:
-        return {}
-
-    if not isinstance(loaded, dict):
-        return {}
-
-    return normalize_capabilities(loaded.get("capabilities"))
+    if yaml_path.exists():
+        return _load_yaml_profile(yaml_path)
+    return Profile()
 
 
-def resolve_environment_profile(profile_file: Path, selected: str | None) -> str:
-    """Resolve the active environment profile.
+def profile_document(
+    registry: dict[str, dict[str, Any]],
+    *,
+    environment: str,
+    enabled: dict[str, list[str]],
+    include_dev: bool = True,
+    additional_extras: tuple[str, ...] = (),
+    additional_groups: tuple[str, ...] = (),
+) -> dict[str, Any]:
+    capabilities: dict[str, dict[str, dict[str, bool]]] = {}
+    for category in sorted(registry):
+        entries = registry[category]
+        if not entries:
+            continue
+        enabled_names = set(enabled.get(category, []))
+        capabilities[category] = {
+            name: {"enabled": name in enabled_names} for name in sorted(entries)
+        }
+    return {
+        "schema_version": PROFILE_SCHEMA_VERSION,
+        "environment": environment,
+        "capabilities": capabilities,
+        "dependency_policy": {
+            "include_dev": include_dev,
+            "additional_extras": list(additional_extras),
+            "additional_groups": list(additional_groups),
+        },
+    }
 
-    Precedence: explicitly `selected` > value persisted in `profile_file` >
-    `DEFAULT_ENVIRONMENT_PROFILE`. Mirrors the previous
-    `resolve_profile` helpers duplicated in `scripts/run_uv_sync.py` and
-    `scripts/hooks/sync_dependencies.py`.
-    """
-    if selected:
-        return selected
-    persisted = load_profile(profile_file).environment_profile
-    if persisted:
-        return persisted
-    return DEFAULT_ENVIRONMENT_PROFILE
+
+def render_profile(document: dict[str, Any]) -> str:
+    return yaml.safe_dump(
+        document,
+        sort_keys=False,
+        default_flow_style=False,
+        allow_unicode=False,
+    )

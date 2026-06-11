@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import argparse
+import shutil
 import subprocess
 import sys
 from pathlib import Path
 from zipfile import ZIP_DEFLATED, ZipFile
+
+from ai.runtime.project_profile import resolve_project_profile, uv_export_args
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -13,16 +16,10 @@ INCLUDE_DIRS = [REPO_ROOT / "src"]
 
 
 def runtime_requirements_text() -> str:
+    resolved = resolve_project_profile(REPO_ROOT)
+    uv = shutil.which("uv") or "uv"
     result = subprocess.run(
-        [
-            "uv",
-            "export",
-            "--no-dev",
-            "--extra",
-            "cloud",
-            "--format",
-            "requirements.txt",
-        ],
+        [uv, *uv_export_args(resolved)],
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,

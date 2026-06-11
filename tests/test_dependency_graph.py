@@ -101,9 +101,17 @@ def test_active_scanners_collects_from_active_capabilities(tmp_path: Path) -> No
         "name: react\ntype: framework\nscanners:\n  - javascript\n",
     )
     _write(
-        tmp_path / ".template-profile",
-        "package_manager=uv\nenvironment_profile=local\n"
-        "capabilities:\n  languages:\n    - python\n  frameworks:\n    - react\n",
+        tmp_path / ".template-profile.yaml",
+        "schema_version: 1\n"
+        "environment: local\n"
+        "capabilities:\n"
+        "  languages:\n"
+        "    python:\n"
+        "      enabled: true\n"
+        "  frameworks:\n"
+        "    react:\n"
+        "      enabled: true\n"
+        "dependency_policy: {}\n",
     )
 
     assert active_scanners(tmp_path) == ["python", "javascript"]

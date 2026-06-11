@@ -7,6 +7,7 @@ import yaml
 
 from ai.runtime.config import load_context_config, rules_list, structure_map
 from ai.runtime.skill_registry import build_skills_registry
+from ai.runtime.project_profile import ResolvedProfile
 from ai.tools.inspect_project import inspect_project
 
 
@@ -32,11 +33,14 @@ def build_context_bundle(
     *,
     project: dict[str, Any] | None = None,
     skills_registry: dict[str, Any] | None = None,
+    resolved: ResolvedProfile | None = None,
 ) -> dict[str, Any]:
     project_root = project_root.resolve()
     config = load_context_config(project_root)
     project = project or inspect_project(project_root)
-    skills_registry = skills_registry or build_skills_registry(project_root)
+    skills_registry = skills_registry or build_skills_registry(
+        project_root, resolved=resolved
+    )
     skills = skills_registry.get("skills", [])
 
     domain_counts: dict[str, int] = {}
@@ -79,9 +83,13 @@ def build_and_persist_context_bundle(
     *,
     project: dict[str, Any] | None = None,
     skills_registry: dict[str, Any] | None = None,
+    resolved: ResolvedProfile | None = None,
 ) -> dict[str, Any]:
     bundle = build_context_bundle(
-        project_root, project=project, skills_registry=skills_registry
+        project_root,
+        project=project,
+        skills_registry=skills_registry,
+        resolved=resolved,
     )
     write_context_bundle(bundle, output_path)
     return bundle
