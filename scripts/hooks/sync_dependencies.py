@@ -15,48 +15,11 @@ from ai.runtime.profile import resolve_environment_profile  # noqa: E402
 
 
 HASH_FILE = Path(".venv/.deps_hash")
-REQUIREMENTS_GLOB = "requirements*.txt"
 ENVIRONMENT_PROFILES = {"local", "cloud"}
-# "pip" is legacy per ADR-FW-002 — uv is the sole supported package manager
-# for new functionality. Kept for hosts still using requirements*.txt + pip.
-PACKAGE_MANAGERS = {"pip", "uv"}
 PROFILE_FILE = Path(".template-profile")
 
 
-def venv_python() -> Path:
-    candidates = (
-        Path(".venv/Scripts/python.exe"),
-        Path(".venv/bin/python"),
-    )
-    for candidate in candidates:
-        if candidate.exists():
-            return candidate
-    return Path(sys.executable)
-
-
-def requirement_files(profile: str) -> tuple[Path, ...]:
-    names = ["requirements.local.txt"]
-    if profile == "cloud":
-        names.append("requirements.cloud.txt")
-    names.append("requirements.dev.txt")
-    files = tuple(Path(name) for name in names if Path(name).is_file())
-    if files:
-        return files
-    return tuple(
-        sorted(
-            (
-                path
-                for path in Path(".").glob(REQUIREMENTS_GLOB)
-                if path.is_file() and path.parent == Path(".")
-            ),
-            key=lambda path: path.name.lower(),
-        )
-    )
-
-
-def dependency_files(manager: str, profile: str) -> tuple[Path, ...]:
-    if manager == "pip":
-        return requirement_files(profile)
+def dependency_files() -> tuple[Path, ...]:
     files = [Path("pyproject.toml")]
     lock_file = Path("uv.lock")
     if lock_file.exists():
@@ -66,9 +29,8 @@ def dependency_files(manager: str, profile: str) -> tuple[Path, ...]:
     return tuple(path for path in files if path.exists())
 
 
-def dependencies_hash(paths: tuple[Path, ...], manager: str, profile: str) -> str:
+def dependencies_hash(paths: tuple[Path, ...], profile: str) -> str:
     digest = hashlib.md5()
-    digest.update(manager.encode("utf-8"))
     digest.update(profile.encode("utf-8"))
     for dependency_path in paths:
         if not dependency_path.exists():
@@ -86,19 +48,13 @@ def uv_command_prefix() -> list[str]:
     return [str(sys.executable), "-m", "uv"]
 
 
-def install_command(manager: str, profile: str, paths: tuple[Path, ...]) -> list[str]:
-    if manager == "uv":
-        command = uv_command_prefix() + ["sync"]
-        if profile == "cloud":
-            command.extend(["--extra", "local", "--extra", "cloud"])
-        command.extend(["--group", "dev-local"])
-        if profile == "cloud":
-            command.extend(["--group", "dev-cloud"])
-        return command
-
-    command = [str(venv_python()), "-m", "pip", "install"]
-    for requirement_file in paths:
-        command.extend(["-r", requirement_file.as_posix()])
+def install_command(profile: str) -> list[str]:
+    command = uv_command_prefix() + ["sync"]
+    if profile == "cloud":
+        command.extend(["--extra", "local", "--extra", "cloud"])
+    command.extend(["--group", "dev-local"])
+    if profile == "cloud":
+        command.extend(["--group", "dev-cloud"])
     return command
 
 
@@ -106,34 +62,31 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Synchronize host project dependencies."
     )
-    parser.add_argument("--manager", choices=sorted(PACKAGE_MANAGERS), default="pip")
     parser.add_argument("--profile", choices=sorted(ENVIRONMENT_PROFILES))
     return parser.parse_args()
 
 
-def resolve_profile(manager: str, selected: str | None) -> str:
+def resolve_profile(selected: str | None) -> str:
     if selected:
         return selected
-    if manager == "uv":
-        return resolve_environment_profile(PROFILE_FILE, None)
-    return "local"
+    return resolve_environment_profile(PROFILE_FILE, None)
 
 
 def main() -> None:
     args = parse_args()
-    profile = resolve_profile(args.manager, args.profile)
-    paths = dependency_files(args.manager, profile)
+    profile = resolve_profile(args.profile)
+    paths = dependency_files()
     if not paths:
         return
 
-    current_hash = dependencies_hash(paths, args.manager, profile)
+    current_hash = dependencies_hash(paths, profile)
     if HASH_FILE.exists() and HASH_FILE.read_text() == current_hash:
         print("Dependencies unchanged. Skipping install.")
         return
 
     print("Installing dependencies...")
     HASH_FILE.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(install_command(args.manager, profile, paths), check=True)
+    subprocess.run(install_command(profile), check=True)
     HASH_FILE.write_text(current_hash)
     print("Dependencies updated.")
 

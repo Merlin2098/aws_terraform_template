@@ -74,7 +74,6 @@ type: business
 paths:
   - ai/skills/saas/
   - ai/domains/saas.md
-  - requirements.saas.txt
 """,
     )
     _write(
@@ -153,14 +152,14 @@ def test_restore_project_dry_run_skips_context_and_dependencies(
     _create_sample_project(tmp_path)
     _write(
         tmp_path / ".template-profile",
-        "package_manager=uv\nenvironment_profile=cloud\ncapability_profile=saas\n",
+        "environment_profile=cloud\ncapability_profile=saas\n",
     )
 
     payload = restore_project(tmp_path, dry_run=True)
 
     assert payload["status"] == "ok"
     assert payload["environment_profile"] == "cloud"
-    assert payload["package_manager"] == "uv"
+    assert payload["package_manager"] is None
     assert payload["capabilities"] == {"business": ["saas"]}
     assert payload["active_capabilities"] == ["saas"]
     assert payload["dependencies"]["status"] == "skipped"
@@ -172,7 +171,7 @@ def test_restore_project_regenerates_context_artifacts(tmp_path: Path) -> None:
     _create_sample_project(tmp_path)
     _write(
         tmp_path / ".template-profile",
-        "package_manager=uv\nenvironment_profile=local\ncapability_profile=saas\n",
+        "environment_profile=local\ncapability_profile=saas\n",
     )
 
     payload = restore_project(tmp_path, dry_run=False)
@@ -186,7 +185,7 @@ def test_restore_project_is_idempotent(tmp_path: Path) -> None:
     _create_sample_project(tmp_path)
     _write(
         tmp_path / ".template-profile",
-        "package_manager=uv\nenvironment_profile=local\ncapability_profile=saas\n",
+        "environment_profile=local\ncapability_profile=saas\n",
     )
 
     first = restore_project(tmp_path, dry_run=False)
@@ -219,3 +218,5 @@ def test_restore_project_without_capability_block_uses_legacy_profile(
     assert payload["capabilities"] == {}
     assert payload["active_capabilities"] == []
     assert payload["consistency"]["gated"] == ["ai/skills/saas/auth.md"]
+    assert "requirements*.txt" in payload["dependencies"]["warning"]
+    assert "pip support has been retired" in payload["dependencies"]["warning"]

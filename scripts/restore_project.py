@@ -41,18 +41,32 @@ def gated_paths_to_exclude(
     return all_gated - active
 
 
-def sync_dependencies(
-    *, package_manager: str | None, environment_profile: str | None, dry_run: bool
-) -> dict[str, object]:
-    """Step 4: sync dependencies for uv hosts.
+def legacy_pip_warning(
+    project_root: Path, *, package_manager: str | None
+) -> str | None:
+    """Detect a host still on the retired pip/requirements*.txt path.
 
-    pip hosts manage `requirements*.txt` manually (per ADR-FW-002, pip is
-    legacy) — restore does not run `run_pip_init.py` since it has no
-    update/lock equivalent to keep idempotent.
+    Per SPEC-FW-015's Compatibility Strategy, a `package_manager=pip` profile
+    or leftover `requirements*.txt` files no longer block restore, but should
+    surface an actionable migration warning.
     """
-    if package_manager != "uv":
-        return {"status": "skipped", "reason": f"package_manager={package_manager!r}"}
+    legacy_requirements = sorted(
+        path.name for path in project_root.glob("requirements*.txt")
+    )
+    if package_manager != "pip" and not legacy_requirements:
+        return None
 
+    return (
+        "this host uses requirements*.txt; pip support has been retired — "
+        "run `uv init`/`uv add` to migrate to pyproject.toml + uv.lock before "
+        "restoring"
+    )
+
+
+def sync_dependencies(
+    *, environment_profile: str | None, dry_run: bool
+) -> dict[str, object]:
+    """Step 4: sync dependencies for the (sole) uv path."""
     run_update(
         dry_run=dry_run,
         profile=environment_profile or DEFAULT_ENVIRONMENT_PROFILE,
@@ -106,12 +120,15 @@ def restore_project(project_root: Path, *, dry_run: bool = False) -> dict[str, o
     # `--project-root` is not supported.
     if project_root == REPO_ROOT:
         dependencies = sync_dependencies(
-            package_manager=profile.package_manager,
             environment_profile=profile.environment_profile,
             dry_run=dry_run,
         )
     else:
         dependencies = {"status": "skipped", "reason": "project_root != REPO_ROOT"}
+
+    warning = legacy_pip_warning(project_root, package_manager=profile.package_manager)
+    if warning:
+        dependencies["warning"] = warning
 
     # Steps 5-7: regenerate skills registry, .ai/ artifacts, and llms.txt.
     # `refresh_context` (SPEC-FW-010) regenerates `llms.txt` alongside the

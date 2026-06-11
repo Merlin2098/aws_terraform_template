@@ -12,7 +12,6 @@ depends_on:
 paths:
   - ai/skills/saas/
   - ai/domains/saas.md
-  - requirements.saas.txt
 
 dependencies:
   extras:

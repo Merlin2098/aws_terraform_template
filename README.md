@@ -29,7 +29,7 @@ simple operational model that can be copied into a host repository.
 The template currently supports:
 
 * installation into another repository through Windows and Linux installer entrypoints
-* host setup for either `pip` or `uv`
+* host setup with `uv`
 * `local` and `cloud` dependency profiles
 * optional copying of `src/`, `infra/`, and `tests/`
 * a `specs/` layer for project contracts, cloud-profile only, with a clear separation between template-owned specs (`specs/template/`) and host-authored specs (`specs/project/`)
@@ -46,8 +46,7 @@ At a high level, teams use this template in four steps:
 
 1. Install the template into a host repository.
 2. Choose whether the host project is `local` or `cloud`.
-3. Choose whether the host manages dependencies with `pip` or `uv`.
-4. Use explicit commands for packaging, tests, AI refresh, and Terraform work.
+3. Use explicit commands for packaging, tests, AI refresh, and Terraform work.
 
 ## Structure
 
@@ -102,7 +101,6 @@ Both installers can:
 
 * preview changes with `--dry-run`
 * choose `local` or `cloud`
-* choose `pip` or `uv`
 * optionally include the starter `src/`, `infra/`, and `tests/` trees
 
 The installer copies template files into the host repository, but it does not:
@@ -118,15 +116,7 @@ setup wrappers under `scripts/linux/` or `scripts/windows/`.
 
 ## Dependency Model
 
-The template supports two host dependency workflows.
-
-For `pip` hosts:
-
-* local installs use `requirements.local.txt` and `requirements.dev.txt`
-* cloud installs also include `requirements.cloud.txt`
-* the installer rewrites the `sync-dependencies` hook to run with `--manager pip` and the selected profile
-
-For `uv` hosts:
+The template manages host dependencies with `uv`:
 
 * the installer copies `pyproject.toml` and `uv.lock`
 * the installer also persists the selected host profile in `.template-profile`

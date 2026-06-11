@@ -142,19 +142,6 @@ def test_pytest_wrapper_treats_no_tests_as_success(tmp_path: Path) -> None:
     assert "No tests were collected" in result.stdout
 
 
-def test_pip_init_wrapper_dry_run() -> None:
-    result = subprocess.run(
-        [sys.executable, "scripts/run_pip_init.py", "--dry-run"],
-        cwd=REPO_ROOT,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-
-    assert result.returncode == 0, result.stderr
-    assert "pip install -r requirements.local.txt -r requirements.dev.txt" in result.stdout
-
-
 def test_uv_sync_wrapper_dry_run_init() -> None:
     result = subprocess.run(
         [sys.executable, "scripts/run_uv_sync.py", "init", "--dry-run"],
@@ -173,7 +160,7 @@ def test_uv_sync_wrapper_reads_persisted_cloud_profile(tmp_path: Path) -> None:
     original = profile_path.read_text(encoding="utf-8")
     try:
         profile_path.write_text(
-            "package_manager=uv\nenvironment_profile=cloud\n",
+            "environment_profile=cloud\n",
             encoding="utf-8",
         )
         result = subprocess.run(
@@ -187,4 +174,7 @@ def test_uv_sync_wrapper_reads_persisted_cloud_profile(tmp_path: Path) -> None:
         profile_path.write_text(original, encoding="utf-8")
 
     assert result.returncode == 0, result.stderr
-    assert "sync --extra local --extra cloud --group dev-local --group dev-cloud" in result.stdout
+    assert (
+        "sync --extra local --extra cloud --group dev-local --group dev-cloud"
+        in result.stdout
+    )

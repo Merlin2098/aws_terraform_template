@@ -1,8 +1,0 @@
-# SaaS backend runtime — install alongside requirements.cloud.txt
-# FastAPI + Alembic + Supabase Auth + PostgreSQL async driver
-alembic
-asyncpg
-fastapi
-pydantic-settings
-python-jose[cryptography]
-uvicorn[standard]

@@ -166,7 +166,7 @@ Key relationships:
 | **SPEC-FW-004** | Implemented, partially superseded | `ai/installer.py` has `CAPABILITY_PROFILES = {"saas"}`, `SAAS_ONLY_PATHS`, `prompt_capability_profile`, `validate_capability_profile`, `should_copy_capability_path`, and writes `capability_profile=` to `.template-profile` — exactly as SPEC-FW-004 describes. The spec itself now carries a supersession note pointing at ADR-FW-001/002 as the binding direction for the *next* iteration of this mechanism. |
 | **SPEC-FW-005** | Implemented (as a planning spec); reconciled | Already updated in this working tree to reference ADR-FW-001/002 as resolved decisions; its §4/§7/§11 define the SPEC-FW-006..014 sequence used by this plan. |
 | **ADR-FW-001 (Typed Capability Registry)** | Not Implemented | No `ai/capabilities/` directory, no `ai/runtime/capability_registry.py`, no `ai/runtime/profile.py`. Confirmed via `git ls-files` and directory listing. |
-| **ADR-FW-002 (uv-only)** | Partially Implemented | `pyproject.toml` (with `[project.optional-dependencies]` and `[dependency-groups]`) and `uv.lock` exist and are authoritative for `uv sync`; `scripts/run_uv_sync.py` is the primary path. However, `scripts/run_pip_init.py`, `requirements.local.txt`/`requirements.cloud.txt`/`requirements.dev.txt`/`requirements.saas.txt` references, and the `package_manager` (`pip`\|`uv`) axis in `ai/installer.py` (`PACKAGE_MANAGERS`, `prompt_package_manager`, `validate_package_manager`) and `scripts/hooks/sync_dependencies.py` (`PACKAGE_MANAGERS`, `--manager` arg, `dependency_files`/`install_command` pip branches) all still exist and are first-class. |
+| **ADR-FW-002 (uv-only)** | Implemented | `pyproject.toml` (with `[project.optional-dependencies]` and `[dependency-groups]`) and `uv.lock` are authoritative for `uv sync`; `scripts/run_uv_sync.py` is the only sync path. SPEC-FW-015 (Phase 7) removed `scripts/run_pip_init.py`, root `requirements*.txt`, and the `package_manager` (`pip`\|`uv`) axis from `ai/installer.py` and `scripts/hooks/sync_dependencies.py`. `ai/runtime/profile.py`/`scripts/restore_project.py` retain documented legacy `package_manager=pip` read/warning carve-outs. |
 | **SPEC-FW-006 (Typed Capability Registry)** | Not Implemented | — |
 | **SPEC-FW-007 (Installer Registry Integration)** | Not Implemented | — |
 | **SPEC-FW-008 (Shared Profile Parser)** | Not Implemented | `profile_from_template_file` is duplicated verbatim (with a slightly different `ENVIRONMENT_PROFILES`-only scope) in `scripts/run_uv_sync.py` and `scripts/hooks/sync_dependencies.py`; `ai/installer.py` writes `.template-profile` but no module reads the full triple back. |
@@ -176,6 +176,7 @@ Key relationships:
 | **SPEC-FW-012 (AI Agent Ecosystem Capabilities)** | Not Implemented | No LangGraph/agents/MCP descriptors or skills. |
 | **SPEC-FW-013 (Kubernetes and Linux Capabilities)** | Not Implemented | `scripts/linux/` exists (shell setup scripts) but is not descriptor- or capability-driven; no Kubernetes content. |
 | **SPEC-FW-014 (Golang Capability and Scanner)** | Not Implemented | No Go descriptors, skills, or scanner. |
+| **SPEC-FW-015 (Pip Legacy Retirement)** | Implemented | `pip`/`requirements*.txt` code paths removed from `ai/installer.py`, `scripts/hooks/sync_dependencies.py`, `install_linux.py`/`install_windows.py`, `scripts/package.py`; `scripts/run_pip_init.py` and root `requirements*.txt` deleted. `ai/runtime/profile.py` and `scripts/restore_project.py` retain documented compatibility carve-outs (legacy `package_manager=pip` parsing + migration warning). |
 
 ---
 
@@ -533,6 +534,53 @@ For each not-yet-implemented spec: what's missing, what existing code should be
   receive `scripts/linux/` (if defaulted) or the removal is called out as an
   explicit, documented breaking change for that subset.
 
+### Phase 7 — Pip Legacy Retirement (SPEC-FW-015)
+
+- **Goal**: Complete ADR-FW-002 by removing the `pip`/`requirements*.txt` code
+  paths that Phase 0 marked legacy, leaving `uv` + `pyproject.toml`/`uv.lock`
+  as the installer's only supported dependency mechanism.
+- **Specs included**: SPEC-FW-015.
+- **Dependencies**: Phase 0 (legacy-marking — already done) and Phase 1
+  (`ai/runtime/profile.py`/`capability_registry.py` — already implemented, so
+  the uv path this spec makes exclusive already exists and is exercised).
+  Independent of Phases 2/3/4/5/6.
+- **Deliverables**:
+  - `ai/installer.py`: remove `PACKAGE_MANAGERS`, `prompt_package_manager`,
+    `validate_package_manager`, the `*_REQUIREMENTS_PATH` constants,
+    `should_copy_requirements_file`, and the `package_manager` parameter from
+    `install_template`/`iter_template_files`/`render_target_file`/
+    `copy_template_file`; collapse `should_copy_package_file` to the uv branch
+    only.
+  - `scripts/hooks/sync_dependencies.py`: remove `PACKAGE_MANAGERS`,
+    `--manager`, `requirement_files`, `REQUIREMENTS_GLOB`, and the pip branches
+    of `dependency_files`/`install_command`.
+  - Delete `scripts/run_pip_init.py`; `Makefile`'s `init` target becomes the
+    `uv` variant unconditionally.
+  - `install_linux.py`/`install_windows.py`: remove `--package-manager`,
+    `--pip`, `--uv` flags and mutual-exclusion validation.
+  - `scripts/package.py`: remove `detect_package_manager`,
+    `CLOUD_REQUIREMENTS`, `--package-manager`; bundler always uses
+    `uv export`.
+  - `ai/tools/inspect_project.py`: drop `requirements*.txt` from
+    language/cloud detection predicates.
+  - `ai/capabilities/business/saas.yaml`: remove the `requirements.saas.txt`
+    path entry.
+  - Delete `requirements.local.txt`, `requirements.cloud.txt`,
+    `requirements.dev.txt`, `requirements.saas.txt` from the template repo.
+  - Update `tests/test_installer.py`, `tests/test_script_wrappers.py`,
+    `tests/test_sync_dependencies.py`, `tests/test_restore_project.py` to drop
+    pip-specific cases/fixtures.
+  - Update `README.md`, `docs/linux_setup/README.md`,
+    `docs/windows_setup/README.md`; regenerate `docs/treemap.md`.
+- **Validation criteria**: `git grep -i "package_manager\|PACKAGE_MANAGERS"`
+  returns zero matches under `ai/`, `scripts/`, `install_linux.py`,
+  `install_windows.py`; `git ls-files | grep -i requirements` returns zero
+  matches; `pytest -q`, `ruff check .`, `ruff format --check .` pass;
+  `python scripts/restore_project.py --dry-run --pretty` still reports zero
+  `missing` entries. **Breaking change** (documented): hosts with
+  `package_manager=pip` in `.template-profile` must follow SPEC-FW-015's
+  Migration Strategy before their next restore/sync.
+
 ---
 
 ## 8. Risk Matrix
@@ -637,6 +685,10 @@ Phase 3 (SPEC-FW-009)  ←──────────┘ (restore's llms.txt 
 Phase 5 (SPEC-FW-011)
    ↓
 Phase 6 (SPEC-FW-012, SPEC-FW-013, SPEC-FW-014 — specs to be authored first)
+
+Phase 7 (SPEC-FW-015 — Pip Legacy Retirement)
+   ↑ depends only on Phase 0 + Phase 1 (already implemented);
+     independent of Phases 2/3/4/5/6, can run any time after Phase 1
 ```
 
 ### Recommended First Spec To Implement
@@ -673,11 +725,12 @@ begins:
 1. **`llms.txt` commit policy** (already flagged as non-blocking in
    SPEC-FW-005's "Resolved ADRs" section) — must be settled before Phase 4
    completes.
-2. **ADR-FW-002 pip retirement scope for Phase 0** — this plan recommends
-   "legacy-mark, do not remove"; if the team wants full removal of
-   `scripts/run_pip_init.py`/`requirements.*.txt`/the `package_manager` axis,
-   that should be its own ADR with its own migration plan, separate from this
-   program.
+2. **ADR-FW-002 pip retirement scope for Phase 0** — Phase 0 implemented
+   "legacy-mark, do not remove". Full removal of
+   `scripts/run_pip_init.py`/`requirements.*.txt`/the `package_manager` axis is
+   now specified as **SPEC-FW-015 (Phase 7)** — see
+   [SPEC-FW-015.md](SPEC-FW-015.md) for the contract, breaking-change scope,
+   and migration strategy.
 3. **Installer prompt UX for multi-category capability selection (Phase 2)** —
    whether SPEC-FW-007 extends the interactive prompt flow or moves to
    config-file-driven capability selection for v1.
@@ -701,8 +754,8 @@ begins:
 - Resolving the Open Decisions listed in §10 — they are flagged for follow-up
   ADRs/decision notes, not decided here.
 - Full removal of `pip`-related code paths (`scripts/run_pip_init.py`,
-  `requirements.*.txt`, the `package_manager` axis) — explicitly deferred per
-  the Phase 0 recommendation.
+  `requirements.*.txt`, the `package_manager` axis) — now specified as
+  SPEC-FW-015 (Phase 7), not implemented by this document.
 
 ---
 
@@ -718,6 +771,8 @@ begins:
 - `specs/rework/ADR-FW-001.md` — Typed Capability Registry decision; defines
   SPEC-FW-006..014 and the 6-phase migration plan this roadmap is derived from.
 - `specs/rework/ADR-FW-002.md` — UV-only standardization decision.
+- `specs/rework/SPEC-FW-015.md` — Pip Legacy Retirement (Phase 7), the
+  follow-up spec completing ADR-FW-002.
 - `ai/installer.py` — capability profile / environment profile / package
   manager logic (Phase 2 target).
 - `ai/runtime/dependency_graph.py`, `ai/runtime/context_bundle.py`,

@@ -70,7 +70,7 @@ def _detect_languages(project_root: Path, files: list[Path]) -> dict[str, Any]:
 
     for path in files:
         suffix = path.suffix.lower()
-        if path.name.startswith("requirements") or suffix == ".py":
+        if suffix == ".py":
             languages.add("python")
             counts["python"] += 1
         elif suffix == ".sql":
@@ -128,11 +128,7 @@ def _detect_data_stack(project_root: Path, files: list[Path]) -> dict[str, Any]:
         if any(token in lower_rel for token in ("contract", "validation", "quality")):
             patterns.add("data_quality")
 
-        if (
-            not path.name.startswith("requirements")
-            and path.name != "pyproject.toml"
-            and path.suffix.lower() != ".py"
-        ):
+        if path.name != "pyproject.toml" and path.suffix.lower() != ".py":
             continue
 
         text = _safe_read(path).lower()
@@ -157,12 +153,10 @@ def _detect_cloud(project_root: Path, files: list[Path]) -> dict[str, Any]:
 
     for path in files:
         suffix = path.suffix.lower()
-        if suffix not in {".py", ".tf", ".yaml", ".yml", ".json"} and path.name not in {
-            "requirements.local.txt",
-            "requirements.cloud.txt",
-            "requirements.dev.txt",
-            "pyproject.toml",
-        }:
+        if (
+            suffix not in {".py", ".tf", ".yaml", ".yml", ".json"}
+            and path.name != "pyproject.toml"
+        ):
             continue
 
         text = _safe_read(path).lower()

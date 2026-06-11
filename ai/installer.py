@@ -22,16 +22,10 @@ OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
 CLOUD_ONLY_TOP_LEVEL_DIRS = {"specs"}
 ENVIRONMENT_PROFILES = {"local", "cloud"}
-# "pip" is legacy per ADR-FW-002 — uv is the sole supported package manager
-# for new functionality. Kept for hosts still using requirements*.txt + pip.
-PACKAGE_MANAGERS = {"pip", "uv"}
 # Capability category whose paths are gated behind explicit selection, per
 # ADR-FW-001 Phase 2 — mirrors the legacy `capability_profile=<value>` axis
 # (SPEC-FW-004's SAAS_ONLY_PATHS), now resolved from ai/capabilities/business/.
 CAPABILITY_GATED_CATEGORY = "business"
-LOCAL_REQUIREMENTS_PATH = Path("requirements.local.txt")
-CLOUD_REQUIREMENTS_PATH = Path("requirements.cloud.txt")
-DEV_REQUIREMENTS_PATH = Path("requirements.dev.txt")
 PYPROJECT_PATH = Path("pyproject.toml")
 UV_LOCK_PATH = Path("uv.lock")
 
@@ -60,17 +54,17 @@ EXCLUDED_EXACT_FILES = {
 # Entries added to the host .gitignore that are not in the template's own
 # .gitignore — they apply to host repos but not to the template itself.
 HOST_EXTRA_GITIGNORE_ENTRIES = [
-    "ai/",                        # host: AI guidance is inherited read-only from the template
-    "specs/template/",            # host: template specs are inherited read-only from the template
-    "specs/README.md",            # host: template-owned specs index
-    "docs/linux_setup/",          # host: template-owned Linux setup guide
-    "docs/windows_setup/",        # host: template-owned Windows setup guide
-    "docs/terra_principles.md",   # host: template-owned Terraform principles doc
-    "docs/terraform_cheatsheet.md", # host: template-owned Terraform cheat sheet
-    "docs/treemap.md",            # host: template-owned repo treemap
-    "data/",                      # host: runtime data
-    "/prompt/",                   # host: workflow scratch
-    ".claude/settings.local.json", # host: personal Claude Code settings
+    "ai/",  # host: AI guidance is inherited read-only from the template
+    "specs/template/",  # host: template specs are inherited read-only from the template
+    "specs/README.md",  # host: template-owned specs index
+    "docs/linux_setup/",  # host: template-owned Linux setup guide
+    "docs/windows_setup/",  # host: template-owned Windows setup guide
+    "docs/terra_principles.md",  # host: template-owned Terraform principles doc
+    "docs/terraform_cheatsheet.md",  # host: template-owned Terraform cheat sheet
+    "docs/treemap.md",  # host: template-owned repo treemap
+    "data/",  # host: runtime data
+    "/prompt/",  # host: workflow scratch
+    ".claude/settings.local.json",  # host: personal Claude Code settings
 ]
 EXCLUDED_SUFFIXES = {
     ".log",
@@ -154,21 +148,10 @@ def prompt_environment_profile() -> str:
         print("Please answer local or cloud.")
 
 
-def prompt_package_manager() -> str:
-    while True:
-        selected = input("Use pip or uv for host dependencies? [pip/uv]: ").strip()
-        normalized = selected.lower()
-        if normalized in PACKAGE_MANAGERS:
-            return normalized
-        print("Please answer pip or uv.")
-
-
 def prompt_capability_profile() -> str | None:
     while True:
         selected = (
-            input(
-                "Enable SaaS capability domain (FastAPI, Supabase, Railway)? [y/N]: "
-            )
+            input("Enable SaaS capability domain (FastAPI, Supabase, Railway)? [y/N]: ")
             .strip()
             .lower()
         )
@@ -198,13 +181,6 @@ def validate_environment_profile(environment_profile: str) -> str:
     return normalized
 
 
-def validate_package_manager(package_manager: str) -> str:
-    normalized = package_manager.strip().lower()
-    if normalized not in PACKAGE_MANAGERS:
-        raise ValueError("Package manager must be 'pip' or 'uv'.")
-    return normalized
-
-
 def validate_capability_profile(
     capability_profile: str | None,
     registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
@@ -222,27 +198,9 @@ def validate_capability_profile(
     return normalized
 
 
-def should_copy_requirements_file(relative: Path, environment_profile: str) -> bool:
-    if relative == LOCAL_REQUIREMENTS_PATH:
-        return environment_profile in {"local", "cloud"}
-    if relative == CLOUD_REQUIREMENTS_PATH:
-        return environment_profile == "cloud"
-    if relative == DEV_REQUIREMENTS_PATH:
-        return True
-    return True
-
-
-def should_copy_package_file(
-    relative: Path, environment_profile: str, package_manager: str
-) -> bool:
-    if relative == TEMPLATE_PROFILE_PATH:
-        return package_manager == "uv"
+def should_copy_package_file(relative: Path) -> bool:
     if relative.name.startswith("requirements"):
-        return package_manager == "pip" and should_copy_requirements_file(
-            relative, environment_profile
-        )
-    if relative in {PYPROJECT_PATH, UV_LOCK_PATH}:
-        return package_manager == "uv"
+        return False
     return True
 
 
@@ -301,7 +259,6 @@ def iter_template_files(
     *,
     include_structure: bool,
     environment_profile: str,
-    package_manager: str,
     excluded_capability_paths: set[str] | None = None,
 ) -> tuple[list[Path], list[Path]]:
     excluded_capability_paths = excluded_capability_paths or set()
@@ -317,9 +274,7 @@ def iter_template_files(
             if not should_copy_specs_path(relative, environment_profile):
                 ignored.append(path)
                 continue
-            if not should_copy_package_file(
-                relative, environment_profile, package_manager
-            ):
+            if not should_copy_package_file(relative):
                 ignored.append(path)
                 continue
             if not should_copy_capability_path(relative, excluded_capability_paths):
@@ -343,37 +298,12 @@ def render_target_file(
     source_text: str,
     *,
     relative: Path,
-    package_manager: str,
     environment_profile: str,
     capability_profile: str | None = None,
     capabilities: dict[str, list[str]] | None = None,
 ) -> str:
-    if relative == Path(".pre-commit-config.yaml"):
-        if package_manager == "uv":
-            return source_text
-        return source_text.replace(
-            "args: [--manager, uv]",
-            f"args: [--manager, {package_manager}, --profile, {environment_profile}]",
-        )
-    if relative == Path("Makefile"):
-        if package_manager == "uv":
-            init_command = "$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init"
-            package_command = "uv run python scripts/package.py --package-manager uv"
-        else:
-            init_command = (
-                f"$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py --profile {environment_profile}"
-            )
-            package_command = "$(PYTHON) scripts/package.py"
-        return (
-            source_text.replace(
-                "$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py",
-                init_command,
-            )
-            .replace("$(PYTHON) scripts/package.py", package_command)
-        )
     if relative == TEMPLATE_PROFILE_PATH:
         legacy = (
-            f"package_manager={package_manager}\n"
             f"environment_profile={environment_profile}\n"
             f"capability_profile={capability_profile or ''}\n"
         )
@@ -391,22 +321,16 @@ def copy_template_file(
     destination: Path,
     *,
     relative: Path,
-    package_manager: str,
     environment_profile: str,
     capability_profile: str | None = None,
     capabilities: dict[str, list[str]] | None = None,
 ) -> None:
-    if relative in {
-        Path(".pre-commit-config.yaml"),
-        Path("Makefile"),
-        TEMPLATE_PROFILE_PATH,
-    }:
+    if relative == TEMPLATE_PROFILE_PATH:
         source_text = source_path.read_text(encoding="utf-8")
         destination.write_text(
             render_target_file(
                 source_text,
                 relative=relative,
-                package_manager=package_manager,
                 environment_profile=environment_profile,
                 capability_profile=capability_profile,
                 capabilities=capabilities,
@@ -445,9 +369,7 @@ def append_target_gitignore(target: Path, dry_run: bool) -> list[str]:
         return []
 
     existing = existing_gitignore_entries(gitignore_path)
-    missing = [
-        entry for entry in template_gitignore_entries() if entry not in existing
-    ]
+    missing = [entry for entry in template_gitignore_entries() if entry not in existing]
 
     if not missing or dry_run:
         return missing
@@ -506,12 +428,10 @@ def install_template(
     *,
     include_structure: bool,
     environment_profile: str,
-    package_manager: str = "pip",
     capability_profile: str | None = None,
 ) -> dict[str, list[str]]:
     target = validate_target(target)
     environment_profile = validate_environment_profile(environment_profile)
-    package_manager = validate_package_manager(package_manager)
     registry = load_registry(TEMPLATE_ROOT)
     capability_profile = validate_capability_profile(capability_profile, registry)
     capabilities = normalize_capabilities(
@@ -521,7 +441,6 @@ def install_template(
     candidates, ignored_paths = iter_template_files(
         include_structure=include_structure,
         environment_profile=environment_profile,
-        package_manager=package_manager,
         excluded_capability_paths=excluded_capability_paths,
     )
     copied: list[str] = []
@@ -554,7 +473,6 @@ def install_template(
             source_path,
             destination,
             relative=relative,
-            package_manager=package_manager,
             environment_profile=environment_profile,
             capability_profile=capability_profile,
             capabilities=capabilities,

@@ -10,7 +10,6 @@ from ai.installer import (
     prompt_capability_profile,
     prompt_environment_profile,
     prompt_include_structure,
-    prompt_package_manager,
 )
 
 
@@ -66,21 +65,6 @@ def main() -> None:
         help="Install template dependencies for a cloud host project.",
     )
     parser.add_argument(
-        "--package-manager",
-        choices=("pip", "uv"),
-        help="Package manager to configure in the host project.",
-    )
-    parser.add_argument(
-        "--pip",
-        action="store_true",
-        help="Configure the host project to manage packages with pip.",
-    )
-    parser.add_argument(
-        "--uv",
-        action="store_true",
-        help="Configure the host project to manage packages with uv.",
-    )
-    parser.add_argument(
         "--saas",
         action="store_true",
         help="Include the SaaS capability domain (FastAPI, Supabase, Railway).",
@@ -91,13 +75,6 @@ def main() -> None:
         parser.error("--with-structure cannot be combined with --without-structure.")
     if args.local and args.cloud:
         parser.error("--local cannot be combined with --cloud.")
-    selected_managers = [
-        bool(args.package_manager),
-        args.pip,
-        args.uv,
-    ]
-    if sum(selected_managers) > 1:
-        parser.error("--package-manager, --pip, and --uv are mutually exclusive.")
 
     try:
         if args.target is not None:
@@ -123,15 +100,6 @@ def main() -> None:
             if args.cloud
             else prompt_environment_profile()
         )
-        package_manager = (
-            args.package_manager
-            if args.package_manager
-            else "pip"
-            if args.pip
-            else "uv"
-            if args.uv
-            else prompt_package_manager()
-        )
         capability_profile = "saas" if args.saas else prompt_capability_profile()
         summary = install_template(
             target=target,
@@ -139,7 +107,6 @@ def main() -> None:
             dry_run=args.dry_run,
             include_structure=include_structure,
             environment_profile=environment_profile,
-            package_manager=package_manager,
             capability_profile=capability_profile,
         )
     except ValueError as exc:

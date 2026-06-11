@@ -33,19 +33,10 @@ The cloud uv workflow installs:
 - the `local` and `cloud` optional dependency sets
 - the `dev-local` and `dev-cloud` dependency groups
 
-`requirements.local.txt` and `requirements.cloud.txt` remain relevant for
-pip-based hosts copied from this template. Uv-based hosts use `pyproject.toml`
-and `uv.lock` instead.
-
-When you install this template into another repository, the local profile copies
-`requirements.local.txt` plus `requirements.dev.txt`. The cloud profile copies
-`requirements.local.txt`, `requirements.cloud.txt`, and `requirements.dev.txt`
-so a local MVP can evolve into a cloud-ready project. That requirements flow is
-used only when the host chooses pip. When the host chooses uv, the installer
-copies `pyproject.toml` and `uv.lock` and skips all `requirements*.txt` files.
-The installer also writes `.template-profile` so the host keeps its selected uv
-profile as the default for wrappers and sync commands. The installer does not
-create or modify the host repository's `requirements.txt`.
+When you install this template into another repository, the installer copies
+`pyproject.toml` and `uv.lock`. The installer also writes `.template-profile`
+so the host keeps its selected profile as the default for wrappers and sync
+commands.
 
 Install pre-commit into the current repository environment:
 
@@ -60,10 +51,8 @@ To run all configured hooks manually:
 .\.venv\Scripts\pre-commit.exe run --all-files
 ```
 
-In this template repository, the `sync-dependencies` hook defaults to `uv`
-because the template itself is maintained with `pyproject.toml` and `uv.lock`.
-When the installer creates a pip-based host, it rewrites that hook to use
-`--manager pip` and the selected host profile instead.
+In this template repository, the `sync-dependencies` hook uses `uv` because the
+template itself is maintained with `pyproject.toml` and `uv.lock`.
 
 Reference: https://pre-commit.com/
 
@@ -130,11 +119,11 @@ Install the template with an explicit target path:
 .\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo
 ```
 
-Install and choose the package manager non-interactively:
+Install and choose the dependency profile non-interactively:
 
 ```powershell
-.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --local --pip
-.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --cloud --uv
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --local
+.\.venv\Scripts\python.exe install_windows.py --target C:\path\to\target-repo --cloud
 ```
 
 Overwrite existing target files only when intentional:
@@ -157,23 +146,15 @@ are not copied to the target repository.
 
 ## How the Host Setup Works
 
-When the target host chooses `pip`:
+The installer:
 
-- the installer copies `requirements.local.txt` and `requirements.dev.txt`
-- for cloud pip hosts, it also copies `requirements.cloud.txt`
-- the host hook is rewritten to run `sync_dependencies.py --manager pip --profile <selected-profile>`
-- the `Makefile` is rendered for pip-based dependency sync
-
-When the target host chooses `uv`:
-
-- the installer copies `pyproject.toml` and `uv.lock`
-- it writes `.template-profile` with the selected host profile
-- it skips all `requirements*.txt` files
-- the host hook keeps the template `uv` behavior
-- the `Makefile` uses the persisted profile by default
+- copies `pyproject.toml` and `uv.lock`
+- writes `.template-profile` with the selected host profile
+- keeps the template `uv` hook behavior
+- renders the `Makefile` to use the persisted profile by default
 - local hosts default to `base + dev-local`
 - cloud hosts default to `base + local + cloud + dev-local + dev-cloud`
 
-For uv-based hosts, packaging for deployment still uses the cloud dependency set
-from `pyproject.toml` and `uv.lock`, even if the local development environment
+Packaging for deployment always uses the cloud dependency set from
+`pyproject.toml` and `uv.lock`, even if the local development environment
 remains on the default local profile.

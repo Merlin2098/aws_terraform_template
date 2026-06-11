@@ -11,7 +11,7 @@ endif
 .PHONY: init uv-init uv-update uv-reset package treemap lint fmt test clean ai-refresh restore
 
 init:
-	$(BOOTSTRAP_PYTHON) scripts/run_pip_init.py
+	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init
 
 uv-init:
 	$(BOOTSTRAP_PYTHON) scripts/run_uv_sync.py init

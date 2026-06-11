@@ -31,10 +31,6 @@ The cloud uv workflow installs:
 - the `local` and `cloud` optional dependency sets
 - the `dev-local` and `dev-cloud` dependency groups
 
-`requirements.local.txt` and `requirements.cloud.txt` remain relevant for
-pip-based hosts copied from this template. Uv-based hosts use `pyproject.toml`
-and `uv.lock` instead.
-
 Install pre-commit into the current repository environment:
 
 ```bash
@@ -104,11 +100,11 @@ Install the template with an explicit target path:
 python3 install_linux.py --target /path/to/target-repo
 ```
 
-Install and choose the package manager non-interactively:
+Install and choose the dependency profile non-interactively:
 
 ```bash
-python3 install_linux.py --target /path/to/target-repo --local --pip
-python3 install_linux.py --target /path/to/target-repo --cloud --uv
+python3 install_linux.py --target /path/to/target-repo --local
+python3 install_linux.py --target /path/to/target-repo --cloud
 ```
 
 Overwrite existing target files only when intentional:

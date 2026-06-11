@@ -24,21 +24,20 @@ and any project bootstrapped from it.
 - **`docs/`** — Human-authored reference (`terra_principles.md`, Terraform
   cheatsheet, Windows setup).
 - **Two dependency profiles** — `local` and `cloud`, materialized as
-  `requirements.*.txt` (pip) or `pyproject.toml` extras (uv).
+  `pyproject.toml` extras and dependency groups (uv).
 - **Capability profiles** — optional domains delivered only when requested.
   Currently: `saas` (FastAPI, Supabase, Railway skills). Orthogonal to the
   dependency profile — a host can be `cloud + saas` or `cloud` only.
 - **Installer** — `ai/installer.py` copies the template into a host repo
-  with `--local|--cloud`, `--pip|--uv`, `--saas`, and structure flags.
-  All three dimensions are recorded in `.template-profile` for reproducible
-  re-installs.
+  with `--local|--cloud`, `--saas`, and structure flags. Both dimensions are
+  recorded in `.template-profile` for reproducible re-installs.
 
 ### What the template expects from the host
 
 - Python `>= 3.x` matching `pyproject.toml`.
 - For the cloud profile: Terraform `>= 1.10`, AWS provider `>= 5.81`, AWS
   credentials provided out-of-band (the template never stores them).
-- Either `pip` or `uv` available; the host picks one at install time.
+- `uv` available.
 - A POSIX shell or PowerShell with the documented Windows wrappers.
 
 ### What the template does not provide
@@ -57,7 +56,7 @@ and any project bootstrapped from it.
 ## Invariants
 
 - The template is installed, not cloned: the host receives a copy filtered
-  by `ai/installer.py` (cloud/local, pip/uv, with/without structure).
+  by `ai/installer.py` (cloud/local, with/without structure).
 - `ai/` and `specs/template/` are read-only in the host (gitignored via
   the installer's `HOST_EXTRA_GITIGNORE_ENTRIES`).
 - Re-running the installer refreshes inherited folders without touching
