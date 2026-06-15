@@ -21,8 +21,6 @@ and any project bootstrapped from it.
   `installer.py`, runtime loaders). Read-only in host repos.
 - **`specs/template/`** — Inherited contracts (this folder). Read-only in
   host repos.
-- **`docs/`** — Human-authored reference (`terra_principles.md`, Terraform
-  cheatsheet, Windows setup).
 - **Capability-driven dependencies** — descriptors map active capabilities to
   `pyproject.toml` extras and dependency groups.
 - **Capability catalog** — every available capability is recorded in
@@ -46,7 +44,8 @@ and any project bootstrapped from it.
 - Secrets management. Use AWS Secrets Manager or environment variables;
   never commit secrets.
 - Production-grade defaults. Defaults favor `destroyability`, `low-cost
-  dev`, and `reproducibility` per [`docs/terra_principles.md`](../../docs/terra_principles.md).
+  dev`, and `reproducibility` per [`docs/terra_principles.md`](../../docs/terra_principles.md)
+  (template-only; not copied to host repos).
 - Host-specific runbooks. Hosts author their own under `docs/runbooks/`
   (or equivalent) when operational complexity grows.
 - Remote backend wiring. The template ships
@@ -59,6 +58,8 @@ and any project bootstrapped from it.
   by `ai/installer.py` (cloud/local, with/without structure).
 - `ai/` and `specs/template/` are read-only in the host (gitignored via
   the installer's `HOST_EXTRA_GITIGNORE_ENTRIES`).
+- `docs/` is template-only and is never copied to the host (excluded via
+  `ai/installer.py`'s `EXCLUDED_DIRS`).
 - Re-running the installer refreshes inherited folders without touching
   host-authored content (`specs/project/`, `src/jobs/`, etc.).
 - Standard tags `Project`, `Environment`, `Owner`, `ManagedBy=Terraform`

@@ -55,7 +55,6 @@ def test_existing_host_gitignore_gets_only_missing_template_entries(
     assert ".venv/" in summary["gitignore_updates"]
     assert ".ai/" not in summary["gitignore_updates"]
     assert "ai/" in summary["gitignore_updates"]
-    assert "docs/linux_setup/" in summary["gitignore_updates"]
     assert "data/" in summary["gitignore_updates"]
     assert "/prompt/" in summary["gitignore_updates"]
     assert ".claude/settings.local.json" in summary["gitignore_updates"]
@@ -176,7 +175,7 @@ def test_settings_local_json_is_not_copied_to_host(tmp_path: Path) -> None:
     assert not (target / ".claude" / "settings.local.json").exists()
 
 
-def test_docs_directory_is_copied_to_host(tmp_path: Path) -> None:
+def test_docs_directory_is_not_copied_to_host(tmp_path: Path) -> None:
     target = tmp_path / "host-docs"
 
     summary = install_template(
@@ -187,29 +186,9 @@ def test_docs_directory_is_copied_to_host(tmp_path: Path) -> None:
         enabled_capabilities=["none"],
     )
 
-    assert "docs/terra_principles.md" in summary["copied"]
-    # README.md is excluded by name in is_excluded(); check a different file.
-    assert "docs/windows_setup/make_cheatlist.md" in summary["copied"]
-    assert "docs/linux_setup/make_cheatlist.md" in summary["copied"]
-    assert (target / "docs" / "terra_principles.md").exists()
-    assert (target / "docs" / "windows_setup" / "make_cheatlist.md").exists()
-    assert (target / "docs" / "linux_setup" / "make_cheatlist.md").exists()
-
-
-def test_linux_setup_readme_stays_template_only(tmp_path: Path) -> None:
-    target = tmp_path / "host-linux-docs"
-
-    summary = install_template(
-        target=target,
-        force=False,
-        dry_run=False,
-        include_structure=False,
-        enabled_capabilities=["none"],
-    )
-
-    assert "docs/linux_setup/README.md" not in summary["copied"]
-    assert "docs/linux_setup/README.md" in summary["ignored"]
-    assert not (target / "docs" / "linux_setup" / "README.md").exists()
+    assert not any(p.startswith("docs/") or p == "docs" for p in summary["copied"])
+    assert "docs" in summary["ignored"]
+    assert not (target / "docs").exists()
 
 
 def test_install_with_none_keeps_full_catalog_files(tmp_path: Path) -> None:

@@ -11,7 +11,7 @@ narrow and avoid duplication.
 
 | Layer | Path | Authoring | Tone | Lifecycle |
 |---|---|---|---|---|
-| **Principles** | [`docs/terra_principles.md`](../../docs/terra_principles.md) | Human, in template | Imperative ("must / never") | Slow-changing. Foundational. |
+| **Principles** | [`docs/terra_principles.md`](../../docs/terra_principles.md) | Human, in template | Imperative ("must / never") | Slow-changing. Foundational. Template-only — not copied to host repos. |
 | **Skills** | [`ai/skills/`](../../ai/skills/) | Human, in template | Recipe ("when X, do Y") | Evolves with patterns. |
 | **Template specs** | [`specs/template/`](.) | Human, in template | Declarative contract | Slow. Read-only in hosts. |
 | **Project specs** | [`specs/project/`](../project/) | Human, in host repo | Declarative contract | Lives in the host. |
