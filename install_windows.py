@@ -9,6 +9,7 @@ from ai.installer import (
     prompt_enabled_capabilities,
     prompt_include_structure,
     select_target_folder,
+    update_template,
 )
 
 
@@ -61,6 +62,15 @@ def main() -> None:
             "'none' to enable none. Empty interactive input enables all."
         ),
     )
+    parser.add_argument(
+        "--update",
+        action="store_true",
+        help=(
+            "Update an already-installed host: sync framework-owned files, remove orphans, "
+            "and leave host-owned files (src/, infra/, specs/project/) untouched. "
+            "Reads capabilities and structure choice from the saved state unless overridden."
+        ),
+    )
     args = parser.parse_args()
 
     if args.with_structure and args.without_structure:
@@ -71,25 +81,42 @@ def main() -> None:
             if args.select_target or not args.target
             else args.target
         )
-        include_structure = (
-            True
-            if args.with_structure
-            else False
-            if args.without_structure
-            else prompt_include_structure()
-        )
-        enabled = list(args.enable)
-        if args.saas:
-            enabled.append("business:saas")
-        if not (args.saas or args.enable):
-            enabled.extend(prompt_enabled_capabilities())
-        summary = install_template(
-            target=target,
-            force=args.force,
-            dry_run=args.dry_run,
-            include_structure=include_structure,
-            enabled_capabilities=enabled,
-        )
+
+        already_installed = (target / ".framework-version.json").exists()
+        if args.update or already_installed:
+            include_structure_override = (
+                True if args.with_structure else False if args.without_structure else None
+            )
+            enabled_override = list(args.enable)
+            if args.saas:
+                enabled_override.append("business:saas")
+            summary = update_template(
+                target=target,
+                force=args.force,
+                dry_run=args.dry_run,
+                enabled_capabilities=enabled_override if enabled_override else None,
+                include_structure=include_structure_override,
+            )
+        else:
+            include_structure = (
+                True
+                if args.with_structure
+                else False
+                if args.without_structure
+                else prompt_include_structure()
+            )
+            enabled = list(args.enable)
+            if args.saas:
+                enabled.append("business:saas")
+            if not (args.saas or args.enable):
+                enabled.extend(prompt_enabled_capabilities())
+            summary = install_template(
+                target=target,
+                force=args.force,
+                dry_run=args.dry_run,
+                include_structure=include_structure,
+                enabled_capabilities=enabled,
+            )
     except ValueError as exc:
         parser.error(str(exc))
 

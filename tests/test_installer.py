@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
@@ -7,7 +8,12 @@ import pytest
 import yaml
 
 from ai.installer import (
+    STATE_FILENAME,
+    framework_version,
     install_template,
+    is_framework_owned,
+    read_state,
+    update_template,
     validate_enabled_capabilities,
 )
 from ai.runtime.capability_registry import load_registry
@@ -314,3 +320,168 @@ def test_run_uv_sync_parse_args_rejects_conflicting_dev_flags(monkeypatch) -> No
 
     with pytest.raises(SystemExit):
         run_uv_sync.parse_args()
+
+
+# --- versioning & update_template tests ---
+
+
+def test_framework_version_returns_semver_string() -> None:
+    version = framework_version()
+    parts = version.split(".")
+    assert len(parts) == 3
+    assert all(p.isdigit() for p in parts)
+
+
+def test_is_framework_owned_classifies_correctly() -> None:
+    assert is_framework_owned(Path("AGENTS.md")) is True
+    assert is_framework_owned(Path("ai/skills/terraform/terraform_style.md")) is True
+    assert is_framework_owned(Path("scripts/run_uv_sync.py")) is True
+    assert is_framework_owned(Path("src/jobs/my_job.py")) is False
+    assert is_framework_owned(Path("infra/main.tf")) is False
+    assert is_framework_owned(Path("tests/test_something.py")) is False
+    assert is_framework_owned(Path(".template-profile.yaml")) is False
+    assert is_framework_owned(Path("specs/project/my_spec.md")) is False
+
+
+def test_install_writes_framework_state(tmp_path: Path) -> None:
+    target = tmp_path / "host-state"
+
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        enabled_capabilities=["none"],
+    )
+
+    state_file = target / STATE_FILENAME
+    assert state_file.exists(), f"{STATE_FILENAME} not written after install"
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    assert state["framework_version"] == framework_version()
+    assert state["include_structure"] is False
+    assert isinstance(state["framework_manifest"], list)
+    assert len(state["framework_manifest"]) > 0
+    assert "AGENTS.md" in state["framework_manifest"]
+    assert ".template-profile.yaml" not in state["framework_manifest"]
+
+
+def test_install_dry_run_does_not_write_state(tmp_path: Path) -> None:
+    target = tmp_path / "host-dry"
+
+    install_template(
+        target=target,
+        force=False,
+        dry_run=True,
+        include_structure=False,
+        enabled_capabilities=["none"],
+    )
+
+    assert not (target / STATE_FILENAME).exists()
+
+
+def test_update_overwrites_framework_owned_file(tmp_path: Path) -> None:
+    target = tmp_path / "host-update"
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        enabled_capabilities=["none"],
+    )
+
+    agents_md = target / "AGENTS.md"
+    original = agents_md.read_text(encoding="utf-8")
+    agents_md.write_text("# TAMPERED\n", encoding="utf-8")
+
+    # Force update even when version matches
+    update_template(target=target, force=True, dry_run=False)
+
+    assert agents_md.read_text(encoding="utf-8") == original
+
+
+def test_update_leaves_host_owned_file_untouched(tmp_path: Path) -> None:
+    target = tmp_path / "host-host-owned"
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=True,
+        enabled_capabilities=["none"],
+    )
+
+    host_file = target / "src" / "custom_job.py"
+    host_file.parent.mkdir(parents=True, exist_ok=True)
+    host_file.write_text("# custom\n", encoding="utf-8")
+
+    update_template(target=target, force=True, dry_run=False)
+
+    assert host_file.read_text(encoding="utf-8") == "# custom\n"
+
+
+def test_update_deletes_orphaned_framework_file(tmp_path: Path) -> None:
+    target = tmp_path / "host-orphan"
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        enabled_capabilities=["none"],
+    )
+
+    # Plant a fake orphan: write the file and inject it into the saved manifest
+    orphan_path = target / "ai" / "skills" / "obsolete_skill.md"
+    orphan_path.parent.mkdir(parents=True, exist_ok=True)
+    orphan_path.write_text("# old skill\n", encoding="utf-8")
+
+    state_file = target / STATE_FILENAME
+    state = json.loads(state_file.read_text(encoding="utf-8"))
+    state["framework_manifest"].append("ai/skills/obsolete_skill.md")
+    state_file.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+    summary = update_template(target=target, force=True, dry_run=False)
+
+    assert "ai/skills/obsolete_skill.md" in summary["deleted"]
+    assert not orphan_path.exists()
+
+
+def test_update_without_state_raises_value_error(tmp_path: Path) -> None:
+    target = tmp_path / "host-no-state"
+    target.mkdir()
+
+    with pytest.raises(ValueError, match="No framework state found"):
+        update_template(target=target)
+
+
+def test_update_idempotent_when_version_matches(tmp_path: Path) -> None:
+    target = tmp_path / "host-idempotent"
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        enabled_capabilities=["none"],
+    )
+
+    summary = update_template(target=target, force=False, dry_run=False)
+
+    assert summary["up_to_date"] is True
+    assert summary["copied"] == []
+    assert summary["deleted"] == []
+
+
+def test_update_dry_run_does_not_modify_files(tmp_path: Path) -> None:
+    target = tmp_path / "host-dry-update"
+    install_template(
+        target=target,
+        force=False,
+        dry_run=False,
+        include_structure=False,
+        enabled_capabilities=["none"],
+    )
+
+    agents_md = target / "AGENTS.md"
+    agents_md.write_text("# TAMPERED\n", encoding="utf-8")
+
+    update_template(target=target, force=True, dry_run=True)
+
+    assert agents_md.read_text(encoding="utf-8") == "# TAMPERED\n"

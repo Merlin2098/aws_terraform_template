@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import json
+import re
 import shutil
+from datetime import datetime, timezone
 from pathlib import Path
 
 from ai.runtime.capability_registry import (
@@ -18,6 +21,9 @@ OPTIONAL_TOP_LEVEL_DIRS = {"infra", "src", "tests"}
 OPTIONAL_EMPTY_DIRS = {"tests"}
 PYPROJECT_PATH = Path("pyproject.toml")
 UV_LOCK_PATH = Path("uv.lock")
+STATE_FILENAME = ".framework-version.json"
+HOST_OWNED_TOP_LEVEL = {"src", "infra", "tests"}
+HOST_OWNED_PATHS = {"specs/project"}
 
 EXCLUDED_DIRS = {
     ".ai",
@@ -58,6 +64,63 @@ EXCLUDED_SUFFIXES = {
     ".pyo",
     ".zip",
 }
+
+
+def framework_version() -> str:
+    pyproject = TEMPLATE_ROOT / "pyproject.toml"
+    text = pyproject.read_text(encoding="utf-8")
+    match = re.search(r'^version\s*=\s*"([^"]+)"', text, re.MULTILINE)
+    if not match:
+        raise RuntimeError(f"Could not find version in {pyproject}")
+    return match.group(1)
+
+
+def is_framework_owned(relative: Path) -> bool:
+    parts = relative.parts
+    if not parts:
+        return False
+    top = parts[0]
+    if top in HOST_OWNED_TOP_LEVEL:
+        return False
+    rel_str = relative.as_posix()
+    for host_path in HOST_OWNED_PATHS:
+        if rel_str == host_path or rel_str.startswith(host_path + "/"):
+            return False
+    if relative == TEMPLATE_PROFILE_PATH:
+        return False
+    return True
+
+
+def read_state(target: Path) -> dict | None:
+    state_path = target / STATE_FILENAME
+    if not state_path.exists():
+        return None
+    try:
+        return json.loads(state_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return None
+
+
+def write_state(
+    target: Path,
+    *,
+    version: str,
+    include_structure: bool,
+    enabled_capabilities: list[str],
+    manifest: list[str],
+    dry_run: bool,
+) -> None:
+    if dry_run:
+        return
+    state = {
+        "framework_version": version,
+        "installed_at": datetime.now(timezone.utc).isoformat(),
+        "include_structure": include_structure,
+        "enabled_capabilities": enabled_capabilities,
+        "framework_manifest": sorted(manifest),
+    }
+    state_path = target / STATE_FILENAME
+    state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
 
 
 def select_target_folder() -> Path:
@@ -438,6 +501,18 @@ def install_template(
         )
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 
+    all_installed = copied + skipped
+    manifest = [p for p in all_installed if is_framework_owned(Path(p))]
+    version = framework_version()
+    write_state(
+        target,
+        version=version,
+        include_structure=include_structure,
+        enabled_capabilities=selections,
+        manifest=manifest,
+        dry_run=dry_run,
+    )
+
     return {
         "copied": copied,
         "skipped": skipped,
@@ -447,25 +522,165 @@ def install_template(
     }
 
 
-def print_summary(summary: dict[str, list[str]], dry_run: bool) -> None:
-    mode = "Dry run" if dry_run else "Install"
-    print(f"{mode} summary")
-    print(f"- Copied: {len(summary['copied'])}")
-    print(f"- Skipped existing: {len(summary['skipped'])}")
-    print(f"- Ignored: {len(summary['ignored'])}")
-    print(f"- Directories created: {len(summary['created_dirs'])}")
-    print(f"- .gitignore entries added: {len(summary['gitignore_updates'])}")
+def update_template(
+    target: Path,
+    *,
+    force: bool = False,
+    dry_run: bool = False,
+    enabled_capabilities: list[str] | None = None,
+    include_structure: bool | None = None,
+) -> dict:
+    target = validate_target(target)
+    state = read_state(target)
+    if state is None:
+        raise ValueError(
+            f"No framework state found in {target}. "
+            "Run the installer first (install_windows.py or install_linux.py)."
+        )
 
-    for key in (
-        "copied",
-        "skipped",
-        "ignored",
-        "created_dirs",
-        "gitignore_updates",
-    ):
-        values = summary[key]
-        if not values:
+    resolved_include_structure = (
+        include_structure
+        if include_structure is not None
+        else state.get("include_structure", False)
+    )
+    resolved_capabilities = (
+        enabled_capabilities
+        if enabled_capabilities is not None
+        else state.get("enabled_capabilities", [])
+    )
+
+    current_version = framework_version()
+    previous_version = state.get("framework_version", "unknown")
+
+    if previous_version == current_version and not force:
+        return {
+            "up_to_date": True,
+            "framework_version": current_version,
+            "previous_version": previous_version,
+            "copied": [],
+            "skipped": [],
+            "deleted": [],
+            "gitignore_updates": [],
+        }
+
+    registry = load_registry(TEMPLATE_ROOT)
+    selections = validate_enabled_capabilities(resolved_capabilities, registry)
+    capabilities = capability_selection(selections)
+    candidates, _ = iter_template_files(include_structure=resolved_include_structure)
+
+    copied: list[str] = []
+    skipped: list[str] = []
+    created_dirs: set[str] = set()
+
+    if not dry_run:
+        target.mkdir(parents=True, exist_ok=True)
+
+    for source_path in candidates:
+        relative = source_path.relative_to(TEMPLATE_ROOT)
+        destination = target / relative
+        relative_text = relative.as_posix()
+
+        if is_framework_owned(relative):
+            copied.append(relative_text)
+            _ensure_destination_parent(target, destination, created_dirs, dry_run)
+            if not dry_run:
+                copy_template_file(
+                    source_path,
+                    destination,
+                    relative=relative,
+                    capabilities=capabilities,
+                    registry=registry,
+                )
+        else:
+            if destination.exists() and not force:
+                skipped.append(relative_text)
+            else:
+                copied.append(relative_text)
+                _ensure_destination_parent(target, destination, created_dirs, dry_run)
+                if not dry_run:
+                    copy_template_file(
+                        source_path,
+                        destination,
+                        relative=relative,
+                        capabilities=capabilities,
+                        registry=registry,
+                    )
+
+    new_manifest_set = {p for p in copied + skipped if is_framework_owned(Path(p))}
+    old_manifest = set(state.get("framework_manifest", []))
+    orphan_paths = old_manifest - new_manifest_set
+
+    deleted: list[str] = []
+    for orphan in sorted(orphan_paths):
+        if not is_framework_owned(Path(orphan)):
             continue
-        print(f"\n{key.replace('_', ' ').title()}:")
-        for value in values:
-            print(f"  {value}")
+        orphan_file = target / orphan
+        deleted.append(orphan)
+        if not dry_run and orphan_file.exists():
+            orphan_file.unlink()
+
+    gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
+
+    new_manifest = sorted(new_manifest_set)
+    write_state(
+        target,
+        version=current_version,
+        include_structure=resolved_include_structure,
+        enabled_capabilities=selections,
+        manifest=new_manifest,
+        dry_run=dry_run,
+    )
+
+    return {
+        "up_to_date": False,
+        "framework_version": current_version,
+        "previous_version": previous_version,
+        "copied": copied,
+        "skipped": skipped,
+        "deleted": deleted,
+        "gitignore_updates": gitignore_updates,
+    }
+
+
+def print_summary(summary: dict, dry_run: bool) -> None:
+    is_update = "previous_version" in summary
+    if is_update:
+        mode = "Dry run (update)" if dry_run else "Update"
+        prev = summary.get("previous_version", "?")
+        curr = summary.get("framework_version", "?")
+        print(f"{mode} summary  [{prev} -> {curr}]")
+        if summary.get("up_to_date"):
+            print("Already up to date.")
+            return
+        print(f"- Copied/updated: {len(summary['copied'])}")
+        print(f"- Skipped (host-owned): {len(summary['skipped'])}")
+        print(f"- Deleted (orphans): {len(summary['deleted'])}")
+        print(f"- .gitignore entries added: {len(summary['gitignore_updates'])}")
+        for key in ("copied", "skipped", "deleted", "gitignore_updates"):
+            values = summary.get(key, [])
+            if not values:
+                continue
+            print(f"\n{key.replace('_', ' ').title()}:")
+            for value in values:
+                print(f"  {value}")
+    else:
+        mode = "Dry run" if dry_run else "Install"
+        print(f"{mode} summary")
+        print(f"- Copied: {len(summary['copied'])}")
+        print(f"- Skipped existing: {len(summary['skipped'])}")
+        print(f"- Ignored: {len(summary['ignored'])}")
+        print(f"- Directories created: {len(summary['created_dirs'])}")
+        print(f"- .gitignore entries added: {len(summary['gitignore_updates'])}")
+        for key in (
+            "copied",
+            "skipped",
+            "ignored",
+            "created_dirs",
+            "gitignore_updates",
+        ):
+            values = summary.get(key, [])
+            if not values:
+                continue
+            print(f"\n{key.replace('_', ' ').title()}:")
+            for value in values:
+                print(f"  {value}")

@@ -70,6 +70,7 @@ rules:
   - In dev and sandbox environments, prefer force-destroyable storage, short log retention, and serverless or low-cost defaults unless the user explicitly asks otherwise.
   - specs/template/ contains the immutable contracts inherited from the template (read-only in host repos); specs/project/ is where the host repo writes its own contracts.
   - specs/ is only present in cloud-profile installations; do not assume its existence in local-profile hosts.
+  - Documentation skills (ai/skills/docs/) apply to any task that touches README, docs/, specs/, or ADR files — consult them without waiting for an explicit request.
 
 entrypoint_roots:
   directories:

@@ -39,6 +39,23 @@ Values that differ between environments (URLs, bucket names, credentials, featur
 
 ---
 
+## Policy 005 — Documentation Skills Are Always Active
+
+**Level:** Advisory
+
+The skills in `ai/skills/docs/` apply to any task that touches documentation files
+(README, `docs/`, `specs/`, ADRs). Apply them without waiting for an explicit request.
+
+**When to apply:**
+- Editing or creating any `.md` file that is not a skill or policy file itself
+- Reviewing specs or ADRs as part of a broader task
+- Noticing that docs are stale relative to the current code or infrastructure
+
+**Agent behaviour:** Apply observations from `doc_review` or `spec_adr_review` inline
+as advisory notes. Do not block the primary task.
+
+---
+
 ## Policy 004 — Security By Default
 
 **Level:** Required
