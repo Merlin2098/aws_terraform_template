@@ -213,3 +213,11 @@ saas_vps:
 saas_domains:
   path: ai/skills/saas/domains.md
   description: DNS records, Cloudflare proxy/TLS modes, and SPF/DKIM/DMARC for transactional email on a custom domain
+
+doc_review:
+  path: ai/skills/docs/doc_review.md
+  description: Reviewing README, docs, setup guides, and user-facing prose for accuracy and clarity
+
+spec_adr_review:
+  path: ai/skills/docs/spec_adr_review.md
+  description: Reviewing specs and ADRs against their template structure and framework policies

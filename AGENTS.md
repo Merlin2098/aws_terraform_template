@@ -204,6 +204,8 @@ follow the discovery flow in *Skill Usage*.
 | SaaS KPI dashboards, business metrics, snapshot tables | `ai/skills/saas/analytics.md` |
 | SaaS Railway / Vercel deploy, GitHub Actions CI/CD | `ai/skills/saas/deployment.md` |
 | SaaS dashboard UX, form flows, navigation, accessibility | `ai/skills/saas/ux.md` |
+| Reviewing README, docs, setup guides, or user-facing prose | `ai/skills/docs/doc_review.md` |
+| Reviewing specs or ADRs | `ai/skills/docs/spec_adr_review.md`, `ai/policies/global.md` |
 
 ---
 

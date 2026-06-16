@@ -124,6 +124,17 @@ Full-stack SaaS applications: React, FastAPI, PostgreSQL/Supabase, Auth, Analyti
 
 ---
 
+### Documentation
+
+Review guidance for prose docs, specs, and architectural decision records.
+
+| Skill | Path |
+|---|---|
+| README and docs review | `ai/skills/docs/doc_review.md` |
+| Spec and ADR review | `ai/skills/docs/spec_adr_review.md` |
+
+---
+
 ## Global Policies
 
 All domains are subject to the policies in [`ai/policies/global.md`](../policies/global.md).
