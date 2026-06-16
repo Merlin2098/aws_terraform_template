@@ -11,15 +11,13 @@ def _write(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
-def _create_sample_project(project_root: Path, *, with_llms_txt: bool = True) -> None:
+def _create_sample_project(project_root: Path) -> None:
     artifacts = """artifacts:
   - .ai/context_bundle.yaml
   - .ai/skills_registry.json
   - .ai/dependencies_graph.json
   - .ai/treemap.md
 """
-    if with_llms_txt:
-        artifacts += "  - llms.txt\n"
 
     _write(
         project_root / "ai" / "context.yaml",
@@ -79,7 +77,6 @@ def test_refresh_context_always_writes_full_artifact_set(tmp_path: Path) -> None
         ".ai/skills_registry.json",
         ".ai/dependencies_graph.json",
         ".ai/treemap.md",
-        "llms.txt",
     }
     assert payload["status"] == "ok"
     assert payload["mode"] == "full"
@@ -87,16 +84,6 @@ def test_refresh_context_always_writes_full_artifact_set(tmp_path: Path) -> None
 
     for relative_path in expected:
         assert (tmp_path / relative_path).exists()
-
-
-def test_refresh_context_skips_llms_txt_when_not_declared(tmp_path: Path) -> None:
-    _create_sample_project(tmp_path, with_llms_txt=False)
-
-    payload = refresh_context(tmp_path)
-
-    assert payload["status"] == "ok"
-    assert "llms.txt" not in payload["artifacts"]
-    assert not (tmp_path / "llms.txt").exists()
 
 
 def test_artifact_paths_reads_simplified_context_config(tmp_path: Path) -> None:
@@ -109,5 +96,4 @@ def test_artifact_paths_reads_simplified_context_config(tmp_path: Path) -> None:
         ".ai/skills_registry.json",
         ".ai/dependencies_graph.json",
         ".ai/treemap.md",
-        "llms.txt",
     ]

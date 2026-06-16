@@ -28,6 +28,7 @@ EXCLUDED_DIRS = {
     "dist",
     "docs",
     "logs",
+    "specs",
     "venv",
     "__pycache__",
     ".mypy_cache",
@@ -46,8 +47,6 @@ EXCLUDED_EXACT_FILES = {
 # .gitignore — they apply to host repos but not to the template itself.
 HOST_EXTRA_GITIGNORE_ENTRIES = [
     "ai/",  # host: AI guidance is inherited read-only from the template
-    "specs/template/",  # host: template specs are inherited read-only from the template
-    "specs/README.md",  # host: template-owned specs index
     "data/",  # host: runtime data
     "/prompt/",  # host: workflow scratch
     ".claude/settings.local.json",  # host: personal Claude Code settings
@@ -93,9 +92,7 @@ def is_excluded(path: Path) -> bool:
         return True
     if relative in EXCLUDED_EXACT_FILES:
         return True
-    if path.name in {"README.md", "Thumbs.db", ".DS_Store"} and not relative.startswith(
-        "specs/"
-    ):
+    if path.name in {"README.md", "Thumbs.db", ".DS_Store"}:
         return True
     if path.suffix in EXCLUDED_SUFFIXES:
         return True

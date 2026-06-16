@@ -9,7 +9,6 @@ from ai.hooks.treemap import write_treemap
 from ai.runtime.config import artifact_paths, load_context_config
 from ai.runtime.context_bundle import build_and_persist_context_bundle
 from ai.runtime.dependency_graph import build_and_persist_dependency_graph
-from ai.runtime.llms_txt import build_and_persist_llms_txt
 from ai.runtime.skill_registry import (
     build_and_persist_skills_registry,
     build_skills_registry,
@@ -85,19 +84,6 @@ def refresh_context(project_root: Path) -> dict[str, object]:
         )
         build_and_persist_dependency_graph(project_root, graph_path)
         generated.append(graph_path.relative_to(project_root).as_posix())
-
-    llms_txt_path = _artifact_path(
-        project_root, artifact_strings, "llms.txt", required=False
-    )
-    if llms_txt_path is not None:
-        build_and_persist_llms_txt(
-            project_root,
-            llms_txt_path,
-            project=project,
-            skills_registry=skills_registry,
-            resolved=resolved,
-        )
-        generated.append(llms_txt_path.relative_to(project_root).as_posix())
 
     treemap_path = _artifact_path(project_root, artifact_strings, "treemap.md")
     write_treemap(project_root, treemap_path)

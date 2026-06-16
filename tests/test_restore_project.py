@@ -34,7 +34,6 @@ artifacts:
   - .ai/skills_registry.json
   - .ai/dependencies_graph.json
   - .ai/treemap.md
-  - llms.txt
 ignore_dirs: [.ai, __pycache__]
 treemap_ignore_dirs: [.ai, __pycache__]
 ignore_top_level_files: []
@@ -145,7 +144,6 @@ def test_restore_regenerates_filtered_context_artifacts(tmp_path: Path) -> None:
     registry = (tmp_path / ".ai/skills_registry.json").read_text(encoding="utf-8")
     assert "python_skill" in registry
     assert "saas_auth" not in registry
-    assert (tmp_path / "llms.txt").exists()
 
 
 def test_enabling_capability_changes_generated_skill_registry(tmp_path: Path) -> None:
