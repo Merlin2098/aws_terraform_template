@@ -137,6 +137,25 @@ Review guidance for prose docs, specs, architectural decision records, commits, 
 
 ---
 
+### Shell / Scripting — [descriptor](shell.md)
+
+Bash and PowerShell script generation, validation, and maintenance for Windows,
+Linux, WSL, and Git Bash environments.
+
+| Skill | Path |
+|---|---|
+| Environment detection | `ai/skills/shell/environment_detection.md` |
+| PowerShell core | `ai/skills/shell/powershell_core.md` |
+| PowerShell filesystem | `ai/skills/shell/powershell_filesystem.md` |
+| PowerShell Windows admin (services, registry, scheduled tasks) | `ai/skills/shell/powershell_windows_admin.md` |
+| PowerShell JSON/YAML | `ai/skills/shell/powershell_json_yaml.md` |
+| Bash core | `ai/skills/shell/bash_core.md` |
+| CLI automation (git, terraform, docker, aws, az) | `ai/skills/shell/cli_automation.md` |
+| Script security | `ai/skills/shell/script_security.md` |
+| Script quality (testing, documentation, refactoring) | `ai/skills/shell/script_quality.md` |
+
+---
+
 ### Quality / Simplicity
 
 Behavioral skills that change how the agent approaches a task: a decision ladder,
@@ -162,5 +181,5 @@ All domains are subject to the policies in [`ai/policies/global.md`](../policies
 2. Register each skill in `ai/skills.yaml` with a unique slug.
 3. Add a row block for the domain in this file.
 4. If the domain is large, create `ai/domains/<domain>.md` as a dedicated descriptor.
-5. Update `AGENTS.md` Skill Trigger Map with the new task→skill mappings.
+5. Register each skill in `ai/skills.yaml` and add a row in this index for the new domain.
 6. Add the new path to `ai/context.yaml` under `structure.guidance`.

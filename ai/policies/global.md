@@ -134,3 +134,52 @@ to revert to full prose.
 
 **Deliberate shortcuts:** a simplification with a known ceiling gets a `# debt:` comment
 naming the ceiling and upgrade trigger. See `ai/skills/quality/debt_ledger.md`.
+
+---
+
+## Policy 009 — AWS/Terraform Operational Guardrails (SPEC-009)
+
+**Level:** Required
+
+Applies when the project profile enables `aws` or `terraform` capabilities.
+Full specification: `specs/template/009-cloud-observability-guardrails.md`.
+Script structure and templates: `ai/skills/aws/aws_smoke_testing.md`.
+
+### The agent MUST
+
+- declare `aws_cloudwatch_log_group` explicitly for every service that produces logs
+- set `retention_in_days` on every log group — never omit it
+- include `aws_budgets_budget` when deploying any environment
+- apply `local.common_tags` (including `CostCenter`) to every resource
+- expose `log_group_name`, `log_group_arn`, and `resource_arn` as outputs in every module
+- generate `tests/aws/` validation scripts when deploying AWS infrastructure
+  (see `ai/skills/aws/aws_smoke_testing.md` for structure and templates)
+- validate IAM roles before applying infrastructure changes
+
+### The agent MUST NOT
+
+- delete or overwrite `terraform.tfstate`
+- enable S3 versioning by default — only when explicitly requested and justified
+- assume implicit IAM permissions — all permissions must be declared in Terraform
+- create resources without mandatory tags
+- omit `retention_in_days` on CloudWatch log groups
+
+---
+
+## Policy 010 — IAM Cross-Module Placement Rule
+
+**Level:** Required
+
+Applies when the project profile enables `aws` or `terraform` capabilities.
+
+When a resource in module A requires a permission whose target ARN is only known
+inside module B, declare the `aws_iam_role_policy` in module B (where the ARN is
+available), not in module A. Placing it in module A would require passing the ARN
+back and creates a circular dependency.
+
+**Canonical example — Lambda DLQ:**
+The `aws_sqs_queue` (DLQ) lives in the `lambda` module. AWS validates
+`sqs:SendMessage` on that ARN at function creation time. Therefore the inline
+policy granting `sqs:SendMessage` must be declared in the `lambda` module,
+attached to the execution role name received as a variable — not in the `iam`
+module.

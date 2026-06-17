@@ -9,6 +9,7 @@ Use this Windows documentation set in this order:
 2. [make_install.md](make_install.md) for GNU Make installation and corporate/manual usage
 3. [uv_install.md](uv_install.md) for uv installation and corporate/manual usage
 4. [make_cheatlist.md](make_cheatlist.md) for day-to-day `make` command examples
+5. [template_versioning.md](template_versioning.md) for how version detection works and when to use `--force` vs version bumps
 
 ## Prepare the Template Repository
 
