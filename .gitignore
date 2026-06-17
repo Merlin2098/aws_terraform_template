@@ -86,3 +86,4 @@ Thumbs.db
 #Local project artifacts
 .ai/
 docs/prompt
+reusable/
