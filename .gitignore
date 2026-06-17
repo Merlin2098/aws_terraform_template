@@ -87,3 +87,9 @@ Thumbs.db
 .ai/
 docs/prompt
 reusable/
+
+# =========================
+# 🤖 Claude Code
+# =========================
+# Project permissions tracked (settings.json); session-local state is not
+.claude/settings.local.json
