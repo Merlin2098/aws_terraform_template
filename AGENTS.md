@@ -232,6 +232,20 @@ These rules apply when the project enables AWS or Terraform capabilities.
 * create resources without mandatory tags
 * omit `retention_in_days` on CloudWatch log groups
 
+### IAM cross-module rule
+
+When a resource in module A requires a permission whose target ARN is only known
+inside module B, declare the `aws_iam_role_policy` in module B (where the ARN is
+available), not in module A. Placing it in module A would require passing the ARN
+back and create a circular dependency.
+
+**Canonical example — Lambda DLQ:**
+The `aws_sqs_queue` (DLQ) lives in the `lambda` module. AWS validates
+`sqs:SendMessage` on that ARN at function creation time. Therefore the inline
+policy granting `sqs:SendMessage` must be declared in the `lambda` module,
+attached to the execution role name received as a variable — not in the `iam`
+module.
+
 ### AWS project obligation
 
 When deploying AWS resources, generate `tests/aws/` with:
