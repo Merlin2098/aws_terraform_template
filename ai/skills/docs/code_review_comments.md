@@ -94,3 +94,4 @@ Resume one-line format after the expanded section.
 
 - [`spec_adr_review.md`](./spec_adr_review.md) — for reviewing specs and ADRs
 - [`doc_review.md`](./doc_review.md) — for reviewing README and prose documentation
+- [`over_engineering_review.md`](../quality/over_engineering_review.md) — complexity lens (what to delete/shrink), orthogonal to this skill

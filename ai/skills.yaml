@@ -214,6 +214,18 @@ saas_domains:
   path: ai/skills/saas/domains.md
   description: DNS records, Cloudflare proxy/TLS modes, and SPF/DKIM/DMARC for transactional email on a custom domain
 
+simplicity:
+  path: ai/skills/quality/simplicity.md
+  description: Decision ladder for choosing the simplest working solution — YAGNI, stdlib, native, one-line, minimum code
+
+over_engineering_review:
+  path: ai/skills/quality/over_engineering_review.md
+  description: Complexity-focused review lens — finds what to delete, inline, or replace with stdlib/native (orthogonal to correctness review)
+
+debt_ledger:
+  path: ai/skills/quality/debt_ledger.md
+  description: "Convention and harvest command for deliberate shortcuts marked with # debt — ceiling, upgrade trigger, grep-based ledger"
+
 doc_review:
   path: ai/skills/docs/doc_review.md
   description: Reviewing README, docs, setup guides, and user-facing prose for accuracy and clarity

@@ -137,6 +137,19 @@ Review guidance for prose docs, specs, architectural decision records, commits, 
 
 ---
 
+### Quality / Simplicity
+
+Behavioral skills that change how the agent approaches a task: a decision ladder,
+a complexity review lens, and a deliberate-shortcut convention.
+
+| Skill | Path |
+|---|---|
+| Simplicity ladder | `ai/skills/quality/simplicity.md` |
+| Over-engineering review | `ai/skills/quality/over_engineering_review.md` |
+| Debt ledger (`# debt:` convention + harvest) | `ai/skills/quality/debt_ledger.md` |
+
+---
+
 ## Global Policies
 
 All domains are subject to the policies in [`ai/policies/global.md`](../policies/global.md).

@@ -208,6 +208,9 @@ follow the discovery flow in *Skill Usage*.
 | Reviewing specs or ADRs | `ai/skills/docs/spec_adr_review.md`, `ai/policies/global.md` |
 | Writing a git commit message | `ai/skills/docs/commit_messages.md` |
 | Writing PR or code review comments | `ai/skills/docs/code_review_comments.md`, `ai/skills/docs/spec_adr_review.md` |
+| Simplest / minimal / laziest solution, adding a dependency or abstraction | `ai/skills/quality/simplicity.md` |
+| Over-engineering review, "what can I delete", complexity audit | `ai/skills/quality/over_engineering_review.md` |
+| Harvest deferred shortcuts, "show the debt ledger", `# debt:` markers | `ai/skills/quality/debt_ledger.md` |
 
 ---
 
@@ -270,3 +273,26 @@ Scripts must read resource identifiers from `terraform output` — never hardcod
 Simple. Explicit. Reproducible.
 
 AI is a helper for the current project, not the system itself.
+
+---
+
+## Simplicity
+
+Apply the simplicity ladder (see `ai/skills/quality/simplicity.md` and Policy 008)
+to every implementation task. Stop at the first rung that holds:
+
+1. Does this need to exist? (YAGNI)
+2. Stdlib?
+3. Native platform feature?
+4. Already-installed dependency?
+5. One line?
+6. Minimum code.
+
+**Deliberate shortcuts** — a simplification with a known ceiling — are marked inline:
+
+```python
+# debt: <ceiling>, <upgrade trigger>
+```
+
+Run `ai/skills/quality/debt_ledger.md` to harvest all markers into a ledger.
+Never simplify away security controls, data-loss guards, or anything explicitly requested.

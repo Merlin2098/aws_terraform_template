@@ -103,3 +103,34 @@ third-party service boundary. This includes:
 
 This constraint applies regardless of the tool or automation in use. When a task would require
 sending file content to an external service, refuse and explain the risk.
+
+---
+
+## Policy 008 — Prefer the Simplest Working Solution
+
+**Level:** Advisory
+
+Before writing new code, adding a dependency, or introducing an abstraction, apply the
+simplicity ladder in `ai/skills/quality/simplicity.md`:
+
+1. Does this need to exist at all? (YAGNI)
+2. Does the stdlib do it?
+3. Does a native platform feature cover it?
+4. Does an already-installed dependency solve it?
+5. Can it be one line?
+6. Only then: the minimum code that works.
+
+Stop at the first rung that holds.
+
+**When to apply:** any implementation task — feature, refactor, new dependency, new file.
+
+**Agent behaviour:** apply the ladder silently; only surface the reasoning if a
+simplification was non-obvious or if an alternative was skipped. Do not block the task.
+
+**Exceptions:** never simplify away input validation at trust boundaries, error handling
+that prevents data loss, security controls, mandatory tags and log retention (SPEC-009),
+or anything the user explicitly requested. Cross-ref Policy 006 (Auto-Clarity) for when
+to revert to full prose.
+
+**Deliberate shortcuts:** a simplification with a known ceiling gets a `# debt:` comment
+naming the ceiling and upgrade trigger. See `ai/skills/quality/debt_ledger.md`.
