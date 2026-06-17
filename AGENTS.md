@@ -206,6 +206,8 @@ follow the discovery flow in *Skill Usage*.
 | SaaS dashboard UX, form flows, navigation, accessibility | `ai/skills/saas/ux.md` |
 | Reviewing README, docs, setup guides, or user-facing prose | `ai/skills/docs/doc_review.md` |
 | Reviewing specs or ADRs | `ai/skills/docs/spec_adr_review.md`, `ai/policies/global.md` |
+| Writing a git commit message | `ai/skills/docs/commit_messages.md` |
+| Writing PR or code review comments | `ai/skills/docs/code_review_comments.md`, `ai/skills/docs/spec_adr_review.md` |
 
 ---
 

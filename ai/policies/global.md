@@ -68,3 +68,38 @@ Every new resource, endpoint, or data store must be private and least-privilege 
 - APIs: authentication required; no unauthenticated endpoints without explicit justification
 - Secrets: never in source code; use environment variables or AWS Secrets Manager
 - Database: no direct production access; changes through migrations only
+
+---
+
+## Policy 006 — Auto-Clarity When Compressing Output
+
+**Level:** Advisory
+
+When compressing or abbreviating output (terse commit subjects, one-line review comments,
+brief responses), always revert to full prose for:
+
+- Security warnings
+- Confirmations of irreversible actions (destructive Terraform operations, data migrations, drops)
+- Multi-step sequences where omitting conjunctions or step order risks misreading
+
+Resume terse style after the critical section is complete.
+
+**Agent behaviour:** Apply this rule automatically whenever a skill or user instruction requests
+brevity. Do not require an explicit reminder.
+
+---
+
+## Policy 007 — Never Send Sensitive Files to External Services
+
+**Level:** Required
+
+Never pass credentials, keys, or secrets to external APIs, compression tools, or any
+third-party service boundary. This includes:
+
+- `.env` files and variants (`.env.local`, `.env.production`, …)
+- Private key files (`.pem`, `.key`, `.p12`, `.pfx`, `.asc`, `.gpg`)
+- Files named `credentials`, `secrets`, `passwords`, or similar
+- Content from `~/.ssh`, `~/.aws`, `~/.gnupg`, `~/.kube`, `~/.docker`
+
+This constraint applies regardless of the tool or automation in use. When a task would require
+sending file content to an external service, refuse and explain the risk.

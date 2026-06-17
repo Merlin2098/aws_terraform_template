@@ -126,12 +126,14 @@ Full-stack SaaS applications: React, FastAPI, PostgreSQL/Supabase, Auth, Analyti
 
 ### Documentation
 
-Review guidance for prose docs, specs, and architectural decision records.
+Review guidance for prose docs, specs, architectural decision records, commits, and code review.
 
 | Skill | Path |
 |---|---|
 | README and docs review | `ai/skills/docs/doc_review.md` |
 | Spec and ADR review | `ai/skills/docs/spec_adr_review.md` |
+| Commit messages | `ai/skills/docs/commit_messages.md` |
+| Code review comments | `ai/skills/docs/code_review_comments.md` |
 
 ---
 

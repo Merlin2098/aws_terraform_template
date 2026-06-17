@@ -221,3 +221,11 @@ doc_review:
 spec_adr_review:
   path: ai/skills/docs/spec_adr_review.md
   description: Reviewing specs and ADRs against their template structure and framework policies
+
+commit_messages:
+  path: ai/skills/docs/commit_messages.md
+  description: Conventional Commits message guidance — terse subjects, why-over-what bodies
+
+code_review_comments:
+  path: ai/skills/docs/code_review_comments.md
+  description: One-line severity-tagged PR review comments (location, problem, fix)
