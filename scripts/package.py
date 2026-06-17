@@ -1,3 +1,8 @@
+# Builds a deployment ZIP for AWS (Glue, Lambda, etc.).
+# uv resolves dependencies from pyproject.toml + uv.lock and exports them as
+# requirements.txt — the format cloud environments understand. The bundle
+# contains src/ code plus that resolved requirements.txt (prod-only, no dev deps).
+# Usage: python scripts/package.py [--clean]
 from __future__ import annotations
 
 import argparse

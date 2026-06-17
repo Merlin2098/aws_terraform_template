@@ -1,3 +1,7 @@
+# Generates a markdown file (docs/treemap.md) with the directory tree of the repo.
+# Respects .gitignore rules and excludes internal folders (.git, ai) and the output
+# file itself. Useful for keeping docs up to date with the current project structure.
+# Usage: python scripts/generate_treemap.py [--output <path>]
 from __future__ import annotations
 
 import argparse

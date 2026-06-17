@@ -1,3 +1,15 @@
+# Capability-aware wrapper around uv for managing the Python virtual environment.
+# Reads .template-profile.yaml to determine which extras and dependency groups are
+# active, then runs the appropriate uv command. Handles OneDrive symlink issues
+# automatically (UV_LINK_MODE=copy) and recovers from locked .venv states.
+#
+# Modes:
+#   init   — create or sync .venv from the current lockfile
+#   update — upgrade all dependencies (uv lock --upgrade) then sync
+#   reset  — delete .venv and recreate it from scratch
+#   ci     — verify lockfile is up to date (uv lock --check) then sync
+#
+# Usage: python scripts/run_uv_sync.py <mode> [--include-dev | --no-dev] [--dry-run]
 from __future__ import annotations
 
 import argparse

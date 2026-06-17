@@ -1,3 +1,10 @@
+# Restores the project to a consistent state after cloning or switching branches.
+# Does three things in sequence:
+#   1. Resolves the active capability profile and syncs the uv environment (run_uv_sync update).
+#   2. Regenerates AI context files via refresh_context (ai/context/).
+#   3. Validates that all skills declared in the registry actually exist on disk.
+# Exits with code 1 if any skill files are missing or if the profile is invalid.
+# Usage: python scripts/restore_project.py [--project-root <path>] [--dry-run] [--pretty]
 from __future__ import annotations
 
 import argparse
