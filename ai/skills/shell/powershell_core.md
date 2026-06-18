@@ -88,6 +88,9 @@ if ($?) { ... }               # unreliable for complex command chains
 - Mixing UI output (`Write-Host`) with pipeline output (`Write-Output`)
 - Using `Invoke-Expression` — prefer direct cmdlet calls
 - Using `-ErrorAction SilentlyContinue` without a reason comment
+- Using non-ASCII typographic characters in script source (em-dash `—`, curly quotes `""`/`''`,
+  ellipsis `…`) — PowerShell's parser treats these as invalid tokens; always use ASCII equivalents
+  (`-`, `"`, `'`, `...`) in all generated scripts
 
 ## PS 5.1 vs 7+ compatibility
 

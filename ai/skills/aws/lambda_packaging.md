@@ -9,7 +9,7 @@ Most commonly: any function that imports `pyarrow` (R3 — ~175 MB unzipped alon
 
 ## Dockerfile
 
-Use the AWS-provided Lambda Python base image. It includes the Lambda Runtime Interface Client required for Lambda to invoke the handler.
+Place the Dockerfile at `docker/Dockerfile` in the project root. Use the AWS-provided Lambda Python base image. It includes the Lambda Runtime Interface Client required for Lambda to invoke the handler.
 
 ```dockerfile
 FROM public.ecr.aws/lambda/python:3.12
@@ -20,6 +20,7 @@ CMD ["src.jobs.handler.handler"]
 ```
 
 **Rules:**
+- Always place the Dockerfile at `docker/Dockerfile` — never in the project root or next to application code.
 - Use `public.ecr.aws/lambda/python:3.12` (or the target version) — not `python:3.12-slim`. The Lambda base image ships the RIC; generic images do not.
 - `CMD` is the dotted module path to the handler function, not a shell command.
 - Keep `requirements-lambda.txt` minimal — only packages the handler directly imports. Do not copy from `pyproject.toml` dev/cloud extras.
@@ -50,6 +51,7 @@ REGION="${AWS_REGION:-us-east-1}"
 docker build \
   --platform linux/amd64 \
   --provenance=false \
+  --file docker/Dockerfile \
   -t "$REPO_URL:$IMAGE_TAG" \
   -t "$REPO_URL:latest" \
   .

@@ -33,6 +33,7 @@ cloud = [
     "awswrangler",
     "boto3",
     "python-jose[cryptography]",
+    "python-dotenv",
 ]
 
 saas = [
