@@ -39,7 +39,10 @@ from __future__ import annotations
 
 import json
 import os
+import ssl
 import subprocess
+import sys
+import warnings
 from pathlib import Path
 
 import boto3
@@ -48,6 +51,37 @@ from dotenv import load_dotenv
 
 _CREDS_FILE = Path(__file__).parent.parent.parent / "infra" / "env" / ".env.credentials"
 load_dotenv(_CREDS_FILE)
+
+
+def _enable_os_trust_store() -> bool:
+    """Make botocore validate TLS via the OS trust store (Windows/macOS/Linux).
+
+    Works around the Python 3.14 / OpenSSL 3 rejection of AWS intermediate certs
+    ("Basic Constraints of CA cert not marked critical") without disabling
+    verification. Only needed on 3.14+; earlier Pythons validate AWS certs fine.
+
+    Note: we patch ``botocore.httpsession.create_urllib3_context`` (where botocore
+    actually builds its SSLContext) rather than calling ``truststore.inject_into_ssl()``,
+    which monkeypatches the global ``ssl.SSLContext`` class and triggers a
+    RecursionError in botocore's ``SSLContext.options`` setter.
+
+    Returns True if the OS trust store was wired up, False otherwise.
+    """
+    if sys.version_info < (3, 14):
+        return True  # no patch needed; native validation works
+    try:
+        import truststore
+        import botocore.httpsession as hs
+    except ImportError:
+        return False
+    if not getattr(hs, "_truststore_patched", False):
+        ctx = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        hs.create_urllib3_context = lambda *a, **k: ctx
+        hs._truststore_patched = True
+    return True
+
+
+_TRUST_OK = _enable_os_trust_store()
 
 
 def _has_credentials() -> bool:
@@ -62,12 +96,25 @@ def aws_client():
     if not _has_credentials():
         pytest.skip("AWS credentials not found — set AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY or provide infra/env/.env.credentials")
 
+    # Last-resort fallback: if truststore is missing on Python 3.14+, AWS certs
+    # would fail to verify. Disable verification with a loud warning rather than
+    # error out — connections stay encrypted but are MITM-susceptible.
+    verify = True
+    if not _TRUST_OK:
+        warnings.warn(
+            "truststore unavailable on Python 3.14+ — falling back to verify=False. "
+            "Install the `cloud` extra (uv sync --extra cloud) to restore certificate verification.",
+            stacklevel=2,
+        )
+        verify = False
+
     def _get(service: str):
         return boto3.client(
             service,
             aws_access_key_id=os.environ["AWS_ACCESS_KEY_ID"],
             aws_secret_access_key=os.environ["AWS_SECRET_ACCESS_KEY"],
             region_name=os.environ.get("AWS_DEFAULT_REGION", "us-east-1"),
+            verify=verify,
         )
 
     return _get
@@ -179,9 +226,14 @@ Tests skip automatically if credentials are not available.
 - Always read resource names from `terraform output` — never hardcode ARNs or names
 - Missing credentials must cause `pytest.skip`, not a hard failure
 - Run with `make test-cloud`; unit tests (`make test`) must never require AWS credentials
+- On Python 3.14+, rely on `_enable_os_trust_store()` (truststore via the OS trust
+  store) for certificate validation — see `reusable/incidencias/known-issues.md`
 
 ## Avoid
 
 - Hardcoding resource names or ARNs
 - Importing `aws_session.py` directly — use the `aws_client` fixture from `conftest.py`
 - Requiring `aws cli`, `jq`, or any shell script to drive the tests
+- Calling `truststore.inject_into_ssl()` — its global `ssl.SSLContext` patch causes
+  a `RecursionError` in botocore; patch `botocore.httpsession.create_urllib3_context` instead
+- Defaulting to `verify=False` — it is only a last-resort fallback when truststore is absent
