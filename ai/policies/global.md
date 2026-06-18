@@ -152,7 +152,7 @@ Script structure and templates: `ai/skills/aws/aws_smoke_testing.md`.
 - include `aws_budgets_budget` when deploying any environment
 - apply `local.common_tags` (including `CostCenter`) to every resource
 - expose `log_group_name`, `log_group_arn`, and `resource_arn` as outputs in every module
-- generate `tests/aws/` validation scripts when deploying AWS infrastructure
+- generate `tests/aws/` Python/boto3 validation tests when deploying AWS infrastructure
   (see `ai/skills/aws/aws_smoke_testing.md` for structure and templates)
 - validate IAM roles before applying infrastructure changes
 

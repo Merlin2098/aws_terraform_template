@@ -10,11 +10,11 @@ NO_TESTS_COLLECTED_EXIT_CODE = 5
 def main(argv: list[str] | None = None) -> int:
     args = argv if argv is not None else sys.argv[1:]
     if not args:
-        args = ["-m", "not cloud"]
+        args = ["-m", "cloud", "-v"]
     command = [sys.executable, "-m", "pytest", *args]
     result = subprocess.run(command, check=False)
     if result.returncode == NO_TESTS_COLLECTED_EXIT_CODE:
-        print("No tests were collected. Treating this as a successful no-op.")
+        print("No cloud tests were collected. Treating this as a successful no-op.")
         return 0
     return result.returncode
 

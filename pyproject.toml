@@ -66,5 +66,10 @@ dev-cloud = [
     "tftest",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "cloud: tests that require live AWS credentials (skipped without them)",
+]
+
 [tool.uv]
 package = false

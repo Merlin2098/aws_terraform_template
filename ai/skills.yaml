@@ -108,7 +108,7 @@ state_management:
 
 aws_smoke_testing:
   path: ai/skills/aws/aws_smoke_testing.md
-  description: Smoke test and validation scripts for AWS resources — generates tests/aws/ in host repositories
+  description: Python/boto3 smoke tests for AWS resources — generates tests/aws/ (pytest + conftest) in host repositories
 
 terraform_observability:
   path: ai/skills/terraform/terraform_observability.md
