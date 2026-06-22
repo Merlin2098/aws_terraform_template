@@ -1,5 +1,11 @@
 from __future__ import annotations
 
+# Divergence detection via content fingerprints — ADR-FW-003.
+# framework_manifest is a {path: {sha256, ownership}} map; tree_digest is the
+# aggregate hash of the framework-owned tree.  framework_version is retained as
+# a governance label (changelog/breaking-change anchor), not as a sync detector.
+
+import hashlib
 import json
 import re
 import shutil
@@ -34,6 +40,7 @@ EXCLUDED_DIRS = {
     "dist",
     "docs",
     "logs",
+    "reusable",  # host-owned: project-specific templates, not framework artefacts
     "specs",
     "venv",
     "__pycache__",
@@ -48,6 +55,20 @@ EXCLUDED_EXACT_FILES = {
     "install_linux.py",
     "install_windows.py",
     ".claude/settings.local.json",
+    # Host-owned root files: never distributed or overwritten by the framework.
+    # Makefile and .claude/settings.json may be customised per host.
+    "Makefile",
+    "uv.lock",
+    ".claude/settings.json",
+}
+
+# Files that are copied once on first install (if absent) but are never
+# overwritten on update — only missing *entries* are merged in.
+# pyproject.toml: host manages its own dependencies, name, version.
+# .pre-commit-config.yaml: host may add its own hooks.
+APPEND_ONLY_FILES = {
+    "pyproject.toml",
+    ".pre-commit-config.yaml",
 }
 # Entries added to the host .gitignore that are not in the template's own
 # .gitignore — they apply to host repos but not to the template itself.
@@ -64,6 +85,93 @@ EXCLUDED_SUFFIXES = {
     ".pyo",
     ".zip",
 }
+
+# ADR-FW-003: ownership values.
+# `generated`    = rendered at install time (not a byte-for-byte copy of template).
+# `managed`      = framework owns; host should not edit; overwritten on update.
+# `append-only`  = copied once on first install; on update only missing entries
+#                  are merged in (e.g. pyproject.toml, .pre-commit-config.yaml).
+# `template`     is reserved for a future explicit set — Phase 1 maps remaining
+#                non-generated, non-append-only files to `managed`.
+OWNERSHIP_GENERATED = "generated"
+OWNERSHIP_MANAGED = "managed"
+OWNERSHIP_APPEND_ONLY = "append-only"
+
+
+# ---------------------------------------------------------------------------
+# Hashing helpers
+# ---------------------------------------------------------------------------
+
+
+def _normalize_for_hash(data: bytes) -> bytes:
+    """Normalize line endings (CRLF/CR → LF) before hashing."""
+    return data.replace(b"\r\n", b"\n").replace(b"\r", b"\n")
+
+
+def file_sha256(path: Path) -> str:
+    """SHA-256 of a file on disk, with EOL normalization."""
+    raw = path.read_bytes()
+    return hashlib.sha256(_normalize_for_hash(raw)).hexdigest()
+
+
+def text_sha256(text: str) -> str:
+    """SHA-256 of an in-memory text string, with EOL normalization."""
+    raw = text.encode("utf-8")
+    return hashlib.sha256(_normalize_for_hash(raw)).hexdigest()
+
+
+def classify_ownership(relative: Path) -> str:
+    """Return the ownership class for a framework-distributed path."""
+    if relative == TEMPLATE_PROFILE_PATH:
+        return OWNERSHIP_GENERATED
+    if relative.as_posix() in APPEND_ONLY_FILES:
+        return OWNERSHIP_APPEND_ONLY
+    return OWNERSHIP_MANAGED
+
+
+def compute_tree_digest(manifest: dict[str, dict]) -> str:
+    """Aggregate hash over sorted (path, sha256) pairs in the manifest.
+
+    Stable ordering + EOL-normalised sha256 values make this deterministic
+    across platforms.
+    """
+    h = hashlib.sha256()
+    for path in sorted(manifest):
+        entry = manifest[path]
+        sha = entry.get("sha256") or ""
+        h.update(f"{path}:{sha}\n".encode())
+    return h.hexdigest()
+
+
+# ---------------------------------------------------------------------------
+# State I/O helpers
+# ---------------------------------------------------------------------------
+
+
+def _manifest_as_map(
+    raw_manifest: list | dict | None,
+) -> dict[str, dict]:
+    """Normalise legacy list manifests to the new map format.
+
+    Legacy format (list[str]):   ["AGENTS.md", "ai/skills/..."]
+    New format   (dict):         {"AGENTS.md": {"sha256": "...", "ownership": "managed"}}
+
+    Unknown sha256 values from legacy state are stored as None so callers can
+    detect the missing-hash case and treat it as a forced update.
+    """
+    if raw_manifest is None:
+        return {}
+    if isinstance(raw_manifest, dict):
+        return raw_manifest
+    # Legacy list — convert; ownership is derived from path.
+    result: dict[str, dict] = {}
+    for entry in raw_manifest:
+        rel = Path(entry)
+        result[entry] = {
+            "sha256": None,
+            "ownership": classify_ownership(rel),
+        }
+    return result
 
 
 def framework_version() -> str:
@@ -107,7 +215,8 @@ def write_state(
     version: str,
     include_structure: bool,
     enabled_capabilities: list[str],
-    manifest: list[str],
+    manifest: dict[str, dict],
+    tree_digest: str,
     dry_run: bool,
 ) -> None:
     if dry_run:
@@ -117,10 +226,16 @@ def write_state(
         "installed_at": datetime.now(timezone.utc).isoformat(),
         "include_structure": include_structure,
         "enabled_capabilities": enabled_capabilities,
-        "framework_manifest": sorted(manifest),
+        "tree_digest": tree_digest,
+        "framework_manifest": {k: manifest[k] for k in sorted(manifest)},
     }
     state_path = target / STATE_FILENAME
     state_path.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# UI helpers
+# ---------------------------------------------------------------------------
 
 
 def select_target_folder() -> Path:
@@ -143,6 +258,11 @@ def select_target_folder() -> Path:
 
 def relative_path(path: Path) -> str:
     return path.relative_to(TEMPLATE_ROOT).as_posix()
+
+
+# ---------------------------------------------------------------------------
+# Path / file predicates
+# ---------------------------------------------------------------------------
 
 
 def is_excluded(path: Path) -> bool:
@@ -450,6 +570,248 @@ def create_optional_empty_dirs(
     return created
 
 
+# ---------------------------------------------------------------------------
+# Append-only merge helpers
+# ---------------------------------------------------------------------------
+
+
+def _merge_pyproject(template_path: Path, host_path: Path, dry_run: bool) -> list[str]:
+    """Merge missing top-level TOML sections from template into host pyproject.toml.
+
+    Only adds sections the host is missing entirely (e.g. [tool.ruff],
+    [tool.pytest.ini_options]).  Never modifies [project] or existing sections.
+    Returns list of added section headers.
+    """
+    import tomllib
+
+    template_text = template_path.read_text(encoding="utf-8")
+    host_text = host_path.read_text(encoding="utf-8")
+
+    try:
+        template_doc = tomllib.loads(template_text)
+        host_doc = tomllib.loads(host_text)
+    except Exception:
+        return []  # malformed TOML — skip silently
+
+    # Never touch [project] — that belongs entirely to the host.
+    # Only consider [tool.*] sections and [build-system].
+    NEVER_TOUCH = {"project", "project.optional-dependencies", "project.scripts"}
+    added: list[str] = []
+
+    additions: list[str] = []
+    for section, value in template_doc.items():
+        if section in NEVER_TOUCH:
+            continue
+        if section not in host_doc:
+            # Append the raw section block from the template text.
+            # Extract the block by finding the header in the template source.
+            block = _extract_toml_section(template_text, section)
+            if block:
+                additions.append(block)
+                added.append(f"[{section}]")
+
+    if additions and not dry_run:
+        current = host_path.read_text(encoding="utf-8")
+        sep = "\n" if current.endswith("\n") else "\n\n"
+        host_path.write_text(current + sep + "\n".join(additions), encoding="utf-8")
+
+    return added
+
+
+def _extract_toml_section(toml_text: str, section: str) -> str:
+    """Extract a complete top-level TOML section block as a string."""
+    import re
+
+    header = f"[{section}]"
+    # Find the header line
+    lines = toml_text.splitlines(keepends=True)
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == header:
+            start = i
+            break
+    if start is None:
+        return ""
+
+    # Collect lines until the next top-level section header or EOF.
+    block_lines = [lines[start]]
+    for line in lines[start + 1 :]:
+        stripped = line.strip()
+        # A new top-level section: [name] but not [[array]] or [section.sub]
+        if re.match(r"^\[[A-Za-z]", stripped) and not stripped.startswith("[["):
+            break
+        block_lines.append(line)
+    return "".join(block_lines).rstrip() + "\n"
+
+
+def _merge_precommit(template_path: Path, host_path: Path, dry_run: bool) -> list[str]:
+    """Merge missing hook ids from template .pre-commit-config.yaml into host.
+
+    Only adds hooks whose `id` is not already present in the host config.
+    Returns list of added hook ids.
+    """
+    import yaml
+
+    try:
+        template_doc = yaml.safe_load(template_path.read_text(encoding="utf-8")) or {}
+        host_doc = yaml.safe_load(host_path.read_text(encoding="utf-8")) or {}
+    except Exception:
+        return []
+
+    template_repos = template_doc.get("repos", [])
+    host_repos = host_doc.get("repos", [])
+
+    # Collect existing hook ids in host.
+    existing_ids: set[str] = set()
+    for repo in host_repos:
+        for hook in repo.get("hooks", []):
+            if hook.get("id"):
+                existing_ids.add(hook["id"])
+
+    added: list[str] = []
+    for repo in template_repos:
+        missing_hooks = [
+            h for h in repo.get("hooks", [])
+            if h.get("id") and h["id"] not in existing_ids
+        ]
+        if not missing_hooks:
+            continue
+        added.extend(h["id"] for h in missing_hooks)
+        if dry_run:
+            continue
+        # Find or create the matching repo entry in the host.
+        repo_url = repo.get("repo", "local")
+        host_repo = next(
+            (r for r in host_repos if r.get("repo") == repo_url), None
+        )
+        if host_repo is None:
+            host_repos.append({"repo": repo_url, "hooks": missing_hooks})
+        else:
+            host_repo.setdefault("hooks", []).extend(missing_hooks)
+
+    if added and not dry_run:
+        host_doc["repos"] = host_repos
+        host_path.write_text(
+            yaml.safe_dump(host_doc, sort_keys=False, default_flow_style=False,
+                           allow_unicode=True),
+            encoding="utf-8",
+        )
+
+    return added
+
+
+def merge_append_only_file(
+    template_path: Path,
+    host_path: Path,
+    *,
+    relative: Path,
+    dry_run: bool,
+) -> list[str]:
+    """Dispatch to the right merge function for an append-only file.
+
+    Returns a list of added items (section names or hook ids).
+    """
+    rel = relative.as_posix()
+    if rel == "pyproject.toml":
+        return _merge_pyproject(template_path, host_path, dry_run)
+    if rel == ".pre-commit-config.yaml":
+        return _merge_precommit(template_path, host_path, dry_run)
+    return []
+
+
+# ---------------------------------------------------------------------------
+# Manifest / hash helpers shared by install + update
+# ---------------------------------------------------------------------------
+
+
+def _hash_for_template_file(
+    source_path: Path,
+    *,
+    relative: Path,
+    capabilities: dict[str, list[str]] | None = None,
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
+) -> str:
+    """Return the sha256 that will be written to the host for this template file."""
+    if relative == TEMPLATE_PROFILE_PATH:
+        source_text = source_path.read_text(encoding="utf-8")
+        rendered = render_target_file(
+            source_text,
+            relative=relative,
+            capabilities=capabilities,
+            registry=registry,
+        )
+        return text_sha256(rendered)
+    return file_sha256(source_path)
+
+
+def _build_template_manifest(
+    candidates: list[Path],
+    *,
+    capabilities: dict[str, list[str]] | None = None,
+    registry: dict[str, dict[str, CapabilityDescriptor]] | None = None,
+) -> dict[str, dict]:
+    """Build {rel_posix: {sha256, ownership}} for all framework-owned candidates."""
+    manifest: dict[str, dict] = {}
+    for source_path in candidates:
+        relative = source_path.relative_to(TEMPLATE_ROOT)
+        if not is_framework_owned(relative):
+            continue
+        rel_text = relative.as_posix()
+        sha = _hash_for_template_file(
+            source_path,
+            relative=relative,
+            capabilities=capabilities,
+            registry=registry,
+        )
+        manifest[rel_text] = {
+            "sha256": sha,
+            "ownership": classify_ownership(relative),
+        }
+    return manifest
+
+
+def _patch_gitignore_hash(
+    manifest: dict[str, dict], target: Path, *, dry_run: bool
+) -> None:
+    """.gitignore is augmented after copy — record the on-disk hash, not the template hash.
+
+    append_target_gitignore may append host-specific entries, so the file on
+    disk differs from the template source.  We patch the manifest entry with the
+    actual hash so drift detection treats the augmented file as the baseline.
+    """
+    gitignore_key = ".gitignore"
+    if gitignore_key not in manifest:
+        return
+    host_gitignore = target / ".gitignore"
+    if dry_run or not host_gitignore.exists():
+        return
+    manifest[gitignore_key]["sha256"] = file_sha256(host_gitignore)
+
+
+def _patch_host_file_hashes(
+    manifest: dict[str, dict], target: Path, rel_posix_set: set[str], *, dry_run: bool
+) -> None:
+    """Replace template-source hashes with actual on-disk hashes for a set of paths.
+
+    Used for append-only files (pyproject.toml, .pre-commit-config.yaml) whose
+    host copy may differ from the template source because the host already had
+    the file or it was modified post-copy.
+    """
+    if dry_run:
+        return
+    for rel_posix in rel_posix_set:
+        if rel_posix not in manifest:
+            continue
+        host_file = target / rel_posix
+        if host_file.exists():
+            manifest[rel_posix]["sha256"] = file_sha256(host_file)
+
+
+# ---------------------------------------------------------------------------
+# Public API: install
+# ---------------------------------------------------------------------------
+
+
 def install_template(
     target: Path,
     force: bool,
@@ -501,8 +863,15 @@ def install_template(
         )
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 
-    all_installed = copied + skipped
-    manifest = [p for p in all_installed if is_framework_owned(Path(p))]
+    # Build manifest with content fingerprints (ADR-FW-003).
+    manifest = _build_template_manifest(
+        candidates, capabilities=capabilities, registry=registry
+    )
+    # Files that diverge from the template source after writing must be hashed
+    # from the actual on-disk result, not from the template source.
+    _patch_gitignore_hash(manifest, target, dry_run=dry_run)
+    _patch_host_file_hashes(manifest, target, APPEND_ONLY_FILES, dry_run=dry_run)
+    tree_digest = compute_tree_digest(manifest)
     version = framework_version()
     write_state(
         target,
@@ -510,6 +879,7 @@ def install_template(
         include_structure=include_structure,
         enabled_capabilities=selections,
         manifest=manifest,
+        tree_digest=tree_digest,
         dry_run=dry_run,
     )
 
@@ -520,6 +890,11 @@ def install_template(
         "created_dirs": sorted(created_dirs),
         "gitignore_updates": gitignore_updates,
     }
+
+
+# ---------------------------------------------------------------------------
+# Public API: update
+# ---------------------------------------------------------------------------
 
 
 def update_template(
@@ -552,23 +927,47 @@ def update_template(
     current_version = framework_version()
     previous_version = state.get("framework_version", "unknown")
 
-    if previous_version == current_version and not force:
-        return {
-            "up_to_date": True,
-            "framework_version": current_version,
-            "previous_version": previous_version,
-            "copied": [],
-            "skipped": [],
-            "deleted": [],
-            "gitignore_updates": [],
-        }
-
     registry = load_registry(TEMPLATE_ROOT)
     selections = validate_enabled_capabilities(resolved_capabilities, registry)
     capabilities = capability_selection(selections)
     candidates, _ = iter_template_files(include_structure=resolved_include_structure)
 
-    copied: list[str] = []
+    # Build the template-side manifest (what the framework *wants* the host to have).
+    template_manifest = _build_template_manifest(
+        candidates, capabilities=capabilities, registry=registry
+    )
+    # Files that diverge from the template source after writing must use the
+    # host's actual on-disk hash so tree_digest is comparable to state (ADR-FW-003).
+    _patch_gitignore_hash(template_manifest, target, dry_run=False)
+    _patch_host_file_hashes(template_manifest, target, APPEND_ONLY_FILES, dry_run=False)
+    template_tree_digest = compute_tree_digest(template_manifest)
+
+    # Normalise the stored manifest to map format (legacy list compatibility).
+    state_manifest = _manifest_as_map(state.get("framework_manifest"))
+    state_tree_digest = state.get("tree_digest", "")
+
+    # Short-circuit: if the template tree hasn't changed AND no local drift,
+    # skip the full traversal.  (ADR-FW-003: tree_digest replaces version as gate.)
+    if not force and template_tree_digest == state_tree_digest:
+        # Verify there is no local drift (host edited a file).
+        locally_modified = _detect_local_modifications(target, state_manifest)
+        if not locally_modified:
+            return {
+                "up_to_date": True,
+                "framework_version": current_version,
+                "previous_version": previous_version,
+                "updated": [],
+                "locally_modified": [],
+                "conflicts": [],
+                "skipped": [],
+                "deleted": [],
+                "gitignore_updates": [],
+            }
+
+    # Full traversal: classify each framework-owned file and act.
+    updated: list[str] = []
+    locally_modified_paths: list[str] = []
+    conflicts: list[str] = []
     skipped: list[str] = []
     created_dirs: set[str] = set()
 
@@ -577,25 +976,15 @@ def update_template(
 
     for source_path in candidates:
         relative = source_path.relative_to(TEMPLATE_ROOT)
-        destination = target / relative
         relative_text = relative.as_posix()
+        destination = target / relative
 
-        if is_framework_owned(relative):
-            copied.append(relative_text)
-            _ensure_destination_parent(target, destination, created_dirs, dry_run)
-            if not dry_run:
-                copy_template_file(
-                    source_path,
-                    destination,
-                    relative=relative,
-                    capabilities=capabilities,
-                    registry=registry,
-                )
-        else:
+        if not is_framework_owned(relative):
+            # Host-owned: copy only if missing and force, otherwise skip.
             if destination.exists() and not force:
                 skipped.append(relative_text)
             else:
-                copied.append(relative_text)
+                updated.append(relative_text)
                 _ensure_destination_parent(target, destination, created_dirs, dry_run)
                 if not dry_run:
                     copy_template_file(
@@ -605,10 +994,64 @@ def update_template(
                         capabilities=capabilities,
                         registry=registry,
                     )
+            continue
 
-    new_manifest_set = {p for p in copied + skipped if is_framework_owned(Path(p))}
-    old_manifest = set(state.get("framework_manifest", []))
-    orphan_paths = old_manifest - new_manifest_set
+        ownership = template_manifest[relative_text]["ownership"]
+
+        if ownership == OWNERSHIP_APPEND_ONLY:
+            # Append-only: never overwrite; only merge missing entries.
+            if not destination.exists():
+                # File absent in host — copy it wholesale on first occurrence.
+                updated.append(relative_text)
+                _ensure_destination_parent(target, destination, created_dirs, dry_run)
+                if not dry_run:
+                    copy_template_file(
+                        source_path,
+                        destination,
+                        relative=relative,
+                        capabilities=capabilities,
+                        registry=registry,
+                    )
+            else:
+                added = merge_append_only_file(
+                    source_path, destination, relative=relative, dry_run=dry_run
+                )
+                if added:
+                    updated.append(relative_text)
+            continue
+
+        # Framework-owned (managed/generated): classify with three-way hash comparison.
+        h_tpl = template_manifest[relative_text]["sha256"]
+        state_entry = state_manifest.get(relative_text, {})
+        h_state = state_entry.get("sha256")  # None for legacy/missing entries
+        h_host = file_sha256(destination) if destination.exists() else None
+
+        classification = _classify(h_host, h_state, h_tpl)
+
+        if classification == "unchanged" and not force:
+            # Nothing to do.
+            continue
+
+        if classification in ("updatable", "missing") or force:
+            updated.append(relative_text)
+            _ensure_destination_parent(target, destination, created_dirs, dry_run)
+            if not dry_run:
+                copy_template_file(
+                    source_path,
+                    destination,
+                    relative=relative,
+                    capabilities=capabilities,
+                    registry=registry,
+                )
+        elif classification == "locally-modified":
+            locally_modified_paths.append(relative_text)
+        elif classification == "conflict":
+            conflicts.append(relative_text)
+
+    # Orphan cleanup: framework paths in old manifest no longer in template.
+    old_manifest_keys = set(state_manifest)
+    new_manifest_keys = set(template_manifest)
+    orphan_paths = old_manifest_keys - new_manifest_keys
 
     deleted: list[str] = []
     for orphan in sorted(orphan_paths):
@@ -621,13 +1064,18 @@ def update_template(
 
     gitignore_updates = append_target_gitignore(target, dry_run=dry_run)
 
-    new_manifest = sorted(new_manifest_set)
+    # Patch on-disk hashes for files whose content diverges from the template source.
+    _patch_gitignore_hash(template_manifest, target, dry_run=dry_run)
+    _patch_host_file_hashes(template_manifest, target, APPEND_ONLY_FILES, dry_run=dry_run)
+    template_tree_digest = compute_tree_digest(template_manifest)
+
     write_state(
         target,
         version=current_version,
         include_structure=resolved_include_structure,
         enabled_capabilities=selections,
-        manifest=new_manifest,
+        manifest=template_manifest,
+        tree_digest=template_tree_digest,
         dry_run=dry_run,
     )
 
@@ -635,11 +1083,68 @@ def update_template(
         "up_to_date": False,
         "framework_version": current_version,
         "previous_version": previous_version,
-        "copied": copied,
+        "updated": updated,
+        "locally_modified": locally_modified_paths,
+        "conflicts": conflicts,
         "skipped": skipped,
         "deleted": deleted,
         "gitignore_updates": gitignore_updates,
     }
+
+
+def _classify(
+    h_host: str | None,
+    h_state: str | None,
+    h_tpl: str,
+) -> str:
+    """Classify a framework-owned file using the three-way hash comparison.
+
+    Returns one of: unchanged / updatable / locally-modified / conflict / missing.
+    """
+    if h_host is None:
+        return "missing"
+    # Legacy state entry had no sha256; treat as needing update.
+    if h_state is None:
+        if h_host == h_tpl:
+            return "unchanged"
+        return "updatable"
+    host_changed = h_host != h_state
+    tpl_changed = h_tpl != h_state
+    if not host_changed and not tpl_changed:
+        return "unchanged"
+    if not host_changed and tpl_changed:
+        return "updatable"
+    if host_changed and not tpl_changed:
+        return "locally-modified"
+    return "conflict"  # both changed
+
+
+def _detect_local_modifications(
+    target: Path, state_manifest: dict[str, dict]
+) -> list[str]:
+    """Return paths where the host file differs from its recorded sha256.
+
+    Append-only files are excluded: they are expected to diverge from the
+    template source because host entries may have been added.
+    """
+    modified = []
+    for rel_text, entry in state_manifest.items():
+        if entry.get("ownership") == OWNERSHIP_APPEND_ONLY:
+            continue
+        h_state = entry.get("sha256")
+        if h_state is None:
+            continue
+        host_file = target / rel_text
+        if not host_file.exists():
+            continue
+        if file_sha256(host_file) != h_state:
+            modified.append(rel_text)
+    return modified
+
+
+# ---------------------------------------------------------------------------
+# Output
+# ---------------------------------------------------------------------------
 
 
 def print_summary(summary: dict, dry_run: bool) -> None:
@@ -652,17 +1157,39 @@ def print_summary(summary: dict, dry_run: bool) -> None:
         if summary.get("up_to_date"):
             print("Already up to date.")
             return
-        print(f"- Copied/updated: {len(summary['copied'])}")
-        print(f"- Skipped (host-owned): {len(summary['skipped'])}")
-        print(f"- Deleted (orphans): {len(summary['deleted'])}")
-        print(f"- .gitignore entries added: {len(summary['gitignore_updates'])}")
-        for key in ("copied", "skipped", "deleted", "gitignore_updates"):
-            values = summary.get(key, [])
+
+        updated = summary.get("updated", [])
+        locally_modified = summary.get("locally_modified", [])
+        conflicts = summary.get("conflicts", [])
+        skipped = summary.get("skipped", [])
+        deleted = summary.get("deleted", [])
+        gitignore_updates = summary.get("gitignore_updates", [])
+
+        print(f"- Updated (framework → host):        {len(updated)}")
+        print(f"- Locally modified (preserved):      {len(locally_modified)}")
+        print(f"- Conflict (host+framework changed):  {len(conflicts)}")
+        print(f"- Skipped (host-owned):               {len(skipped)}")
+        print(f"- Deleted (orphans):                  {len(deleted)}")
+        print(f"- .gitignore entries added:           {len(gitignore_updates)}")
+
+        for label, values in [
+            ("Updated", updated),
+            ("Locally modified (use --force to overwrite)", locally_modified),
+            ("Conflict — host and template both changed (use --force to overwrite)", conflicts),
+            ("Skipped (host-owned)", skipped),
+            ("Deleted (orphans)", deleted),
+            (".gitignore additions", gitignore_updates),
+        ]:
             if not values:
                 continue
-            print(f"\n{key.replace('_', ' ').title()}:")
+            print(f"\n{label}:")
             for value in values:
                 print(f"  {value}")
+
+        if locally_modified or conflicts:
+            print(
+                "\nTip: run with --force to overwrite locally modified / conflicting files."
+            )
     else:
         mode = "Dry run" if dry_run else "Install"
         print(f"{mode} summary")

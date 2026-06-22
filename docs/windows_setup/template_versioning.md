@@ -1,69 +1,113 @@
 # Template Versioning and Host Updates
 
 This guide explains how the installer detects whether a host repository needs
-updating, how to force a reinstall during development, and when to switch to
-proper version bumps.
+updating, how divergence is classified, and when to bump the framework version.
 
-## How Version Detection Works
+## How Divergence Detection Works
 
 Every installation writes a `.framework-version.json` file to the host
-repository root. It records the template version at the time of install:
+repository root. It records the template version, the installed capability set,
+and **content fingerprints** for every framework-owned file:
 
 ```json
 {
-  "framework_version": "0.1.0",
+  "framework_version": "0.2.0",
   "installed_at": "...",
   "include_structure": false,
-  "enabled_capabilities": [...],
-  "framework_manifest": [...]
+  "enabled_capabilities": ["languages:python"],
+  "tree_digest": "a3f8…",
+  "framework_manifest": {
+    "AGENTS.md":              {"sha256": "b1c2…", "ownership": "managed"},
+    "ai/policies/global.md":  {"sha256": "d4e5…", "ownership": "managed"},
+    "…": {}
+  }
 }
 ```
 
-When you run the installer against an already-installed host, `update_template`
-in `ai/installer.py` compares `framework_version` in that file against the
-`version` field in the template's `pyproject.toml`. If they match, the update
-is skipped entirely:
+`tree_digest` is an aggregate hash of the entire framework-owned tree (all
+`sha256` values, sorted by path). When you run the installer against an
+already-installed host, `update_template` uses it as a fast gate:
 
 ```python
-if previous_version == current_version and not force:
+if template_tree_digest == state["tree_digest"] and not locally_modified:
     return {"up_to_date": True, ...}
 ```
 
-This means **changing files in the template without bumping the version will
-not propagate to the host** — the installer considers it already current.
+If the tree matches **and** no file in the host was locally modified, the update
+is skipped immediately without reading every file.
 
-## Current Workaround: --force
+### Three-way classification
 
-Pass `--force` to bypass the version check and overwrite all framework-owned
-files regardless of version:
+When the tree has changed (or `--force` is passed), each framework-owned file
+is classified by comparing three hashes:
+
+| Host file vs state hash | Template vs state hash | Classification | Action |
+|---|---|---|---|
+| same | same | `unchanged` | nothing |
+| same | different | `updatable` | overwrite |
+| different | same | `locally-modified` | preserve + warn |
+| different | different | `conflict` | preserve + warn |
+| missing | — | `missing` | re-copy |
+
+`--force` bypasses the classification and overwrites all `managed` files.
+
+### Ownership
+
+Each manifest entry carries an `ownership` value:
+
+| Value | Meaning |
+|---|---|
+| `managed` | Framework owns this file; overwritten on every update. |
+| `generated` | Rendered at install time (e.g. `.template-profile.yaml`); hash is of the rendered output. |
+
+`src/`, `infra/`, `tests/`, and `specs/project/` are **host-owned** and never
+appear in the manifest — the installer never touches them.
+
+## Role of `framework_version`
+
+`framework_version` is a **governance label** (changelog, breaking-change
+anchor), not a sync detector. Changing files in the template without bumping the
+version **will still propagate** to the host — the divergence detector is the
+tree digest and per-file hashes, not the version string.
+
+Use `framework_version` to:
+
+- Communicate what a host is running (e.g. `0.2.0`).
+- Anchor breaking changes that require a forced reinstall.
+- Build a changelog across releases.
+
+## Workarounds
+
+### `--force`: bypass classification
+
+Pass `--force` to overwrite all `managed`/`generated` files regardless of
+their classification:
 
 ```powershell
 python install_windows.py --target <path-to-host> --force
 ```
 
-Use `--dry-run --force` first to preview what would be written without touching
-anything:
+Use `--dry-run --force` first to preview what would be written:
 
 ```powershell
 python install_windows.py --target <path-to-host> --force --dry-run
 ```
 
-`--force` is safe for iterative development but should not become the default
-workflow in production — it makes update history invisible.
+### Handling `locally-modified` / `conflict`
 
-## When to Switch to Version Bumps
+If the update reports locally-modified or conflicting files, review the
+differences manually and then re-run with `--force` to accept the template
+version, or keep your edits as-is.
 
-Switch to bumping `pyproject.toml` when any of these apply:
+## When to Bump the Version
 
-- The template is shared across more than one host repository
-- You want a clear audit trail of what version a host is running
-- You are introducing a breaking change to framework-owned files
-- CI/CD automation needs to detect out-of-date hosts reliably
+Bump `pyproject.toml` `version` when:
 
-## How to Bump the Version
+- You want a clear audit trail of what generation a host is running.
+- You are introducing a breaking change that requires re-running the installer.
+- CI/CD automation needs to report the running generation.
 
-Open `pyproject.toml` and increment `version` following
-[Semantic Versioning](https://semver.org/):
+Version bumps follow [Semantic Versioning](https://semver.org/):
 
 | Change type | Example bump |
 |---|---|
@@ -71,21 +115,27 @@ Open `pyproject.toml` and increment `version` following
 | Minor — new capability or file added | `0.1.0` → `0.2.0` |
 | Major — breaking change to structure | `0.1.0` → `1.0.0` |
 
-After bumping, run the installer normally (no `--force` needed):
+After bumping, run the installer normally — the divergence detector will find
+the changed files regardless:
 
 ```powershell
 python install_windows.py --target <path-to-host>
 ```
 
-The installer will detect `previous_version != current_version`, copy all
-framework-owned files, and update `.framework-version.json` in the host.
-
 ## Quick Reference
 
 | Goal | Command |
 |---|---|
-| Force update, skip version check | `python install_windows.py --target <path> --force` |
-| Preview force update (no writes) | `python install_windows.py --target <path> --force --dry-run` |
-| Normal update after version bump | `python install_windows.py --target <path>` |
+| Update host (smart diff) | `python install_windows.py --target <path>` |
+| Force overwrite all framework files | `python install_windows.py --target <path> --force` |
+| Preview update (no writes) | `python install_windows.py --target <path> --dry-run` |
+| Preview force update | `python install_windows.py --target <path> --force --dry-run` |
 | Check current template version | `grep ^version pyproject.toml` |
 | Check host installed version | `cat <host>/.framework-version.json` |
+
+## Architecture reference
+
+The fingerprint mechanism is specified in
+[`specs/rework/ADR-FW-003.md`](../../../specs/rework/ADR-FW-003.md) and
+analysed in
+[`specs/rework/SPEC-FW-016.md`](../../../specs/rework/SPEC-FW-016.md).
