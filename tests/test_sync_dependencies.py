@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import agents_framework.tools.sync_deps as sync_deps_module
 from scripts.hooks import sync_dependencies
 
 
@@ -12,30 +13,24 @@ def _write(path: Path, content: str) -> None:
 
 
 def _sample_project(tmp_path: Path, *, cloud: bool = False) -> None:
+    # pyproject.toml must declare extras matching real framework capabilities
     _write(
         tmp_path / "pyproject.toml",
-        """
-[project]
+        """[project]
 name = "sample"
 version = "0.1.0"
 dependencies = []
+
 [project.optional-dependencies]
 local = []
 cloud = []
+
 [dependency-groups]
 dev-local = []
 dev-cloud = []
 """,
     )
-    _write(
-        tmp_path / "ai/capabilities/languages/python.yaml",
-        "name: python\ndependencies:\n  extras: [local]\n  groups: [dev-local]\n",
-    )
-    _write(
-        tmp_path / "ai/capabilities/cloud/aws.yaml",
-        "name: aws\ndepends_on:\n  languages: [python]\n"
-        "dependencies:\n  extras: [cloud]\n  groups: [dev-cloud]\n",
-    )
+    # .template-profile.yaml (v1 legacy) sets manager="uv" automatically
     capability = (
         "  cloud:\n    aws:\n      enabled: true\n"
         if cloud
@@ -59,7 +54,7 @@ def test_local_main_syncs_resolved_extra_and_group(tmp_path: Path, monkeypatch) 
         "run",
         lambda command, check: calls.append(command),
     )
-    monkeypatch.setattr(sync_dependencies, "uv_command_prefix", lambda: ["uv"])
+    monkeypatch.setattr(sync_deps_module, "_manager_command_prefix", lambda m: ["uv"])
     monkeypatch.setattr(sys, "argv", ["sync_dependencies.py"])
 
     sync_dependencies.main()
@@ -88,7 +83,7 @@ def test_cloud_main_syncs_transitive_python_dependencies(
         "run",
         lambda command, check: calls.append(command),
     )
-    monkeypatch.setattr(sync_dependencies, "uv_command_prefix", lambda: ["uv"])
+    monkeypatch.setattr(sync_deps_module, "_manager_command_prefix", lambda m: ["uv"])
     monkeypatch.setattr(sys, "argv", ["sync_dependencies.py"])
 
     sync_dependencies.main()

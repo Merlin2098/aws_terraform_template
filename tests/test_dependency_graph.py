@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ai.runtime.dependency_graph import (
+from agents_framework.runtime.dependency_graph import (
     active_scanners,
     build_dependency_graph,
     scan_javascript,

@@ -2,18 +2,17 @@ repos:
   - repo: local
     hooks:
       # Refresh AI-generated repository context before each commit.
+      # Requires: pip install -e . (installs agents-framework CLI)
       - id: ai-refresh
         name: AI refresh
-        entry: python scripts/hooks/ai_refresh.py
-        language: python
-        additional_dependencies:
-          - pyyaml
+        entry: agents-framework ai-refresh
+        language: system
         pass_filenames: false
         stages: [pre-commit]
       # Sync the local environment when dependency definition files change.
       - id: sync-dependencies
         name: Sync virtual environment dependencies
-        entry: python scripts/hooks/sync_dependencies.py
+        entry: agents-framework sync-deps
         language: system
-        files: ^(pyproject\.toml|uv\.lock|\.template-profile\.yaml|ai/capabilities/.+\.yaml)$
+        files: ^(pyproject\.toml|\.agents-framework\.yaml|\.template-profile\.yaml|agents_framework/capabilities/.+\.yaml|ai/capabilities/.+\.yaml)$
         pass_filenames: false

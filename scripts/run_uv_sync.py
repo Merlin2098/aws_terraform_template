@@ -27,8 +27,8 @@ VENV_DIR = REPO_ROOT / ".venv"
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from ai.runtime.profile import DependencyPolicy, Profile, load_profile  # noqa: E402
-from ai.runtime.project_profile import (  # noqa: E402
+from agents_framework.runtime.profile import DependencyPolicy, Profile, load_profile  # noqa: E402
+from agents_framework.runtime.project_profile import (  # noqa: E402
     ResolvedProfile,
     resolve_project_profile,
     uv_sync_args,
@@ -56,6 +56,8 @@ def resolve_active_profile(
             declared_capabilities=profile.declared_capabilities,
             dependency_policy=DependencyPolicy(
                 include_dev=use_dev_dependencies,
+                manager=profile.dependency_policy.manager,
+                authority=profile.dependency_policy.authority,
                 additional_extras=profile.dependency_policy.additional_extras,
                 additional_groups=profile.dependency_policy.additional_groups,
             ),

@@ -1,0 +1,2 @@
+[console_scripts]
+agents-framework = agents_framework.cli:main

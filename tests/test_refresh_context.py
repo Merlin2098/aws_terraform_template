@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ai.runtime.config import artifact_paths, load_context_config
-from ai.tools.refresh_context import refresh_context
+from agents_framework.runtime.config import artifact_paths, load_context_config
+from agents_framework.tools.refresh_context import refresh_context
 
 
 def _write(path: Path, content: str) -> None:

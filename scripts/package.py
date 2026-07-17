@@ -18,7 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from ai.runtime.project_profile import resolve_project_profile, uv_export_args  # noqa: E402
+from agents_framework.runtime.project_profile import resolve_project_profile, uv_export_args  # noqa: E402
 ARTIFACT_PATH = REPO_ROOT / "artifacts" / "data_platform_bundle.zip"
 INCLUDE_DIRS = [REPO_ROOT / "src"]
 

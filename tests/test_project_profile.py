@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
-from ai.runtime.profile import DependencyPolicy, Profile
-from ai.runtime.project_profile import resolve_project_profile, uv_sync_args
+from agents_framework.runtime.capability_registry import CapabilityDescriptor
+from agents_framework.runtime.profile import DependencyPolicy, Profile
+from agents_framework.runtime.project_profile import resolve_project_profile, uv_sync_args
 
 
 def _write(path: Path, content: str) -> None:
@@ -14,10 +16,10 @@ def _write(path: Path, content: str) -> None:
 
 
 def _project(tmp_path: Path) -> None:
+    """Write a minimal pyproject.toml with extras matching real framework capabilities."""
     _write(
         tmp_path / "pyproject.toml",
-        """
-[project]
+        """[project]
 name = "sample"
 version = "0.1.0"
 dependencies = []
@@ -33,51 +35,6 @@ dev-local = []
 dev-cloud = []
 """,
     )
-    descriptors = {
-        "languages/python.yaml": """
-name: python
-dependencies:
-  extras: [local]
-  groups: [dev-local]
-scanners: [python]
-""",
-        "cloud/aws.yaml": """
-name: aws
-depends_on:
-  languages: [python]
-dependencies:
-  extras: [cloud]
-  groups: [dev-cloud]
-""",
-        "infrastructure/terraform.yaml": """
-name: terraform
-depends_on:
-  cloud: [aws]
-""",
-        "frameworks/react.yaml": """
-name: react
-depends_on:
-  languages: [python]
-scanners: [javascript]
-""",
-        "business/saas.yaml": """
-name: saas
-depends_on:
-  frameworks: [react]
-  languages: [python]
-dependencies:
-  extras: [saas]
-""",
-        "databases/supabase.yaml": """
-name: supabase
-depends_on:
-  business: [saas]
-dependencies:
-  extras: [supabase]
-""",
-    }
-    for relative, content in descriptors.items():
-        _write(tmp_path / "ai" / "capabilities" / relative, content)
 
 
 def test_resolves_transitive_terraform_dependencies(tmp_path: Path) -> None:
@@ -151,23 +108,49 @@ def test_unknown_disabled_capability_is_rejected(tmp_path: Path) -> None:
 
 def test_cycle_is_rejected(tmp_path: Path) -> None:
     _project(tmp_path)
-    _write(
-        tmp_path / "ai/capabilities/cloud/aws.yaml",
-        "name: aws\ndepends_on:\n  infrastructure: [terraform]\n",
-    )
 
-    with pytest.raises(ValueError, match="cycle"):
-        resolve_project_profile(
-            tmp_path,
-            profile=Profile(capabilities={"infrastructure": ["terraform"]}),
-        )
+    _empty = {
+        cat: {}
+        for cat in ["languages", "frameworks", "databases", "ai", "platform", "business", "operations"]
+    }
+    cycle_registry = {
+        **_empty,
+        "cloud": {
+            "aws": CapabilityDescriptor(
+                name="aws",
+                category="cloud",
+                depends_on={"infrastructure": ["terraform"]},
+            )
+        },
+        "infrastructure": {
+            "terraform": CapabilityDescriptor(
+                name="terraform",
+                category="infrastructure",
+                depends_on={"cloud": ["aws"]},
+            )
+        },
+    }
+
+    with patch("agents_framework.runtime.project_profile.load_registry", return_value=cycle_registry):
+        with pytest.raises(ValueError, match="cycle"):
+            resolve_project_profile(
+                tmp_path,
+                profile=Profile(capabilities={"infrastructure": ["terraform"]}),
+            )
 
 
 def test_missing_pyproject_extra_is_rejected(tmp_path: Path) -> None:
-    _project(tmp_path)
+    # pyproject.toml declares only "other", not the extras needed by cloud:aws
     _write(
-        tmp_path / "ai/capabilities/cloud/aws.yaml",
-        "name: aws\ndependencies:\n  extras: [missing]\n",
+        tmp_path / "pyproject.toml",
+        """[project]
+name = "sample"
+version = "0.1.0"
+dependencies = []
+
+[project.optional-dependencies]
+other = []
+""",
     )
 
     with pytest.raises(ValueError, match="unknown pyproject extras"):

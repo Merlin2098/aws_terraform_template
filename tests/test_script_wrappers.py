@@ -156,8 +156,8 @@ def test_uv_sync_wrapper_dry_run_init() -> None:
 
 
 def test_uv_sync_wrapper_builds_cloud_command_from_capabilities() -> None:
-    from ai.runtime.profile import Profile
-    from ai.runtime.project_profile import resolve_project_profile
+    from agents_framework.runtime.profile import Profile
+    from agents_framework.runtime.project_profile import resolve_project_profile
     from scripts.run_uv_sync import sync_command
 
     resolved = resolve_project_profile(

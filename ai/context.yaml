@@ -40,12 +40,29 @@ structure:
   python:
     - src/
     - scripts/
+  fastapi:
+    - app/api/
+    - app/services/
+    - app/schemas/
+    - app/models/
+    - app/repositories/
+    - app/clients/
+    - app/utils/
+  nextjs:
+    - app/
+    - app/actions/
+    - components/
+    - lib/
+    - contexts/
+    - supabase/migrations/
   sql:
     - src/transformations/
+    - supabase/migrations/
   config:
     - src/config/
   contracts:
     - src/contracts/
+    - specs/project/
   infrastructure:
     - infra/
   guidance:

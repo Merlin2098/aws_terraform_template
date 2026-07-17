@@ -1,32 +1,34 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "aws-terraform-template"
-version = "0.1.0"
-description = "AWS and Terraform data engineering template"
+name = "agents-framework"
+version = "0.2.0"
+description = "Workspace Framework — multi-repo AI guidance engine (consumed by reference)"
 requires-python = ">=3.11"
+readme = "README.md"
 dependencies = [
     "jsonschema",
-    "numpy",
-    "pandas",
-    "pyarrow",
-    "python-dateutil",
     "pyyaml",
-    "sqlalchemy",
 ]
 
+[project.scripts]
+agents-framework = "agents_framework.cli:main"
+
+# Optional dependency groups map capabilities → pip extras.
+# Hosts that enable a capability can install the corresponding extra.
+# [dependency-groups] (PEP 735) is intentionally NOT used here for pip compat.
 [project.optional-dependencies]
 local = [
-    "great-expectations; python_version < '3.14'",
     "duckdb",
     "fastexcel",
     "openpyxl",
     "pathspec",
     "polars",
     "psycopg2-binary",
-    "pyside6",
-    "pyinstaller",
-    "setuptools",
-    "wheel",
     "xlsxwriter",
+    "great-expectations; python_version < '3.14'",
 ]
 
 cloud = [
@@ -50,8 +52,8 @@ supabase = [
     "supabase",
 ]
 
-[dependency-groups]
-dev-local = [
+# dev extras replace [dependency-groups] for pip compatibility
+dev = [
     "faker",
     "httpx",
     "hypothesis",
@@ -67,10 +69,16 @@ dev-cloud = [
     "tftest",
 ]
 
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agents_framework*"]
+
+[tool.setuptools.package-data]
+"agents_framework" = [
+    "data/**/*",
+]
+
 [tool.pytest.ini_options]
 markers = [
     "cloud: tests that require live AWS credentials (skipped without them)",
 ]
-
-[tool.uv]
-package = false
