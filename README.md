@@ -1,4 +1,4 @@
-# AWS + Terraform Data Engineering Template
+# richi_toolkit
 
 This repository is a starter template for AWS-oriented data engineering
 projects. It helps teams bootstrap a host repository with explicit Python, SQL,

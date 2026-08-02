@@ -307,122 +307,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aws-terraform-template"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "jsonschema" },
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pyarrow" },
-    { name = "python-dateutil" },
-    { name = "pyyaml" },
-    { name = "sqlalchemy" },
-]
-
-[package.optional-dependencies]
-cloud = [
-    { name = "awswrangler" },
-    { name = "boto3" },
-    { name = "python-dotenv" },
-    { name = "python-jose", extra = ["cryptography"] },
-    { name = "truststore" },
-]
-local = [
-    { name = "duckdb" },
-    { name = "fastexcel" },
-    { name = "great-expectations", marker = "python_full_version < '3.14'" },
-    { name = "openpyxl" },
-    { name = "pathspec" },
-    { name = "polars" },
-    { name = "psycopg2-binary" },
-    { name = "pyinstaller" },
-    { name = "pyside6" },
-    { name = "setuptools" },
-    { name = "wheel" },
-    { name = "xlsxwriter" },
-]
-saas = [
-    { name = "alembic" },
-    { name = "asyncpg" },
-    { name = "fastapi" },
-    { name = "pydantic-settings" },
-    { name = "python-jose", extra = ["cryptography"] },
-    { name = "uvicorn", extra = ["standard"] },
-]
-supabase = [
-    { name = "supabase" },
-]
-
-[package.dev-dependencies]
-dev-cloud = [
-    { name = "checkov" },
-    { name = "moto" },
-    { name = "tftest" },
-]
-dev-local = [
-    { name = "faker" },
-    { name = "httpx" },
-    { name = "hypothesis" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "alembic", marker = "extra == 'saas'" },
-    { name = "asyncpg", marker = "extra == 'saas'" },
-    { name = "awswrangler", marker = "extra == 'cloud'" },
-    { name = "boto3", marker = "extra == 'cloud'" },
-    { name = "duckdb", marker = "extra == 'local'" },
-    { name = "fastapi", marker = "extra == 'saas'" },
-    { name = "fastexcel", marker = "extra == 'local'" },
-    { name = "great-expectations", marker = "python_full_version < '3.14' and extra == 'local'" },
-    { name = "jsonschema" },
-    { name = "numpy" },
-    { name = "openpyxl", marker = "extra == 'local'" },
-    { name = "pandas" },
-    { name = "pathspec", marker = "extra == 'local'" },
-    { name = "polars", marker = "extra == 'local'" },
-    { name = "psycopg2-binary", marker = "extra == 'local'" },
-    { name = "pyarrow" },
-    { name = "pydantic-settings", marker = "extra == 'saas'" },
-    { name = "pyinstaller", marker = "extra == 'local'" },
-    { name = "pyside6", marker = "extra == 'local'" },
-    { name = "python-dateutil" },
-    { name = "python-dotenv", marker = "extra == 'cloud'" },
-    { name = "python-jose", extras = ["cryptography"], marker = "extra == 'cloud'" },
-    { name = "python-jose", extras = ["cryptography"], marker = "extra == 'saas'" },
-    { name = "pyyaml" },
-    { name = "setuptools", marker = "extra == 'local'" },
-    { name = "sqlalchemy" },
-    { name = "supabase", marker = "extra == 'supabase'" },
-    { name = "truststore", marker = "extra == 'cloud'" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'saas'" },
-    { name = "wheel", marker = "extra == 'local'" },
-    { name = "xlsxwriter", marker = "extra == 'local'" },
-]
-provides-extras = ["local", "cloud", "saas", "supabase"]
-
-[package.metadata.requires-dev]
-dev-cloud = [
-    { name = "checkov" },
-    { name = "moto" },
-    { name = "tftest" },
-]
-dev-local = [
-    { name = "faker" },
-    { name = "httpx" },
-    { name = "hypothesis" },
-    { name = "pre-commit" },
-    { name = "pytest" },
-    { name = "pytest-cov" },
-    { name = "ruff" },
-]
-
-[[package]]
 name = "awswrangler"
 version = "3.16.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3249,6 +3133,122 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/9f/b4/b7e040379838cc71bf5aabdb26998dfbe5ee73904c92c1c161faf5de8866/responses-0.26.0.tar.gz", hash = "sha256:c7f6923e6343ef3682816ba421c006626777893cb0d5e1434f674b649bac9eb4", size = 81303, upload-time = "2026-02-19T14:38:05.574Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ce/04/7f73d05b556da048923e31a0cc878f03be7c5425ed1f268082255c75d872/responses-0.26.0-py3-none-any.whl", hash = "sha256:03ec4409088cd5c66b71ecbbbd27fe2c58ddfad801c66203457b3e6a04868c37", size = 35099, upload-time = "2026-02-19T14:38:03.847Z" },
+]
+
+[[package]]
+name = "richi-toolkit"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "jsonschema" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "pyarrow" },
+    { name = "python-dateutil" },
+    { name = "pyyaml" },
+    { name = "sqlalchemy" },
+]
+
+[package.optional-dependencies]
+cloud = [
+    { name = "awswrangler" },
+    { name = "boto3" },
+    { name = "python-dotenv" },
+    { name = "python-jose", extra = ["cryptography"] },
+    { name = "truststore" },
+]
+local = [
+    { name = "duckdb" },
+    { name = "fastexcel" },
+    { name = "great-expectations", marker = "python_full_version < '3.14'" },
+    { name = "openpyxl" },
+    { name = "pathspec" },
+    { name = "polars" },
+    { name = "psycopg2-binary" },
+    { name = "pyinstaller" },
+    { name = "pyside6" },
+    { name = "setuptools" },
+    { name = "wheel" },
+    { name = "xlsxwriter" },
+]
+saas = [
+    { name = "alembic" },
+    { name = "asyncpg" },
+    { name = "fastapi" },
+    { name = "pydantic-settings" },
+    { name = "python-jose", extra = ["cryptography"] },
+    { name = "uvicorn", extra = ["standard"] },
+]
+supabase = [
+    { name = "supabase" },
+]
+
+[package.dev-dependencies]
+dev-cloud = [
+    { name = "checkov" },
+    { name = "moto" },
+    { name = "tftest" },
+]
+dev-local = [
+    { name = "faker" },
+    { name = "httpx" },
+    { name = "hypothesis" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "alembic", marker = "extra == 'saas'" },
+    { name = "asyncpg", marker = "extra == 'saas'" },
+    { name = "awswrangler", marker = "extra == 'cloud'" },
+    { name = "boto3", marker = "extra == 'cloud'" },
+    { name = "duckdb", marker = "extra == 'local'" },
+    { name = "fastapi", marker = "extra == 'saas'" },
+    { name = "fastexcel", marker = "extra == 'local'" },
+    { name = "great-expectations", marker = "python_full_version < '3.14' and extra == 'local'" },
+    { name = "jsonschema" },
+    { name = "numpy" },
+    { name = "openpyxl", marker = "extra == 'local'" },
+    { name = "pandas" },
+    { name = "pathspec", marker = "extra == 'local'" },
+    { name = "polars", marker = "extra == 'local'" },
+    { name = "psycopg2-binary", marker = "extra == 'local'" },
+    { name = "pyarrow" },
+    { name = "pydantic-settings", marker = "extra == 'saas'" },
+    { name = "pyinstaller", marker = "extra == 'local'" },
+    { name = "pyside6", marker = "extra == 'local'" },
+    { name = "python-dateutil" },
+    { name = "python-dotenv", marker = "extra == 'cloud'" },
+    { name = "python-jose", extras = ["cryptography"], marker = "extra == 'cloud'" },
+    { name = "python-jose", extras = ["cryptography"], marker = "extra == 'saas'" },
+    { name = "pyyaml" },
+    { name = "setuptools", marker = "extra == 'local'" },
+    { name = "sqlalchemy" },
+    { name = "supabase", marker = "extra == 'supabase'" },
+    { name = "truststore", marker = "extra == 'cloud'" },
+    { name = "uvicorn", extras = ["standard"], marker = "extra == 'saas'" },
+    { name = "wheel", marker = "extra == 'local'" },
+    { name = "xlsxwriter", marker = "extra == 'local'" },
+]
+provides-extras = ["local", "cloud", "saas", "supabase"]
+
+[package.metadata.requires-dev]
+dev-cloud = [
+    { name = "checkov" },
+    { name = "moto" },
+    { name = "tftest" },
+]
+dev-local = [
+    { name = "faker" },
+    { name = "httpx" },
+    { name = "hypothesis" },
+    { name = "pre-commit" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
 ]
 
 [[package]]
