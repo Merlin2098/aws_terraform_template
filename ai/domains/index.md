@@ -139,18 +139,19 @@ Review guidance for prose docs, specs, architectural decision records, commits, 
 
 ### Shell / Scripting — [descriptor](shell.md)
 
-Bash and PowerShell script generation, validation, and maintenance for Windows,
-Linux, WSL, and Git Bash environments.
+Git Bash is the primary shell (Linux/WSL/macOS share the same Bash skill
+tree); PowerShell is a documented fallback for Windows-only capabilities. See
+`shell.md` §Shell precedence.
 
 | Skill | Path |
 |---|---|
 | Environment detection | `ai/skills/shell/environment_detection.md` |
-| PowerShell core | `ai/skills/shell/powershell_core.md` |
-| PowerShell filesystem | `ai/skills/shell/powershell_filesystem.md` |
-| PowerShell Windows admin (services, registry, scheduled tasks) | `ai/skills/shell/powershell_windows_admin.md` |
-| PowerShell JSON/YAML | `ai/skills/shell/powershell_json_yaml.md` |
-| Bash core | `ai/skills/shell/bash_core.md` |
+| Bash core (Git Bash / Linux / WSL / macOS — default) | `ai/skills/shell/bash_core.md` |
 | CLI automation (git, terraform, docker, aws, az) | `ai/skills/shell/cli_automation.md` |
+| PowerShell core (fallback) | `ai/skills/shell/powershell_core.md` |
+| PowerShell filesystem (fallback) | `ai/skills/shell/powershell_filesystem.md` |
+| PowerShell Windows admin — services, registry, scheduled tasks (fallback) | `ai/skills/shell/powershell_windows_admin.md` |
+| PowerShell JSON/YAML (fallback) | `ai/skills/shell/powershell_json_yaml.md` |
 | Script security | `ai/skills/shell/script_security.md` |
 | Script quality (testing, documentation, refactoring) | `ai/skills/shell/script_quality.md` |
 

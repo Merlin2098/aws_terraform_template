@@ -10,9 +10,14 @@ entre desarrollo (`uv`) y despliegue cloud (Lambda/Glue), simplificación de la
 lógica de dominios, y ampliación de los hooks de generación de `.ai` más allá
 de Python.
 
-Este documento es un análisis y propuesta — no ejecuta ningún cambio por sí
-mismo. Cada sección deja una recomendación y, cuando aplica, un checklist de
-implementación para un spec de seguimiento.
+Este documento nació como análisis y propuesta. Los 6 ejes fueron revisados
+con el usuario y **implementados directamente en este spec** (sin abrir
+specs de seguimiento numerados — ver el bloque de decisión al inicio de
+cada sección). Varios ejes (4, 5, 6) se cerraron parcial o totalmente sin
+escribir código nuevo, cuando el análisis reveló que el framework ya
+resolvía el problema o que escribir código habría sido trabajo sin demanda
+real (Policy 008/YAGNI) — ver "Próximos pasos" para lo diferido
+intencionalmente.
 
 ---
 
@@ -39,21 +44,26 @@ del todo el entorno real de trabajo:
 
 # Alcance
 
-Este spec cubre análisis y recomendaciones para:
+Este spec cubre análisis, recomendaciones, y — para los ejes ya resueltos —
+la implementación en sí:
 
-1. Inventario de MCP a nivel usuario y su uso para enriquecer `ai/`.
-2. Migración del dominio `shell` → `gitbash` con `shell` como fallback.
-3. Impacto de esa migración en la distinción Windows/Linux del framework.
-4. Separación `uv` (desarrollo) vs. `pip` empaquetado dedicado (Lambda/Glue).
-5. Evaluación de simplificar la lógica de dominios/capacidades.
-6. Ampliación de hooks de generación de `.ai` a Rust, Go y React/JS.
+1. Inventario de MCP a nivel usuario y su uso para enriquecer `ai/`. — ✅ Implementado
+2. Migración del dominio `shell` → `gitbash` con `shell` como fallback. — ✅ Implementado
+3. Impacto de esa migración en la distinción Windows/Linux del framework. — ✅ Implementado
+4. Separación `uv` (desarrollo) vs. `pip` empaquetado dedicado (Lambda/Glue). — ✅ Cerrado (ya resuelto por ADR 0002, sin código nuevo)
+5. Evaluación de simplificar la lógica de dominios/capacidades. — ✅ Implementado (parcial — rename `domains`→`dns`; no-fusión decidida)
+6. Ampliación de hooks de generación de `.ai` a Rust, Go y React/JS. — ✅ Implementado (React/JS); Rust/Go diferido sin código
 
-No cubre la implementación de ninguno de los cambios — eso queda para specs
-de seguimiento por eje, referenciados en cada sección.
+Los 6 ejes quedaron resueltos — ver "Próximos pasos" para lo explícitamente
+diferido (Rust/Go, materialización Lambda ZIP).
 
 ---
 
-## 1. MCP de usuario disponibles para `ai/`
+## 1. MCP de usuario disponibles para `ai/` — ✅ Implementado
+
+> **Decisión (2026-08-01):** Policy 011 en `ai/policies/global.md` (Advisory),
+> referenciada desde `AGENTS.md` §Governance. Verificación solo bajo demanda
+> (no proactiva en cada tarea AWS/Terraform) — ver detalle abajo.
 
 ### Estado actual
 
@@ -93,7 +103,21 @@ usuario, que no viaja con el repo (es user-level, no project-level).
 
 ---
 
-## 2. Dominio `shell` → `gitbash` (con `shell` como fallback)
+## 2. Dominio `shell` → `gitbash` (con `shell` como fallback) — ✅ Implementado
+
+> **Decisión (2026-08-01):** Opción (b) — sin renombrar archivos/rutas.
+> `docs/windows_setup/` reescrito con Git Bash como vía primaria y PowerShell
+> como fallback explícito en cada bloque de comandos. Precedencia
+> Git Bash > Linux/WSL/macOS Bash > PowerShell documentada en
+> `ai/domains/shell.md` §Shell precedence. No se crea `scripts/linux/run_make.sh`
+> — `make` ya está en PATH y se documenta invocación directa.
+>
+> Archivos modificados: `docs/windows_setup/README.md`, `make_install.md`,
+> `make_cheatlist.md`, `uv_install.md`, `template_versioning.md`; `README.md`
+> (raíz); `AGENTS.md` §Execution Rules; `ai/domains/shell.md`;
+> `ai/domains/index.md`; `ai/skills.yaml`;
+> `ai/skills/shell/environment_detection.md`; `ai/skills/shell/powershell_core.md`;
+> `ai/skills/shell/cli_automation.md`.
 
 ### Estado actual
 
@@ -141,19 +165,36 @@ nativas de Windows que Git Bash no puede cubrir).
 
 ---
 
-## 3. Impacto en la distinción Windows/Linux
+## 3. Impacto en la distinción Windows/Linux — ✅ Implementado
 
-### Estado actual
+> **Decisión (2026-08-01):** Se verificó en vivo (Git Bash / MINGW64) que
+> `Makefile`, `run_uv_sync.py` y `sync_dependencies.py` ya funcionan
+> correctamente sin cambios — `$(OS)` es variable de entorno de Windows (no
+> de shell) y `sys.platform.startswith("win")` detecta el SO
+> independientemente del shell que invoca Python. El único gap real era un
+> mensaje de UX en el instalador desalineado con la precedencia Git-Bash-primero
+> del eje 2. Alcance ampliado a pedido del usuario: se fusionaron
+> `install_windows.py` + `install_linux.py` en un único `install.py`
+> agnóstico de SO (eliminados los dos originales, sin wrappers de
+> compatibilidad — ver detalle abajo).
 
-La distinción Windows/Linux vive en dos lugares concretos:
+### Estado actual (antes del cambio)
+
+La distinción Windows/Linux vivía en tres lugares concretos:
 
 * `Makefile` (raíz): rama por `$(OS)` = `Windows_NT` vs. resto, seleccionando
   `PYTHON`, `UV` y `BOOTSTRAP_PYTHON` (`py -3` en Windows vs. `python3` en
   Linux/macOS). Esta rama usa `nmake`/`make` semantics de variables de
   entorno del SO, **no** del shell — sigue siendo válida en Git Bash sobre
   Windows porque `$(OS)` es una variable de entorno de Windows, no del shell.
-* `ai/installer.py`: excluye explícitamente `install_linux.py` e
-  `install_windows.py` como entry points separados por plataforma.
+  **Sin cambios — ya correcta.**
+* `scripts/run_uv_sync.py` y `scripts/hooks/sync_dependencies.py`:
+  `sys.platform.startswith("win") and shutil.which("py")` para resolver el
+  launcher `py -3`. **Sin cambios — ya correcto, funciona igual desde Git
+  Bash, PowerShell o cmd.**
+* `install_windows.py` / `install_linux.py`: dos entry points casi idénticos
+  (diferían solo en selector de carpeta GUI/Tkinter vs. prompt CLI, y en el
+  mensaje final de "next step"). **Fusionados en `install.py`.**
 
 ### Problema
 
@@ -165,74 +206,124 @@ sintaxis POSIX Bash, así que gran parte de lo que hoy podría justificar un
 `.ps1` puede resolverse con un único script Bash portable, reduciendo la
 necesidad de mantener pares `.ps1`/`.sh` por tarea.
 
-### Recomendación
+### Cambios aplicados
 
-* **No eliminar** la distinción Windows/Linux — sigue siendo real a nivel de
-  intérprete Python (`py -3` vs `python3`), rutas (`\` vs `/`, aunque Git
-  Bash normaliza la mayoría), e instaladores (`install_windows.py` /
-  `install_linux.py`).
-* **Sí reducir** la superficie de scripts que se generan en variante dual
-  PowerShell+Bash: con Git Bash como shell primario en Windows, la política
-  de `environment_detection.md` ("When both Bash and PowerShell are
-  plausible, generate both variants") debería pasar a "generar Bash por
-  defecto; generar PowerShell solo cuando la tarea requiera una capacidad
-  Windows-only (registro, servicios, tareas programadas, WhatIf nativo)".
-* Actualizar `ai/skills/shell/bash_core.md` para documentar explícitamente
-  que Git Bash sobre Windows es un target de primera clase (no solo "también
-  funciona"), incluyendo notas sobre limitaciones conocidas (rutas
-  `/c/Users/...` vs `C:\Users\...`, ausencia de systemd, permisos POSIX
-  simulados).
-
----
-
-## 4. `uv` (desarrollo) vs. empaquetado dedicado para Lambda/Glue
-
-### Estado actual
-
-`pyproject.toml` usa `uv` con extras `local`, `cloud`, `saas`, `supabase` y
-grupos de dependencias `dev-local`/`dev-cloud`. No hay separación entre
-"dependencias para desarrollar/testear" y "dependencias que deben terminar
-empaquetadas dentro de un `.zip` de Lambda o un job de Glue". `ai/skills/aws/
-lambda_packaging.md` ya existe como skill dedicado — es el lugar natural para
-esta política, pero no está claro (sin leerlo) si ya resuelve el problema o
-solo documenta el empaquetado en general.
-
-### Problema
-
-`uv` es excelente para resolver y fijar (`uv.lock`) el entorno de desarrollo,
-pero el artefacto final desplegado a Lambda/Glue no puede depender de `uv`
-en runtime — necesita un `pip install --target` (o layer/wheel prebuild)
-con solo las dependencias de producción de esa función específica, sin los
-extras `local`/`dev-*` ni paquetes pesados no usados por esa Lambda concreta
-(p. ej. `pyside6`, `duckdb`, `polars` del extra `local` no deberían viajar en
-un paquete de Lambda que solo usa `boto3`+`awswrangler`).
-
-### Recomendación
-
-* Mantener `uv` como gestor único de desarrollo/lockfile — no introducir un
-  segundo gestor de dependencias para desarrollo.
-* Para el paso de empaquetado cloud, usar `uv export` (o `uv pip compile`)
-  para generar un `requirements.txt` acotado al extra `cloud` (y, si aplica,
-  por-función) y alimentar ese `requirements.txt` a `pip install --target
-  <build_dir> --no-deps` o `uv pip install --target` dentro del script de
-  empaquetado — evitando que `uv` mismo sea una dependencia runtime del
-  paquete Lambda/Glue.
-* Revisar `ai/skills/aws/lambda_packaging.md` y `scripts/package.py` para
-  confirmar si ya implementan este patrón; si no, es el punto de extensión
-  correcto (no crear un skill nuevo).
-* Evaluar empaquetado por función (un `requirements.txt` mínimo por
-  Lambda/Glue job, derivado de qué imports usa cada entry point en
-  `src/jobs/`) frente a un único paquete con todo `cloud` — el primero reduce
-  tamaño de despliegue y cold start; el segundo es más simple de mantener.
-  Recomendación: empezar con un único extra `cloud` compilado a
-  `requirements.txt` (más simple), y solo fragmentar por función si el
-  tamaño del paquete se vuelve un problema real (Policy 008 — simplicidad).
+* `install.py` (nuevo, raíz del repo) reemplaza `install_windows.py` +
+  `install_linux.py`. Prompt CLI por defecto para el target path en ambos
+  casos; `--select-target` abre el picker GUI (Tkinter) cuando hay display
+  disponible. El mensaje final "Next step" ahora muestra Git Bash primero
+  con fallback PowerShell, coherente con el eje 2.
+* `install_windows.py` e `install_linux.py` eliminados — sin wrappers de
+  compatibilidad (decisión explícita del usuario: reemplazo completo, no
+  shims).
+* Referencias actualizadas: `ai/installer.py` (`EXCLUDED_EXACT_FILES`,
+  mensaje de error de `update_template`), `tests/test_install_entrypoints.py`
+  (renombrado a pruebas agnósticas de SO — 7/7 pasan), `README.md` (raíz,
+  sección "Installation Model"), `docs/windows_setup/README.md`,
+  `docs/windows_setup/template_versioning.md`, `docs/linux_setup/README.md`.
+* Verificado con `pytest tests/ -k "install or installer"` — 50/50 tests
+  pasan sin regresiones — y con un `install.py --dry-run` real end-to-end.
+* Distinción Windows/Linux a nivel `Makefile` e intérprete Python: **no
+  tocada**, confirmada correcta tal cual estaba.
 
 ---
 
-## 5. Simplificación de la lógica de dominios
+## 4. `uv` (desarrollo) vs. empaquetado dedicado para Lambda/Glue — ✅ Cerrado (ya resuelto)
 
-### Estado actual
+> **Decisión (2026-08-01):** No requiere implementación nueva. El framework
+> ya tiene exactamente el patrón que este eje pedía evaluar, con más rigor
+> del que el análisis original anticipaba: [`docs/adr/0002-lambda-packaging-strategy.md`](../../docs/adr/0002-lambda-packaging-strategy.md)
+> (Accepted). `uv` sigue siendo el único gestor de desarrollo; el empaquetado
+> cloud usa `uv export` para producir un `requirements.txt` de solo-runtime,
+> sin que `uv` sea dependencia del artefacto desplegado. Se documenta un gap
+> conocido (no se corrige — ver más abajo) porque no hay Lambda desplegada
+> hoy y adelantar código sin demanda real violaría Policy 008 (el propio ADR
+> 0002 lo señala explícitamente como riesgo a evitar).
+
+### Estado actual — verificado, no supuesto
+
+* `ai/runtime/project_profile.py:204` (`uv_export_args`) genera
+  `uv export --no-dev --format requirements.txt --extra <extras-resueltos-por-capacidad>`
+  — filtra automáticamente por las capacidades activas en
+  `.template-profile.yaml`, así que un host con solo `languages:python`
+  habilitado nunca arrastra `pyside6`/`duckdb`/`polars` (extra `local`) al
+  paquete cloud.
+* `scripts/package.py` ya usa ese export: arma
+  `artifacts/data_platform_bundle.zip` con `src/` + el `requirements.txt`
+  resuelto, **sin invocar `uv` en runtime del artefacto** — exactamente el
+  patrón que este eje proponía adoptar.
+* `ai/skills/aws/lambda_functions.md` ya tiene un árbol de decisión
+  ejecutable (R1–R6: ZIP → ZIP+Layer → ECR) y `ai/skills/aws/
+  lambda_packaging.md` documenta el modo ECR completo (Dockerfile,
+  `docker_push.sh`, Terraform, pitfalls conocidos como `--provenance=false`).
+* `docs/adr/0002-lambda-packaging-strategy.md` formaliza todo lo anterior
+  como decisión arquitectónica (Policy 002), con measurable inputs
+  (`S_unzip`, `has_syslib`, `native_ok`, `N_share`, `t_build`) en vez de
+  reglas ad-hoc.
+
+### Gap real identificado (documentado, sin corregir)
+
+El propio ADR 0002 (§Context, punto 1) señala que `scripts/package.py`
+produce un bundle **manifest-only** — `requirements.txt` sin las
+dependencias materializadas dentro del ZIP. Eso es correcto para **Glue**
+(que instala paquetes en runtime vía `--additional-python-modules`) pero
+**inválido** para un Lambda ZIP real, que debe llevar las dependencias
+materializadas dentro del propio archivo. El ADR ya documenta esto como
+riesgo conocido y lo deja fuera de alcance intencionalmente: no existe
+ninguna función Lambda desplegada en el repo hoy (`aws` capability
+deshabilitada por defecto en `.template-profile.yaml`), así que
+materializar `pip install --target` dentro de `package.py` ahora sería
+código sin consumidor — exactamente lo que Policy 008 (YAGNI) desaconseja.
+
+### Recomendación
+
+* **No escribir código nuevo en este eje.** El patrón uv-dev / pip-cloud ya
+  existe y es correcto para su único consumidor actual (Glue).
+* Cuando la primera Lambda real necesite empaquetarse en ZIP (R5/R6 del
+  árbol de decisión), extender `scripts/package.py` con un modo que
+  materialice dependencias vía `pip install --target <build_dir> --no-deps`
+  a partir del mismo `requirements.txt` ya resuelto por `uv export` — no
+  crear un mecanismo paralelo. Ese es el trigger real mencionado en el ADR
+  ("Implementation is sequenced separately... gated by real demand").
+* Medir `S_unzip` (tamaño real del extra `cloud` sin comprimir) la primera
+  vez que se evalúe empaquetar una Lambda — hoy es un valor no verificado,
+  solo estimado por el ADR.
+
+---
+
+## 5. Simplificación de la lógica de dominios — ✅ Implementado (parcial)
+
+> **Decisión (2026-08-01):** Renombrado `platform:domains` → `platform:dns`
+> (archivo `ai/capabilities/platform/domains.yaml` → `dns.yaml`, `name: dns`).
+> "domain"/"dominio" queda reservado exclusivamente para `ai/domains/`
+> (agrupación de skills). La dependencia `dns → business:saas` se verificó
+> en vivo: **no estaba invertida** (era una sospecha del análisis original,
+> descartada) — es semánticamente correcta, solo el nombre anterior era
+> confuso. No se fusionó `ai/skills.yaml` + `ai/domains/index.md` (decisión
+> explícita: sin fricción real reportada, agregar un campo `domain:` a las
+> 71 entradas de `skills.yaml` sería inversión sin problema que la
+> justifique — Policy 008/YAGNI). Capability vs. domain-de-skill se
+> mantienen como capas separadas, sin fusionar (ver razón original abajo).
+
+### Verificación del rename
+
+* `ai/capabilities/platform/dns.yaml` (renombrado vía `git mv`, `name: dns`).
+* `.template-profile.yaml`: `platform.domains` → `platform.dns`.
+* `ai/runtime/capability_registry.load_registry` carga `platform:dns`
+  correctamente con su `depends_on: {business: [saas]}` intacto (verificado
+  en vivo).
+* Ningún test referenciaba `platform:domains` por nombre explícito (usan
+  `business:saas` como capability de ejemplo) — suite completa
+  (`pytest tests/ -k "install or capability or profile"`) **71/71 pasan**
+  sin cambios.
+* `.ai/skills_registry.json`, `.ai/context_bundle.yaml`,
+  `.ai/dependencies_graph.json` regenerados vía `make ai-refresh` — sin
+  referencias colgantes al nombre anterior.
+* `ai/skills/saas/domains.md` (el skill file de DNS/Cloudflare/SPF-DKIM en
+  sí) **no se renombró** — ese nombre es correcto tal cual, describe
+  dominios DNS, no colisiona con `ai/domains/`.
+
+### Estado actual (antes del cambio)
 
 El framework tiene tres capas relacionadas pero distintas:
 
@@ -263,7 +354,7 @@ volumen de contenido justifica. El costo no es solo de líneas de código sino
 cognitivo: un agente (o el propio usuario) debe cruzar 3-4 archivos para
 entender "¿este skill está activo en este proyecto y por qué".
 
-### Recomendación
+### Decisiones tomadas
 
 * **No colapsar** capability vs. domain-de-skill en una sola capa: cumplen
   roles distintos y necesarios — capability es un *gate de instalación*
@@ -271,94 +362,94 @@ entender "¿este skill está activo en este proyecto y por qué".
   (¿qué skills hay para AWS?). Fusionarlos acoplaría "¿está instalado?" con
   "¿cómo se organiza el contenido?", lo que dificultaría, por ejemplo, tener
   un dominio de skill documentado pero deshabilitado por defecto.
-* **Sí resolver la colisión de nombres**: renombrar el concepto
-  `platform.domains` (DNS/dominios de negocio, en
-  `ai/capabilities/platform/domains.yaml` → `ai/skills/saas/domains.md`) a
-  algo inequívoco como `platform.dns` o `business.dns`, dejando "domain"
-  reservado exclusivamente para `ai/domains/` (agrupación de skills). Esto es
-  una mejora de bajo riesgo y alto valor de claridad.
-  - Nota: `saas.enabled` ya depende de `domains` según
-    `ai/capabilities/platform/domains.yaml` (`depends_on: business: [saas]` —
-    revisar si esa dependencia está invertida respecto a lo esperado antes
-    de renombrar, para no arrastrar el bug al nuevo nombre).
-* Evaluar si `ai/skills.yaml` (índice de slugs) y `ai/domains/index.md`
-  (agrupación semántica) pueden fusionarse en un único archivo generado —
-  hoy `ai/domains/index.md` es mantenido a mano y linkea a
-  `ai/skills.yaml` como fuente canónica; si ambos listan esencialmente las
-  mismas rutas, generar `index.md` a partir de `skills.yaml` (con un dominio
-  como campo del slug) eliminaría un punto de mantenimiento duplicado.
-  Marcar como candidato de simplificación, no ejecutar sin confirmar que
-  `skills.yaml` ya tiene (o puede tener) el campo de dominio necesario.
-* Mantener `.template-profile.yaml` tal cual — es el mecanismo correcto para
-  que un host declare qué capacidades tiene activas, y ya es la pieza más
-  simple de las cuatro.
+* **Colisión de nombres resuelta**: `platform.domains` renombrado a
+  `platform.dns` (ver bloque de decisión arriba). La sospecha de que
+  `depends_on: business: [saas]` estuviera invertida se descartó tras
+  verificar en vivo con `resolve_project_profile` — activar
+  `platform:domains` (ahora `platform:dns`) arrastraba correctamente
+  `business:saas` como dependencia implícita; el comportamiento era
+  correcto, solo el nombre confuso.
+* **No fusionar** `ai/skills.yaml` (índice de slugs) y `ai/domains/index.md`
+  (agrupación semántica) en un único archivo generado — decisión explícita:
+  agregar un campo `domain:` a las 71 entradas de `skills.yaml` y escribir
+  un generador es una inversión de mantenimiento sin fricción real
+  reportada hoy (Policy 008/YAGNI). Ambos archivos se mantienen
+  independientes, tal como estaban.
+* `.template-profile.yaml` sin cambios estructurales (más allá del rename
+  de la clave `domains` → `dns`) — sigue siendo el mecanismo correcto para
+  que un host declare qué capacidades tiene activas.
 
 ---
 
-## 6. Hooks de generación `.ai/` limitados a Python
+## 6. Hooks de generación `.ai/` limitados a Python — ✅ Implementado (React/JS); Rust/Go diferido
 
-### Estado actual
+> **Decisión (2026-08-01):** El diagnóstico original sobreestimaba el gap.
+> `ai/runtime/dependency_graph.py` **ya tenía** un scanner de JS/TS completo
+> (`scan_javascript`) cableado vía `frameworks:react.yaml` →
+> `scanners: [javascript]` — no era "presumiblemente Python-específico",
+> ya soportaba JS/TS antes de esta sesión. El gap real, ahora cerrado, era
+> más pequeño: `ai/tools/inspect_project.py:_detect_languages` no
+> reconocía `.js/.jsx/.ts/.tsx`, y `ai/context.yaml → structure:` no tenía
+> categoría `javascript`. Rust y Go quedan **explícitamente diferidos, sin
+> código**: no hay capability, scanner, ni skill para ninguno de los dos, y
+> no hay indicio de proyectos reales en esos lenguajes — crear el andamiaje
+> ahora sería trabajo especulativo (Policy 008/YAGNI).
 
-* `ai/context.yaml` → `structure:` solo declara `python`, `sql`, `config`,
-  `contracts`, `infrastructure` como categorías de código fuente; no hay
+### Cambios aplicados (React/JS)
+
+* `ai/tools/inspect_project.py:_detect_languages` — añadido
+  `JAVASCRIPT_SUFFIXES = {".js", ".jsx", ".ts", ".tsx"}`; ahora reconoce
+  `javascript` en `project.languages`, lo agrega como `primary_language`
+  cuando no hay Python/SQL/Terraform, añade `"frontend"` a `project_types`,
+  y expone `structure.has_javascript`.
+* `ai/context.yaml → structure:` — añadida la categoría `javascript: [frontend/]`,
+  siguiendo la convención de ruta ya usada por
+  `ai/skills/frontend/react_vite_aws.md` (`frontend/.env.production`, etc.).
+* Verificado funcionalmente: un proyecto sintético solo con `frontend/src/App.tsx`
+  produce `primary_language: javascript`, `project_types: ["frontend"]`,
+  `has_javascript: true`.
+* Suite completa: **92/92 tests pasan** tras el cambio y tras regenerar
+  `.ai/` vía `make ai-refresh`.
+* **No tocado** (ya eran correctos): `ai/runtime/dependency_graph.py`
+  (`scan_javascript` ya existente, con resolución de imports relativos y
+  paquetes con scope `@org/pkg`); `ai/capabilities/frameworks/react.yaml`
+  (`scanners: [javascript]` ya declarado).
+
+### Rust y Go — diferido, sin código
+
+No existe `ai/capabilities/languages/rust.yaml` ni `go.yaml`, ningún
+scanner, ningún skill, y ningún indicio en el repo o en la conversación de
+que haya (o vaya a haber pronto) un proyecto real en esos lenguajes. Crear
+capability + scanner + skills ahora sería andamiaje sin consumidor —
+exactamente el mismo patrón de "no adelantarse sin demanda real" aplicado
+en el eje 4 (Lambda ZIP) y en la no-fusión del eje 5. Retomar cuando exista
+un proyecto Rust o Go real que lo necesite.
+
+### Estado previo (antes de esta sesión, para referencia)
+
+* `ai/context.yaml` → `structure:` solo declaraba `python`, `sql`, `config`,
+  `contracts`, `infrastructure` como categorías de código fuente; no había
   categoría para Rust, Go, ni JS/TS/React a pesar de que
   `ai/capabilities/frameworks/react.yaml` y `ai/skills/frontend/*.md` ya
-  existen como dominio de skill.
-* `ai/hooks/treemap.py` y (por convención en `Makefile`/`scripts/hooks/
-  ai_refresh.py`) toda la cadena de generación de `.ai/context_bundle.yaml`,
-  `.ai/skills_registry.json`, `.ai/dependencies_graph.json`,
-  `.ai/treemap.md` está implementada en Python puro, y el treemap en sí es
-  agnóstico de lenguaje (recorre el árbol de archivos sin importar
-  extensión) — el sesgo a Python está en `ai/context.yaml` (`structure:`)
-  y presumiblemente en `ai/runtime/dependency_graph.py`, no en el hook de
-  treemap en sí.
+  existían como dominio de skill.
 * El propio `pyproject.toml` ya tiene extra `saas` con `fastapi` +
   frontend implícito, y el dominio `frontend.md` ya cubre React — es decir,
-  el framework ya *asume* proyectos con frontend, pero `.ai/` no los modela
-  como primera clase.
+  el framework ya *asume* proyectos con frontend, pero `.ai/` no los
+  modelaba como primera clase (ahora sí, para el campo `languages`/
+  `structure`).
 
-### Problema
+### Problema (resuelto para React/JS; vigente para Rust/Go)
 
-Un proyecto host que combine Python (backend/Glue) con React (frontend) o,
-a futuro, con servicios en Rust/Go, obtiene un `.ai/context_bundle.yaml` y
-`dependencies_graph.json` que solo entienden el grafo de dependencias
-Python — el resto del código queda invisible para esas dos artefactos
-generados, aunque sí aparece en el treemap (agnóstico) y puede tener skills
-documentados en `ai/skills/frontend/`.
+Un proyecto host que combine Python (backend/Glue) con React (frontend)
+obtenía un `.ai/context_bundle.yaml` que no reconocía `javascript` como
+lenguaje ni `frontend` como tipo de proyecto — aunque
+`dependencies_graph.json` **ya** grafeaba sus imports correctamente vía
+`scan_javascript` (esa parte nunca estuvo rota). Cerrado arriba.
 
-### Recomendación
-
-* Extender `ai/context.yaml` → `structure:` con categorías adicionales,
-  activables por capacidad (siguiendo el patrón ya usado por `frameworks:
-  react`):
-  ```yaml
-  structure:
-    python:
-      - src/
-      - scripts/
-    javascript:      # nuevo — gated por capabilities.frameworks.react (o futuro capability "node")
-      - frontend/
-      - src/frontend/
-    rust:             # nuevo — requiere nueva capability languages.rust
-      - src-rust/
-    go:               # nuevo — requiere nueva capability languages.go
-      - cmd/
-      - internal/
-  ```
-* Revisar `ai/runtime/dependency_graph.py` (no leído en detalle en este
-  spec) para confirmar si el grafo de dependencias es Python-específico
-  (parseo de imports `import`/`from`) — si lo es, el hook de dependencias
-  necesita un parser por lenguaje (o degradar con gracia: listar archivos
-  sin grafo de imports para lenguajes no soportados, en vez de omitirlos).
-* No es necesario un parser de imports completo para Rust/Go/JS en la
-  primera iteración — mínimo viable: que `context_bundle.yaml` liste los
-  archivos de esas categorías (igual que ya hace con `sql`/`config`), aunque
-  `dependencies_graph.json` siga siendo Python-only hasta que se justifique
-  el esfuerzo de un parser real.
-* Priorización sugerida: React/JS primero (ya hay capability y skills
-  activos: `frameworks.react`, `ai/skills/frontend/*.md`), Rust y Go después
-  y solo si el usuario efectivamente empieza a alojar proyectos en esos
-  lenguajes — no adelantarse sin caso de uso concreto (Policy 008).
+Para Rust/Go el problema sigue vigente sin cambios: un proyecto host en
+esos lenguajes obtendría un `context_bundle.yaml`/`dependencies_graph.json`
+que no los reconoce en absoluto — solo el treemap (agnóstico de lenguaje)
+los mostraría. Diferido intencionalmente (ver arriba).
 
 ---
 
@@ -370,27 +461,38 @@ documentados en `ai/skills/frontend/`.
 | 3. Windows/Linux | 2 |
 | 4. `uv` vs. pip cloud | ninguna (independiente) |
 | 5. Simplificación de dominios | ninguna (independiente) |
-| 6. Hooks multi-lenguaje en `.ai` | 5 (si se fusionan `skills.yaml`/`index.md`, el campo de dominio debe existir primero) |
+| 6. Hooks multi-lenguaje en `.ai` | ninguna (React/JS no requirió tocar 5) |
 
 ---
 
 # Fuera de alcance
 
-* Ejecutar los renames/refactors propuestos — este documento es de análisis.
 * Elegir el parser de imports concreto para Rust/Go (`syn`, `go/ast`, etc.)
-  — depende de si el eje 6 se prioriza.
-* Cambios a `ai/skills/aws/lambda_packaging.md` y `scripts/package.py` — se
-  referencian pero no se leyeron línea a línea en este spec; su revisión
-  detallada queda para el spec de seguimiento del eje 4.
+  — diferido junto con todo el soporte Rust/Go (eje 6), sin demanda real hoy.
+* Materializar dependencias (`pip install --target`) para un Lambda ZIP real
+  en `scripts/package.py` — diferido explícitamente por el eje 4 y por ADR
+  0002 hasta que exista una Lambda real que lo necesite (Policy 008).
+* Crear `ai/capabilities/languages/rust.yaml` / `go.yaml` sin skills reales
+  detrás — decisión explícita de no crear andamiaje especulativo (eje 6).
 
 ---
 
 # Próximos pasos
 
-1. Confirmar con el usuario cuál(es) de los 6 ejes se implementan primero.
-2. Por cada eje aprobado, abrir un spec de seguimiento numerado (SPEC-020+)
-   con Contract/Invariants/Acceptance Criteria siguiendo el formato de
-   `specs/template/000-template-spec-format.md`.
-3. Los cambios a `AGENTS.md`, `ai/context.yaml` y `ai/capabilities/` son
-   framework-owned (`managed` en `ai/installer.py`) — deben aplicarse en el
-   repo plantilla, no parcheados ad-hoc en un host.
+Los 6 ejes están **completos**. Resumen de lo diferido intencionalmente
+(sin código, documentado para retomar ante demanda real):
+
+* **Eje 4** — materializar dependencias (`pip install --target`) para un
+  Lambda ZIP real en `scripts/package.py`, cuando exista la primera Lambda
+  que dispare R5/R6 del árbol de decisión de `lambda_functions.md`.
+* **Eje 5** — la fusión `skills.yaml`/`index.md` se descartó explícitamente
+  (sin fricción real que la justifique); revisar solo si el catálogo de
+  skills crece lo suficiente como para que el mantenimiento duplicado
+  duela de verdad.
+* **Eje 6** — soporte Rust/Go (capability, scanner de imports, skills) en
+  `ai/`, cuando exista un proyecto real en alguno de esos lenguajes.
+
+Los cambios a `AGENTS.md`, `ai/context.yaml`, `ai/capabilities/` y
+`ai/policies/global.md` son framework-owned (`managed` en
+`ai/installer.py`) — cualquier extensión futura de lo diferido debe
+aplicarse en este repo plantilla, no parcheada ad-hoc en un host.

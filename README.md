@@ -77,8 +77,7 @@ make ai-refresh
 ./scripts/windows/update_venv.ps1
 ./scripts/windows/run_make.ps1 test
 python3 scripts/hooks/ai_refresh.py
-python install_windows.py --target /path/to/repo --dry-run
-python3 install_linux.py --target /path/to/repo --dry-run
+python install.py --target /path/to/repo --dry-run
 terraform -chdir=infra init
 terraform -chdir=infra plan
 ```
@@ -92,12 +91,14 @@ repositories, see `docs/terra_principles.md`.
 
 ## Installation Model
 
-The template is installed into a host repository with:
+The template is installed into a host repository with a single, OS-agnostic
+entrypoint:
 
-* `install_windows.py` for Windows-friendly setup
-* `install_linux.py` for Linux and non-GUI environments
+* `install.py` — prompts for the target path on the CLI by default; pass
+  `--select-target` to open a GUI folder picker instead (requires a display
+  and Tkinter)
 
-Both installers can:
+The installer can:
 
 * preview changes with `--dry-run`
 * enable capabilities with repeatable `--enable category:name`
@@ -112,9 +113,10 @@ The installer copies template files into the host repository, but it does not:
 * initialize Git
 * execute pre-commit in the host
 
-Use `install_linux.py` or `install_windows.py` only to copy the template into a
-host repository. To bootstrap the current repository environment, use the OS
-setup wrappers under `scripts/linux/` or `scripts/windows/`.
+Use `install.py` only to copy the template into a host repository. To
+bootstrap the current repository environment, use the OS setup wrappers under
+`scripts/linux/` (Git Bash / Linux / WSL / macOS — primary) or
+`scripts/windows/` (PowerShell fallback).
 
 ## Dependency Model
 
@@ -149,11 +151,13 @@ Detailed setup and day-to-day command references live in:
 
 ## Windows Workflow
 
-Windows support includes setup and maintenance helpers under `scripts/windows/`.
-
-In standard environments, teams can use normal `make` commands when `make` is
-available in `PATH`. In restricted corporate environments, the repository also
-supports a PowerShell wrapper flow through `scripts/windows/run_make.ps1`.
+**Git Bash is the primary shell on Windows** (see
+`ai/domains/shell.md` §Shell precedence). With `make.exe` and Python on
+`PATH`, `scripts/linux/setup_env.sh` and `update_venv.sh` run unchanged from
+Git Bash, and normal `make` commands work directly. PowerShell wrappers under
+`scripts/windows/` remain a fully supported fallback for restricted corporate
+environments or Windows-only tasks (services, registry, scheduled tasks) —
+for example `scripts/windows/run_make.ps1` when `make` is not on `PATH`.
 
 Detailed setup and day-to-day command references live in:
 

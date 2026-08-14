@@ -14,22 +14,24 @@ operational difference stays explicit.
 Use this path when `uv` is already installed normally and can be called
 directly.
 
-Verify:
+Verify (Git Bash):
 
-```powershell
+```bash
 uv --version
-Get-Command uv
+which uv
 ```
 
 Typical usage:
 
-```powershell
+```bash
 uv sync --group dev-local
 uv lock
 uv tree
 ```
 
-This is the simplest path for local developer machines.
+This is the simplest path for local developer machines. PowerShell fallback:
+`Get-Command uv` in place of `which uv` — the rest of the commands are
+identical in both shells.
 
 Reference: https://docs.astral.sh/uv/getting-started/installation/
 
@@ -42,29 +44,32 @@ Use this path when:
 - you need an explicit, supportable command path
 
 Before choosing one of the options below, verify what Python entrypoint is
-available on the machine:
+available on the machine. In Git Bash, `py` and `python` are the same Windows
+launchers on `PATH` as in PowerShell — no translation needed:
 
-```powershell
-Get-Command python
+```bash
+py -3 --version
 python -V
 py -0p
-Test-Path 'C:\Program Files\Python314\python.exe'
+test -f '/c/Program Files/Python314/python.exe' && echo found
 ```
 
-You do not need every command above to succeed. The goal is to confirm which
-approved Python path or launcher is actually available in your environment.
+PowerShell equivalent for the last check: `Test-Path 'C:\Program
+Files\Python314\python.exe'`. You do not need every command above to succeed
+— the goal is to confirm which approved Python path or launcher is actually
+available in your environment.
 
 ### Option A: Use Python to Run uv
 
 If Python is available but `uv` is not exposed as a standalone command:
 
-```powershell
+```bash
 py -3 -m uv --version
 ```
 
 If that works, you can operate uv through Python:
 
-```powershell
+```bash
 py -3 -m uv sync --group dev-local
 py -3 -m uv tree
 ```
@@ -72,27 +77,30 @@ py -3 -m uv tree
 This is the preferred corporate path when Python is the approved entrypoint.
 
 If you want one reusable pattern for support and diagnostics, keep the command
-explicit and consistent:
+explicit and consistent. Git Bash:
 
-```powershell
-& 'C:\Program Files\Python314\python.exe' -m uv --version
-& 'C:\Program Files\Python314\python.exe' -m uv sync --group dev-local
-& 'C:\Program Files\Python314\python.exe' -m uv tree
+```bash
+'/c/Program Files/Python314/python.exe' -m uv --version
+'/c/Program Files/Python314/python.exe' -m uv sync --group dev-local
+'/c/Program Files/Python314/python.exe' -m uv tree
 ```
+
+PowerShell fallback: prefix each call with `&` and use backslash paths
+(`& 'C:\Program Files\Python314\python.exe' -m uv --version`).
 
 ### Option B: Use an Approved Corporate uv Binary
 
 If your company distributes a dedicated `uv.exe`, verify it directly:
 
-```powershell
-C:\approved-tools\uv\uv.exe --version
+```bash
+/c/approved-tools/uv/uv.exe --version
 ```
 
 Then use it explicitly:
 
-```powershell
-C:\approved-tools\uv\uv.exe sync --extra local --group dev
-C:\approved-tools\uv\uv.exe tree
+```bash
+/c/approved-tools/uv/uv.exe sync --extra local --group dev
+/c/approved-tools/uv/uv.exe tree
 ```
 
 ### Option C: Install uv Through an Approved Python
@@ -100,26 +108,34 @@ C:\approved-tools\uv\uv.exe tree
 If the approved flow is to install `uv` via Python rather than as a standalone
 binary:
 
-```powershell
-& 'C:\Program Files\Python314\python.exe' -m pip install uv
-& 'C:\Program Files\Python314\python.exe' -m uv --version
+```bash
+'/c/Program Files/Python314/python.exe' -m pip install uv
+'/c/Program Files/Python314/python.exe' -m uv --version
 ```
 
 After that, continue to run uv through the same Python:
 
-```powershell
-& 'C:\Program Files\Python314\python.exe' -m uv sync --group dev-local
+```bash
+'/c/Program Files/Python314/python.exe' -m uv sync --group dev-local
 ```
 
 This keeps the execution path explicit and avoids depending on `PATH` changes or
-on a separately installed `uv.exe`.
+on a separately installed `uv.exe`. PowerShell fallback: same arguments with
+`& 'C:\Program Files\Python314\python.exe'` and backslash paths.
 
 ## 3. How This Repository Uses uv
 
-The Windows repository scripts assume uv is available through one of the paths
-above and then use it to drive the local environment.
+The repository scripts assume uv is available through one of the paths above
+and then use it to drive the local environment.
 
-Primary commands:
+Primary commands (Git Bash):
+
+```bash
+./scripts/linux/setup_env.sh
+./scripts/linux/update_venv.sh
+```
+
+PowerShell fallback:
 
 ```powershell
 .\scripts\windows\setup_env.ps1
@@ -136,11 +152,8 @@ Behavior:
 - active capabilities determine all extras and dependency groups
 - active host capabilities are read from `.template-profile.yaml`
 - cloud capabilities can be enabled in `.template-profile.yaml` and then
-  synchronized:
-
-```powershell
-.\scripts\windows\update_venv.ps1
-```
+  synchronized by re-running `./scripts/linux/update_venv.sh` (or the
+  PowerShell fallback `.\scripts\windows\update_venv.ps1`)
 
 ## 4. Uv Host Package Refresh Warning
 
@@ -155,12 +168,13 @@ For uv-based hosts, that refresh can show a warning such as
 Treat this as a host-tooling limitation first, not as proof that dependency
 installation failed.
 
-When validating a uv-based host, prefer these checks:
+When validating a uv-based host, prefer these checks (Git Bash — identical in
+PowerShell aside from the path separator):
 
-```powershell
+```bash
 py -3 -m uv sync --group dev-local
 py -3 -m uv tree
-py -3 -m uv pip list --python .\.venv\Scripts\python.exe
+py -3 -m uv pip list --python ./.venv/Scripts/python.exe
 ```
 
 If those commands work and the project dependencies import correctly, the
@@ -170,9 +184,9 @@ refresh warning.
 If the host must refresh packages through `pip`, enable `pip` inside the
 project virtual environment as an optional compatibility workaround:
 
-```powershell
-.\.venv\Scripts\python.exe -m ensurepip --upgrade
-.\.venv\Scripts\python.exe -m pip list
+```bash
+./.venv/Scripts/python.exe -m ensurepip --upgrade
+./.venv/Scripts/python.exe -m pip list
 ```
 
 Do not treat this step as part of the default uv workflow. Use it only when the
@@ -180,12 +194,18 @@ host tooling requires `pip` for package inspection.
 
 ## 5. Quick Verification Commands
 
-```powershell
+Git Bash:
+
+```bash
 uv --version
 py -3 -m uv --version
-.\scripts\windows\setup_env.ps1
-.\scripts\windows\update_venv.ps1
+./scripts/linux/setup_env.sh
+./scripts/linux/update_venv.sh
 ```
 
-Replace `C:\Program Files\Python314\python.exe` with the real approved Python
-path on the machine whenever you use the explicit Python-driven examples above.
+PowerShell fallback: same commands with `.\scripts\windows\setup_env.ps1` and
+`.\scripts\windows\update_venv.ps1`.
+
+Replace `C:\Program Files\Python314\python.exe` (or its Git Bash form,
+`/c/Program Files/Python314/python.exe`) with the real approved Python path on
+the machine whenever you use the explicit Python-driven examples above.

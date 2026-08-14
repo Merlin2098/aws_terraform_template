@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from __future__ import annotations
 
 import argparse
@@ -13,6 +14,18 @@ from ai.installer import (
 )
 
 
+def _prompt_target() -> Path:
+    selected = input("Destination repository directory (absolute path): ").strip()
+    if not selected:
+        raise ValueError("No target folder selected.")
+    target = Path(selected).expanduser()
+    if not target.is_absolute():
+        raise ValueError(
+            "Target must be an absolute path, for example /home/user/project."
+        )
+    return target
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         description="Install this AWS Terraform template into another repository."
@@ -20,12 +33,12 @@ def main() -> None:
     parser.add_argument(
         "--target",
         type=Path,
-        help="Destination repository directory. If omitted, a folder picker opens.",
+        help="Destination repository directory. If omitted, a CLI prompt is used.",
     )
     parser.add_argument(
         "--select-target",
         action="store_true",
-        help="Open a folder picker to select the destination repository directory.",
+        help="Open a folder picker (requires a display / Tkinter) instead of the CLI prompt.",
     )
     parser.add_argument(
         "--force",
@@ -76,11 +89,16 @@ def main() -> None:
     if args.with_structure and args.without_structure:
         parser.error("--with-structure cannot be combined with --without-structure.")
     try:
-        target = (
-            select_target_folder()
-            if args.select_target or not args.target
-            else args.target
-        )
+        if args.select_target:
+            target = select_target_folder()
+        elif args.target is not None:
+            target = args.target.expanduser()
+            if not target.is_absolute():
+                raise ValueError(
+                    "Target must be an absolute path, for example /home/user/project."
+                )
+        else:
+            target = _prompt_target()
 
         already_installed = (target / ".framework-version.json").exists()
         if args.update or already_installed:
@@ -122,7 +140,9 @@ def main() -> None:
 
     print_summary(summary, dry_run=args.dry_run)
     print(
-        "\nNext step:\n"
+        "\nNext step (Git Bash):\n"
+        "  ./scripts/linux/setup_env.sh\n"
+        "PowerShell fallback:\n"
         "  .\\scripts\\windows\\setup_env.ps1\n"
         "The installer did not create or synchronize .venv."
     )

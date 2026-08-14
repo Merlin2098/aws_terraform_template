@@ -4,7 +4,7 @@
 
 - Writing scripts that orchestrate CLI tools: `git`, `terraform`, `docker`, `aws`, `az`
 - Building DevOps automation scripts (deploy pipelines, CI steps, maintenance jobs)
-- Generating both PowerShell and Bash variants of CLI workflows
+- Generating a Bash CLI workflow (default) with a PowerShell equivalent only when the fallback is actually needed — see `ai/domains/shell.md` §Shell precedence
 
 For the *service-level behaviour* (what Lambda does, how S3 buckets work, IAM policy design), consult:
 - `ai/skills/aws/` — AWS service patterns

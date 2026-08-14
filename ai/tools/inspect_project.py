@@ -64,6 +64,9 @@ def _rel(path: Path, project_root: Path) -> str:
     return path.resolve().relative_to(project_root.resolve()).as_posix()
 
 
+JAVASCRIPT_SUFFIXES = {".js", ".jsx", ".ts", ".tsx"}
+
+
 def _detect_languages(project_root: Path, files: list[Path]) -> dict[str, Any]:
     counts = Counter()
     languages: set[str] = set()
@@ -79,9 +82,12 @@ def _detect_languages(project_root: Path, files: list[Path]) -> dict[str, Any]:
         elif suffix == ".tf":
             languages.add("terraform")
             counts["terraform"] += 1
+        elif suffix in JAVASCRIPT_SUFFIXES:
+            languages.add("javascript")
+            counts["javascript"] += 1
 
     primary_language = None
-    for candidate in ("python", "sql", "terraform"):
+    for candidate in ("python", "sql", "terraform", "javascript"):
         if counts[candidate]:
             primary_language = candidate
             break
@@ -93,6 +99,8 @@ def _detect_languages(project_root: Path, files: list[Path]) -> dict[str, Any]:
         project_types.add("data")
     if counts["terraform"] or (project_root / "infra").exists():
         project_types.add("infrastructure")
+    if counts["javascript"]:
+        project_types.add("frontend")
     if not project_types:
         project_types.add("unknown")
 
@@ -108,6 +116,7 @@ def _detect_languages(project_root: Path, files: list[Path]) -> dict[str, Any]:
             "has_terraform": counts["terraform"] > 0
             or (project_root / "infra").exists(),
             "has_sql": counts["sql"] > 0,
+            "has_javascript": counts["javascript"] > 0,
             "has_guidance": (project_root / "ai" / "skills").exists(),
         },
     }

@@ -1,10 +1,10 @@
 # Make Cheatlist
 
-Use the command style that matches your shell and how `make.exe` is installed.
+Git Bash with `make.exe` on `PATH` (see [make_install.md](make_install.md)) is
+the default case — the same `make <target>` commands work identically to
+Linux/WSL. Use the other sections only when that default is not available.
 
-## `make` available in `PATH`
-
-Use this in PowerShell or Git Bash:
+## Default: `make` available in `PATH` (Git Bash or PowerShell)
 
 ```bash
 make treemap

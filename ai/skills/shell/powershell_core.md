@@ -1,10 +1,16 @@
 # PowerShell Core Patterns
 
+> Git Bash is the default shell on Windows in this framework (see
+> `ai/domains/shell.md` §Shell precedence). Reach for this skill when the
+> task specifically needs a Windows-only capability — not as the default
+> choice for a Windows script.
+
 ## When to use
 
-- Generating any PowerShell script (`.ps1`, module, function)
+- The task needs a Windows-only capability Git Bash cannot provide: services,
+  registry, scheduled tasks, native `-WhatIf`/`ShouldProcess`
 - Reviewing or refactoring existing PowerShell code
-- Choosing between PowerShell approaches (cmdlet vs .NET vs COM)
+- The user's session is confirmed PowerShell-only (no Git Bash available)
 
 ## Idiomatic structure
 

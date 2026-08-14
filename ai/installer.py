@@ -52,8 +52,7 @@ EXCLUDED_DIRS = {
 EXCLUDED_EXACT_FILES = {
     "ai/installer.py",
     "infra/crash.log",
-    "install_linux.py",
-    "install_windows.py",
+    "install.py",
     ".claude/settings.local.json",
     # Host-owned root files: never distributed or overwritten by the framework.
     # Makefile and .claude/settings.json may be customised per host.
@@ -910,7 +909,7 @@ def update_template(
     if state is None:
         raise ValueError(
             f"No framework state found in {target}. "
-            "Run the installer first (install_windows.py or install_linux.py)."
+            "Run the installer first (install.py)."
         )
 
     resolved_include_structure = (

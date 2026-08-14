@@ -48,6 +48,8 @@ structure:
     - src/contracts/
   infrastructure:
     - infra/
+  javascript:
+    - frontend/
   guidance:
     - ai/skills.yaml
     - ai/skills/

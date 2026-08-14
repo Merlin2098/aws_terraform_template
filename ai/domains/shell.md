@@ -13,6 +13,32 @@ structured (see `ai/domains/terraform.md`).
 
 ---
 
+## Shell precedence
+
+**Git Bash is the primary shell on Windows.** PowerShell is a documented
+fallback, not a symmetric alternative generated "just in case." Apply this
+order:
+
+1. **Git Bash** (`$MSYSTEM` set, e.g. `MINGW64`) — default assumption on
+   Windows when no other signal overrides it. Generate Bash scripts;
+   `ai/skills/shell/bash_core.md` already treats Git Bash as a first-class
+   target (see its Portable Compatibility table).
+2. **Linux / WSL / macOS** — Bash, same skill tree as Git Bash.
+3. **PowerShell** — only when the task needs a capability Git Bash cannot
+   provide: Windows services, registry, scheduled tasks, native
+   `-WhatIf`/`ShouldProcess` semantics, or the user's session is confirmed
+   PowerShell-only (no `$MSYSTEM`, `$PSVersionTable` present).
+
+Do not generate both a Bash and a PowerShell variant by default. Generate one,
+matching the precedence above, and only add the other when the task explicitly
+requires the fallback capability — say so when it happens.
+
+`docs/windows_setup/` follows this precedence: Git Bash commands
+(`scripts/linux/*.sh`, direct `make`) are shown first, with the PowerShell
+equivalent (`scripts/windows/*.ps1`) as a labelled fallback.
+
+---
+
 ## Scope
 
 | In scope | Out of scope |
@@ -46,20 +72,21 @@ structured (see `ai/domains/terraform.md`).
 
 ```
 environment_detection
-    └── powershell_core
+    └── bash_core                  (default — Git Bash / Linux / WSL / macOS)
+            └── cli_automation
+    └── powershell_core            (fallback — Windows-only capability needed)
             ├── powershell_filesystem
             ├── powershell_windows_admin
             └── powershell_json_yaml
-    └── bash_core
-            └── cli_automation
 
 script_security      (applies to all scripts regardless of shell)
 script_quality       (applies to all scripts regardless of shell)
 ```
 
-Always apply `environment_detection` first. Then choose the PowerShell or Bash
-skill tree. Layer `script_security` and `script_quality` on every generated
-script.
+Always apply `environment_detection` first. Per the precedence rule above,
+default to the `bash_core` tree; only descend into the `powershell_core` tree
+when the task needs a Windows-only capability. Layer `script_security` and
+`script_quality` on every generated script.
 
 ---
 

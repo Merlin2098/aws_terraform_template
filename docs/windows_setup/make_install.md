@@ -6,7 +6,11 @@ Use this guide when you need a clear Windows setup path for:
 - GNU Make without administrator rights using manual binaries and manual setup
 
 This guide is intentionally split into `PATH` and corporate/manual flows so the
-operational difference stays explicit.
+operational difference stays explicit. Once `make.exe` is on `PATH`, Git Bash
+runs `make <target>` directly — no wrapper needed (see
+[make_cheatlist.md](make_cheatlist.md)). The Chocolatey installer itself
+requires an elevated PowerShell session (Windows has no admin-elevated Git
+Bash equivalent); verification afterward works from either shell.
 
 ## 1. GNU Make With Administrator Rights
 
@@ -15,7 +19,8 @@ standard way that becomes available in `PATH`.
 
 ### Install Chocolatey
 
-Open PowerShell as Administrator.
+Open PowerShell as Administrator (required — this step needs Windows
+elevation, which Git Bash cannot request on its own).
 
 If needed, relax the execution policy for the current session:
 
@@ -30,9 +35,9 @@ Install Chocolatey:
 iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
 ```
 
-Close and reopen PowerShell, then verify:
+Close and reopen your shell (Git Bash or PowerShell), then verify:
 
-```powershell
+```bash
 choco --version
 ```
 
@@ -40,21 +45,24 @@ Reference: https://docs.chocolatey.org/en-us/choco/setup/
 
 ### Install Make With Chocolatey
 
+Still from an elevated PowerShell session:
+
 ```powershell
 choco install make -y
 ```
 
-Close and reopen PowerShell, then verify:
+Close and reopen Git Bash (or PowerShell), then verify:
 
-```powershell
+```bash
 make --version
-Get-Command make
+which make
 ```
 
 Expected behavior:
 
-- `make` is available directly in `PATH`
-- `scripts/windows/run_make.ps1` should resolve `make` from `PATH` first
+- `make` is available directly in `PATH` in both Git Bash and PowerShell
+- Git Bash calls `make <target>` directly; `scripts/windows/run_make.ps1`
+  (PowerShell fallback) also resolves `make` from `PATH` first
 
 Reference: https://community.chocolatey.org/packages/make
 
@@ -80,11 +88,11 @@ if (-not $makePath) {
 Write-Host "Added to system PATH: $makePath"
 ```
 
-Close and reopen PowerShell, then verify:
+Close and reopen your shell (Git Bash or PowerShell), then verify:
 
-```powershell
+```bash
 make --version
-Get-Command make
+which make
 ```
 
 This writes to the **Machine** scope so the change persists for all users and
@@ -107,32 +115,41 @@ C:\approved-tools\make\bin\make.exe
 
 Verify it directly:
 
-```powershell
-C:\approved-tools\make\bin\make.exe --version
+```bash
+/c/approved-tools/make/bin/make.exe --version
 ```
 
 ### Option B: Add the Binary Folder to the Current Session PATH
 
-If session-level `PATH` changes are allowed:
+If session-level `PATH` changes are allowed, in Git Bash:
+
+```bash
+export PATH="/c/approved-tools/make/bin:$PATH"
+make --version
+which make
+```
+
+PowerShell equivalent:
 
 ```powershell
 $env:Path = "C:\approved-tools\make\bin;$env:Path"
 make --version
-Get-Command make
 ```
 
 This gives you a `PATH`-style workflow without requiring admin rights.
 
 ### Option C: Keep the Binary Out of PATH
 
-If you want an explicit corporate path and do not want to touch `PATH`:
+If you want an explicit corporate path and do not want to touch `PATH`, in Git
+Bash:
 
-```powershell
-C:\approved-tools\make\bin\make.exe test
-C:\approved-tools\make\bin\make.exe package
+```bash
+/c/approved-tools/make/bin/make.exe test
+/c/approved-tools/make/bin/make.exe package
 ```
 
-Or use the repository wrapper:
+Or, from PowerShell without a POSIX shell available, use the repository
+wrapper:
 
 ```powershell
 .\scripts\windows\run_make.ps1 -MakePath 'C:\approved-tools\make\bin\make.exe' test
@@ -157,13 +174,22 @@ That means:
 For GNU Make:
 
 - Prefer the Chocolatey install when admin rights are available and a normal
-  `PATH` workflow is acceptable.
+  `PATH` workflow is acceptable — this is what lets Git Bash run `make`
+  directly, matching Linux/WSL.
 - Prefer the explicit binary + wrapper path when the machine is restricted.
 
 ## 4. Quick Verification Commands
 
-```powershell
+Git Bash:
+
+```bash
 make --version
+make -n test
+```
+
+PowerShell fallback (no `make.exe` on `PATH`):
+
+```powershell
 .\scripts\windows\run_make.ps1
 .\scripts\windows\run_make.ps1 -n test
 ```

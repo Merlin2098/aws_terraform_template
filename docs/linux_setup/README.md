@@ -93,29 +93,29 @@ see [uv_install.md](uv_install.md).
 Preview the install without writing files:
 
 ```bash
-python3 install_linux.py --dry-run --target /path/to/target-repo
+python3 install.py --dry-run --target /path/to/target-repo
 ```
 
 Install the template with an explicit target path:
 
 ```bash
-python3 install_linux.py --target /path/to/target-repo
+python3 install.py --target /path/to/target-repo
 ```
 
 Install and choose capabilities non-interactively:
 
 ```bash
-python3 install_linux.py --target /path/to/target-repo --enable languages:python
-python3 install_linux.py --target /path/to/target-repo --enable infrastructure:terraform
-python3 install_linux.py --target /path/to/target-repo --enable none
+python3 install.py --target /path/to/target-repo --enable languages:python
+python3 install.py --target /path/to/target-repo --enable infrastructure:terraform
+python3 install.py --target /path/to/target-repo --enable none
 ```
 
 Overwrite existing target files only when intentional:
 
 ```bash
-python3 install_linux.py --target /path/to/target-repo --force
+python3 install.py --target /path/to/target-repo --force
 ```
 
-`install_linux.py` copies the template into a host repository. It does not
+`install.py` copies the template into a host repository. It does not
 bootstrap the current repository environment; use `./scripts/linux/setup_env.sh`
 for that.

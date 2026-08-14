@@ -248,27 +248,27 @@ code_review_comments:
 
 environment_detection:
   path: ai/skills/shell/environment_detection.md
-  description: Detect OS, shell type, PowerShell version, WSL, and Git Bash before generating scripts
-
-powershell_core:
-  path: ai/skills/shell/powershell_core.md
-  description: Idiomatic PowerShell — cmdlets, error handling, structured logging, pipeline patterns, and PS 5.1 vs 7+ compatibility
-
-powershell_filesystem:
-  path: ai/skills/shell/powershell_filesystem.md
-  description: Safe file and directory operations in PowerShell with mandatory -WhatIf support on destructive commands
-
-powershell_windows_admin:
-  path: ai/skills/shell/powershell_windows_admin.md
-  description: Windows services, registry (with backup), and scheduled tasks — existence checks and ShouldProcess guards throughout
-
-powershell_json_yaml:
-  path: ai/skills/shell/powershell_json_yaml.md
-  description: JSON parsing and serialization in PowerShell, YAML via powershell-yaml or Python/yq, and common config manipulation patterns
+  description: Detect OS, shell type, PowerShell version, WSL, and Git Bash before generating scripts — Git Bash is the default assumption on Windows
 
 bash_core:
   path: ai/skills/shell/bash_core.md
-  description: Portable Bash scripts for Linux, WSL, and Git Bash — set -euo pipefail, error handling, argument parsing, and safe variable expansion
+  description: Portable Bash scripts for Git Bash (default on Windows), Linux, and WSL — set -euo pipefail, error handling, argument parsing, and safe variable expansion
+
+powershell_core:
+  path: ai/skills/shell/powershell_core.md
+  description: "Fallback for Windows-only capabilities: idiomatic PowerShell — cmdlets, error handling, structured logging, pipeline patterns, and PS 5.1 vs 7+ compatibility"
+
+powershell_filesystem:
+  path: ai/skills/shell/powershell_filesystem.md
+  description: "Fallback: safe file and directory operations in PowerShell with mandatory -WhatIf support on destructive commands"
+
+powershell_windows_admin:
+  path: ai/skills/shell/powershell_windows_admin.md
+  description: "Fallback: Windows services, registry (with backup), and scheduled tasks — existence checks and ShouldProcess guards throughout"
+
+powershell_json_yaml:
+  path: ai/skills/shell/powershell_json_yaml.md
+  description: "Fallback: JSON parsing and serialization in PowerShell, YAML via powershell-yaml or Python/yq, and common config manipulation patterns"
 
 cli_automation:
   path: ai/skills/shell/cli_automation.md

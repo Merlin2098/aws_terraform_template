@@ -73,7 +73,9 @@ Use explicit project commands only.
 Preferred workflow:
 
 * use `make <target>` when `make` is available
-* on Windows, follow the documented wrapper flow under `docs/windows_setup/`
+* on Windows, prefer Git Bash (`scripts/linux/*.sh`, direct `make`); fall back
+  to the PowerShell wrappers under `docs/windows_setup/` only for Windows-only
+  needs — see `ai/domains/shell.md` §Shell precedence
 * run Terraform commands directly and intentionally from `infra/`
 
 Do not introduce hidden automation.
@@ -124,9 +126,13 @@ wrappers or explicit `uv` commands.
 ## Governance
 
 Mandatory AWS/Terraform operational guardrails (SPEC-009), the IAM cross-module
-placement rule (Policy 010), and the simplicity ladder (Policy 008) live in
-`ai/policies/global.md`. Apply them when the project profile enables the
-corresponding capability.
+placement rule (Policy 010), the simplicity ladder (Policy 008), and MCP-assisted
+verification for AWS/Terraform guidance (Policy 011) live in `ai/policies/global.md`.
+Apply them when the project profile enables the corresponding capability.
+
+If `aws-documentation-mcp-server` or `terraform` MCP servers are available in the
+session, they are optional, on-demand verification aids for `ai/skills/aws/` and
+`ai/skills/terraform/` content (Policy 011) — never a hard dependency.
 
 ---
 

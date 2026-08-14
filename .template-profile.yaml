@@ -19,7 +19,7 @@ capabilities:
     python:
       enabled: true
   platform:
-    domains:
+    dns:
       enabled: false
     vps:
       enabled: false

@@ -83,15 +83,17 @@ Use `framework_version` to:
 Pass `--force` to overwrite all `managed`/`generated` files regardless of
 their classification:
 
-```powershell
-python install_windows.py --target <path-to-host> --force
+```bash
+python install.py --target <path-to-host> --force
 ```
 
 Use `--dry-run --force` first to preview what would be written:
 
-```powershell
-python install_windows.py --target <path-to-host> --force --dry-run
+```bash
+python install.py --target <path-to-host> --force --dry-run
 ```
+
+(These commands are identical in Git Bash and PowerShell.)
 
 ### Handling `locally-modified` / `conflict`
 
@@ -118,18 +120,18 @@ Version bumps follow [Semantic Versioning](https://semver.org/):
 After bumping, run the installer normally — the divergence detector will find
 the changed files regardless:
 
-```powershell
-python install_windows.py --target <path-to-host>
+```bash
+python install.py --target <path-to-host>
 ```
 
 ## Quick Reference
 
 | Goal | Command |
 |---|---|
-| Update host (smart diff) | `python install_windows.py --target <path>` |
-| Force overwrite all framework files | `python install_windows.py --target <path> --force` |
-| Preview update (no writes) | `python install_windows.py --target <path> --dry-run` |
-| Preview force update | `python install_windows.py --target <path> --force --dry-run` |
+| Update host (smart diff) | `python install.py --target <path>` |
+| Force overwrite all framework files | `python install.py --target <path> --force` |
+| Preview update (no writes) | `python install.py --target <path> --dry-run` |
+| Preview force update | `python install.py --target <path> --force --dry-run` |
 | Check current template version | `grep ^version pyproject.toml` |
 | Check host installed version | `cat <host>/.framework-version.json` |
 

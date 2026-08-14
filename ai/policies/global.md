@@ -183,3 +183,36 @@ The `aws_sqs_queue` (DLQ) lives in the `lambda` module. AWS validates
 policy granting `sqs:SendMessage` must be declared in the `lambda` module,
 attached to the execution role name received as a variable — not in the `iam`
 module.
+
+---
+
+## Policy 011 — MCP-Assisted Verification for AWS/Terraform Guidance
+
+**Level:** Advisory
+
+`ai/skills/aws/*.md` and `ai/skills/terraform/*.md` are the primary, offline
+source of guidance — they must remain reproducible without network or MCP
+access. When an `aws-documentation-mcp-server` or `terraform` MCP server is
+available in the session, treat it as an optional verification aid, not a
+replacement for the local skill content.
+
+**When to apply:**
+- The user explicitly asks to verify or update guidance against current AWS
+  docs or the Terraform registry
+- The agent suspects drift — a skill references a service behaviour, API
+  shape, or provider argument that may have changed since the skill was
+  written
+- A new AWS service or Terraform provider/module not yet covered by
+  `ai/skills/` is relevant to the task
+
+**Agent behaviour:** Do not query the MCP servers as a routine step before
+every AWS/Terraform task — that adds latency and calls without a
+correctness need. Consult them on demand per the triggers above, and prefer
+`ai/skills/` content when no drift is suspected. If MCP output contradicts a
+local skill, surface the discrepancy to the user rather than silently
+overriding the skill file.
+
+**Availability:** These MCP servers are user-level configuration, not part
+of this repository — do not assume they are present in every session or
+every host project. Absence of the MCP servers must never block a task;
+fall back to the local skill content.
