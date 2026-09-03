@@ -102,6 +102,7 @@ React SPA patterns deployed to AWS (S3 + CloudFront).
 | React + Vite + AWS deploy | `ai/skills/frontend/react_vite_aws.md` |
 | API client patterns | `ai/skills/frontend/api_client_patterns.md` |
 | File upload UX | `ai/skills/frontend/file_upload_ux.md` |
+| Playwright E2E testing | `ai/skills/frontend/playwright_e2e_testing.md` |
 
 ---
 
